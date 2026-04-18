@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>재고관리 앱 배포 가이드 · GitHub · Supabase · Vercel · IP 화이트리스트</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #3b82f6;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --border: #2d3a4d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    header {
+      padding: 2rem 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #152238 0%, var(--bg) 100%);
+    }
+    header h1 { margin: 0 0 0.5rem; font-size: 1.45rem; font-weight: 600; }
+    header p { margin: 0; color: var(--muted); max-width: 52rem; }
+    main { max-width: 52rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1.25rem;
+    }
+    section h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.1rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    section h2 span.num {
+      background: var(--accent);
+      color: #fff;
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+    li { margin: 0.35rem 0; }
+    .path {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88rem;
+      background: #0d1117;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      color: #7ee787;
+    }
+    pre {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    code { font-family: ui-monospace, Consolas, monospace; }
+    .note {
+      border-left: 3px solid var(--warn);
+      padding: 0.5rem 0 0.5rem 1rem;
+      margin: 0.75rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .okline { border-left-color: var(--ok); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+    th, td { border: 1px solid var(--border); padding: 0.45rem 0.6rem; text-align: left; }
+    th { background: #0d1117; color: var(--muted); font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>재고관리 프로그램 배포 가이드</h1>
+    <p>GitHub 저장소 등록 → Supabase(PostgreSQL) → Vercel 호스팅 → 환경 변수로 IP 화이트리스트 설정 순서입니다. 이 파일은 프로젝트 문서용으로 저장소에 함께 올리면 됩니다.</p>
+  </header>
+  <main>
+    <section>
+      <h2><span class="num">0</span> 이 안내 파일 위치</h2>
+      <p>저장소 안에서 아래 경로에 있습니다. 탐색기에서 더블 클릭하면 브라우저로 열 수 있습니다.</p>
+      <p><span class="path">inventory_app/docs/github-supabase-vercel-deploy.html</span></p>
+      <p class="note okline">GitHub에는 <strong>전체 <span class="path">inventory_app</span> 폴더</strong>를 올리는 것을 권장합니다. (<span class="path">vercel.json</span>, <span class="path">api/index.py</span>, <span class="path">app.py</span>가 같은 루트에 있어야 합니다.)</p>
+    </section>
+
+    <section>
+      <h2><span class="num">1</span> GitHub에 등록</h2>
+      <ol>
+        <li>GitHub에서 <strong>New repository</strong>로 빈 저장소를 만듭니다. (README는 선택)</li>
+        <li>PC에서 터미널을 열고, 앱이 있는 폴더로 이동합니다.</li>
+      </ol>
+      <p>저장소 루트가 <span class="path">inventory_app</span> 내용인 경우:</p>
+      <pre><code>cd 경로\inventory_app
+git init
+git add .
+git commit -m "Initial commit: inventory app"
+git branch -M main
+git remote add origin https://github.com/본인아이디/저장소이름.git
+git push -u origin main</code></pre>
+      <p>상위 폴더(<span class="path">data</span> 등) 전체를 올리는 경우, Vercel에서 <strong>Root Directory</strong>를 <span class="path">inventory_app</span>으로 지정하면 됩니다.</p>
+      <p class="note"><strong>주의:</strong> <span class="path">.env</span> 파일은 <span class="path">.gitignore</span>에 있으므로 커밋되지 않습니다. 비밀 정보는 GitHub에 올리지 마세요.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">2</span> Supabase 준비</h2>
+      <ol>
+        <li><a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a>에서 새 프로젝트를 만듭니다.</li>
+        <li><strong>Settings → Database</strong>에서 연결 문자열을 복사합니다. 서버리스(Vercel)에는 보통 <strong>Transaction pooler</strong>(포트 6543) 연결 문자열을 권장합니다.</li>
+        <li>앱은 배포 시 <strong>DATABASE_URL</strong>이 설정되어 있으면 PostgreSQL을 사용하고, 없으면 SQLite를 씁니다. Vercel 배포에서는 반드시 <strong>DATABASE_URL</strong>을 넣으세요.</li>
+        <li>첫 요청 시 <span class="path">api/index.py</span>에서 <code>init_db()</code>가 호출되어 테이블 생성·초기 데이터가 들어갑니다. (이미 테이블이 있으면 스킵되는 부분이 많습니다.)</li>
+      </ol>
+      <p class="note">IPv4 전용 네트워크에서 연결이 안 되면 Supabase 대시보드에서 IPv4 애드온 등 문서를 확인하세요.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">3</span> Vercel에 연결</h2>
+      <ol>
+        <li><a href="https://vercel.com" target="_blank" rel="noopener">Vercel</a>에 로그인 후 <strong>Add New → Project</strong>에서 방금 만든 GitHub 저장소를 import합니다.</li>
+        <li>저장소 구조에 따라 <strong>Root Directory</strong>를 <span class="path">inventory_app</span>으로 설정합니다. (저장소 루트가 이미 <span class="path">inventory_app</span>이면 비워둬도 됩니다.)</li>
+        <li><strong>Environment Variables</strong>에 아래를 추가합니다. (Production 기준)</li>
+      </ol>
+      <table>
+        <thead>
+          <tr><th>이름</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>DATABASE_URL</code></td><td>Supabase PostgreSQL 연결 문자열 (pooler 권장)</td></tr>
+          <tr><td><code>SECRET_KEY</code></td><td>긴 임의 문자열 (세션 암호화). 로컬과 다르게 새로 생성 권장</td></tr>
+          <tr><td><code>ALLOWED_IPS</code></td><td>허용할 공인 IP만 쉼표로 구분. 예: <code>203.0.113.10,198.51.100.2</code></td></tr>
+        </tbody>
+      </table>
+      <p class="note">환경 변수 저장 후 <strong>Redeploy</strong>해야 반영되는 경우가 있습니다.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">4</span> IP 화이트리스트 (<code>ALLOWED_IPS</code>)</h2>
+      <p>앱은 <code>ALLOWED_IPS</code>가 비어 있지 않으면, 요청마다 클라이언트 IP를 검사합니다. Vercel 앞단 프록시 뒤에서는 <strong>X-Forwarded-For</strong>의 첫 번째 IP를 사용합니다.</p>
+      <ul>
+        <li>형식: <code>IP1,IP2,IP3</code> (공백은 각 항목의 앞뒤에서 제거됨)</li>
+        <li>사무실·집 등 고정 출구 IP를 넣는 방식이 일반적입니다. (휴대폰 LTE 등은 IP가 바뀔 수 있음)</li>
+        <li>화이트리스트에 없으면 <strong>403</strong> 페이지가 표시됩니다.</li>
+        <li>로컬에서 Flask만 돌릴 때도 제한을 쓰려면 목록에 <code>127.0.0.1</code>을 포함해야 할 수 있습니다.</li>
+        <li>IPv6로 접속하는 경우 해당 형식의 주소도 목록에 넣어야 할 수 있습니다.</li>
+      </ul>
+      <p class="note">전체 공개가 필요한 잠깐의 테스트는 Vercel에서 <code>ALLOWED_IPS</code>를 비우면 됩니다. 운영 전에 반드시 다시 제한하세요.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">5</span> 배포 후 확인</h2>
+      <ol>
+        <li>Vercel이 준 <strong>프로덕션 URL</strong>로 접속합니다.</li>
+        <li>IP가 허용 목록에 있으면 로그인 화면이 보여야 합니다.</li>
+        <li>기본 관리자(초기 시드): 사용자명 <code>admin</code>, 비밀번호는 코드에 정의된 초기값입니다. <strong>첫 로그인 후 반드시 비밀번호를 변경</strong>하세요.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2><span class="num">·</span> 참고 링크</h2>
+      <ul>
+        <li><a href="https://github.com/new" target="_blank" rel="noopener">GitHub 새 저장소</a></li>
+        <li><a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase 대시보드</a></li>
+        <li><a href="https://vercel.com/new" target="_blank" rel="noopener">Vercel 새 프로젝트</a></li>
+      </ul>
+    </section>
+  </main>
+  <footer>inventory_app · 배포 절차 요약 문서</footer>
+</body>
+</html>
