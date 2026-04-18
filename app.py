@@ -964,7 +964,7 @@ def forecast():
     raw = conn.execute(f'''
         SELECT t.from_branch_id bid, f.id fid,
                f.name form_name, f.unit, f.unit_detail,
-               COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM')) month,
+               COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM')) mo,
                SUM(t.quantity) qty
         FROM transactions t
         JOIN form_types f ON t.form_type_id = f.id
@@ -987,7 +987,7 @@ def forecast():
     meta   = {}
     for r in raw:
         key = (r['bid'], r['fid'])
-        bucket[key][r['month']] += r['qty']
+        bucket[key][r['mo']] += r['qty']
         meta[key] = (r['form_name'], r['unit'], r['unit_detail'])
 
     forecast_by_branch = defaultdict(list)
@@ -1096,7 +1096,7 @@ def forecast_download():
 
     raw = conn.execute(f'''
         SELECT t.from_branch_id bid, f.id fid, f.name form_name, f.unit,
-               COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM')) month,
+               COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM')) mo,
                SUM(t.quantity) qty
         FROM transactions t JOIN form_types f ON t.form_type_id=f.id
         WHERE t.type='OUT' AND t.from_branch_id IN ({id_str})
@@ -1117,7 +1117,7 @@ def forecast_download():
     meta   = {}
     for r in raw:
         key = (r['bid'], r['fid'])
-        bucket[key][r['month']] += r['qty']
+        bucket[key][r['mo']] += r['qty']
         meta[key] = (r['form_name'], r['unit'])
 
     is_admin = role == 'admin'
