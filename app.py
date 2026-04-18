@@ -18,7 +18,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-producti
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not DATABASE_URL
-SQLITE_DB    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
+# Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
+_local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
+SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
 
 
 # ── DB 연결 ───────────────────────────────────────────────────────────────────
