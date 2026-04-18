@@ -208,15 +208,14 @@ def init_db():
                 )
             ''')
         else:
+            # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS branches (
                     id   SERIAL PRIMARY KEY,
                     code TEXT NOT NULL UNIQUE,
                     name TEXT NOT NULL,
                     type TEXT NOT NULL
-                )
-            ''')
-            conn.execute('''
+                );
                 CREATE TABLE IF NOT EXISTS form_types (
                     id            SERIAL PRIMARY KEY,
                     name          TEXT NOT NULL UNIQUE,
@@ -224,9 +223,7 @@ def init_db():
                     unit_detail   TEXT,
                     unit_price    INTEGER DEFAULT 0,
                     min_threshold INTEGER DEFAULT 2
-                )
-            ''')
-            conn.execute('''
+                );
                 CREATE TABLE IF NOT EXISTS inventory (
                     id            SERIAL PRIMARY KEY,
                     branch_id     INTEGER NOT NULL,
@@ -236,9 +233,7 @@ def init_db():
                     FOREIGN KEY (branch_id)    REFERENCES branches(id),
                     FOREIGN KEY (form_type_id) REFERENCES form_types(id),
                     UNIQUE(branch_id, form_type_id)
-                )
-            ''')
-            conn.execute('''
+                );
                 CREATE TABLE IF NOT EXISTS transactions (
                     id             SERIAL PRIMARY KEY,
                     type           TEXT NOT NULL,
@@ -252,9 +247,7 @@ def init_db():
                     FOREIGN KEY (form_type_id)   REFERENCES form_types(id),
                     FOREIGN KEY (from_branch_id) REFERENCES branches(id),
                     FOREIGN KEY (to_branch_id)   REFERENCES branches(id)
-                )
-            ''')
-            conn.execute('''
+                );
                 CREATE TABLE IF NOT EXISTS users (
                     id        SERIAL PRIMARY KEY,
                     username  TEXT NOT NULL UNIQUE,
@@ -262,7 +255,7 @@ def init_db():
                     branch_id INTEGER,
                     role      TEXT DEFAULT 'staff',
                     FOREIGN KEY (branch_id) REFERENCES branches(id)
-                )
+                );
             ''')
 
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
@@ -367,7 +360,7 @@ def init_db():
                     "UPDATE transactions SET period_month = strftime('%Y-%m', created_at) WHERE type='OUT'"
                 )
         else:
-            # PostgreSQL: DO $$ 블록으로 마이그레이션
+            # PostgreSQL: 마이그레이션 + 인덱스를 단일 DO $$ 블록으로 (1 round trip)
             conn.execute('''
                 DO $$
                 BEGIN
@@ -380,14 +373,14 @@ def init_db():
                            SET period_month = TO_CHAR(created_at, 'YYYY-MM')
                          WHERE type = 'OUT';
                     END IF;
+                    CREATE INDEX IF NOT EXISTS idx_inventory_branch  ON inventory(branch_id);
+                    CREATE INDEX IF NOT EXISTS idx_inventory_form    ON inventory(form_type_id);
+                    CREATE INDEX IF NOT EXISTS idx_tx_created_at     ON transactions(created_at);
+                    CREATE INDEX IF NOT EXISTS idx_tx_from_branch    ON transactions(from_branch_id);
+                    CREATE INDEX IF NOT EXISTS idx_tx_to_branch      ON transactions(to_branch_id);
+                    CREATE INDEX IF NOT EXISTS idx_tx_period_month   ON transactions(period_month);
                 END $$
             ''')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_inventory_branch   ON inventory(branch_id)')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_inventory_form     ON inventory(form_type_id)')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_created_at      ON transactions(created_at)')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_from_branch     ON transactions(from_branch_id)')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_to_branch       ON transactions(to_branch_id)')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_period_month    ON transactions(period_month)')
         conn.commit()
 
     except Exception:
