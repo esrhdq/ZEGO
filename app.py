@@ -16,9 +16,18 @@ app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspa
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
-# Supabase는 SSL 필수 — sslmode가 없으면 자동 추가
-if DATABASE_URL and 'sslmode' not in DATABASE_URL:
-    DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
+# 비밀번호 특수문자 URL 인코딩 + Supabase SSL 처리
+if DATABASE_URL:
+    from urllib.parse import urlparse, urlunparse, quote
+    _p = urlparse(DATABASE_URL)
+    if _p.password:
+        _encoded_pw = quote(_p.password, safe='')
+        _netloc = f"{_p.username}:{_encoded_pw}@{_p.hostname}"
+        if _p.port:
+            _netloc += f":{_p.port}"
+        DATABASE_URL = urlunparse((_p.scheme, _netloc, _p.path, '', 'sslmode=require', ''))
+    elif 'sslmode' not in DATABASE_URL:
+        DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not DATABASE_URL
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
