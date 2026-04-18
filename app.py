@@ -1779,8 +1779,13 @@ def transactions_download():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
-if __name__ == '__main__':
+try:
     init_db()
+except Exception as _e:
+    print(f"[init_db] {_e}")
+
+if __name__ == '__main__':
+    pass
     _port = int(os.environ.get('PORT', '5000'))
     _host = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
     print(f'\n  로컬에서 브라우저 주소창에 입력: http://127.0.0.1:{_port}/\n'
