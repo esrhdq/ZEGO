@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}출고 처리{% endblock %}
+{% block page_title %}<i class="bi bi-box-arrow-up me-2"></i>출고 처리{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <strong>양식 출고 등록</strong>
+        <small class="text-muted ms-2">실제 사용 수량을 차감합니다.</small>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+
+          <!-- 지점 선택 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">지점</label>
+            {% if session.role == 'admin' %}
+              <select name="branch_id" id="branchSelect" class="form-select" required onchange="fetchStock()">
+                <option value="">-- 지점 선택 --</option>
+                <optgroup label="국내">
+                  {% for b in branches %}{% if b.type=='DOM' %}
+                    <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      {{ b.code }} — {{ b.name }}
+                    </option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="국제">
+                  {% for b in branches %}{% if b.type=='INTL' %}
+                    <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      {{ b.code }} — {{ b.name }}
+                    </option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="화물">
+                  {% for b in branches %}{% if b.type=='CARGO' %}
+                    <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      {{ b.code }} — {{ b.name }}
+                    </option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+              </select>
+            {% else %}
+              {# 직원: 본인 지점 고정 #}
+              <input type="hidden" name="branch_id" value="{{ session.branch_id }}" id="branchSelect">
+              <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
+                <i class="bi bi-geo-alt-fill text-primary"></i>
+                <strong>{{ session.branch_name }}</strong>
+                <span class="badge bg-secondary ms-1">내 지점</span>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+            <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchStock()">
+              <option value="">-- 양식 선택 --</option>
+              {% for f in form_types %}
+                <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
+                  {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="stockInfo" class="d-none mb-3">
+            <div class="p-3 rounded" id="stockBox" style="background:#f8fafc;border:1px solid #e2e8f0">
+              <div class="small text-muted mb-1">현재 재고</div>
+              <div class="fs-5 fw-bold" id="stockQty">—</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">사용 월 <span class="text-danger">*</span></label>
+            <input type="month" name="period_month" class="form-control"
+                   value="{{ today_ym }}" required>
+            <div class="form-text text-muted">실제 양식이 사용된 월을 선택하세요.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">출고 수량 <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="수량 입력">
+              <span class="input-group-text" id="unitLabel">단위</span>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">비고</label>
+            <input type="text" name="notes" class="form-control" placeholder="선택 입력">
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger px-4">
+              <i class="bi bi-dash-circle me-1"></i>출고 등록
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentStock = 0;
+
+async function fetchStock() {
+  const bidEl = document.getElementById('branchSelect');
+  const bid   = bidEl.value || bidEl.getAttribute('value');
+  const fid   = document.getElementById('formSelect').value;
+  const sel   = document.getElementById('formSelect');
+  const opt   = sel.options[sel.selectedIndex];
+
+  if (opt && opt.dataset.unit) {
+    document.getElementById('unitLabel').textContent =
+      opt.dataset.unit + ' (' + opt.dataset.detail + ')';
+  }
+  if (!bid || !fid) { document.getElementById('stockInfo').classList.add('d-none'); return; }
+
+  const res  = await fetch(`/api/stock?branch_id=${bid}&form_type_id=${fid}`);
+  const data = await res.json();
+  currentStock = data.quantity;
+
+  const box   = document.getElementById('stockBox');
+  const qtyEl = document.getElementById('stockQty');
+  qtyEl.textContent = currentStock + ' ' + (opt.dataset.unit || '');
+
+  if (currentStock === 0) {
+    box.style.background = '#fef2f2'; box.style.borderColor = '#fca5a5';
+    qtyEl.className = 'fs-5 fw-bold status-empty';
+  } else if (currentStock <= 2) {
+    box.style.background = '#fffbeb'; box.style.borderColor = '#fcd34d';
+    qtyEl.className = 'fs-5 fw-bold status-low';
+  } else {
+    box.style.background = '#f0fdf4'; box.style.borderColor = '#86efac';
+    qtyEl.className = 'fs-5 fw-bold status-ok';
+  }
+
+  document.getElementById('stockInfo').classList.remove('d-none');
+  document.getElementById('qtyInput').max = currentStock;
+}
+</script>
+{% endblock %}

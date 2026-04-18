@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% block title %}분기 신청 추정{% endblock %}
+{% block page_title %}<i class="bi bi-calculator me-2"></i>분기 신청 추정{% endblock %}
+
+{% block content %}
+
+{# ── 분기 안내 배너 ── #}
+{% if is_qend %}
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-3" style="border-left:4px solid #f59e0b">
+  <i class="bi bi-bell-fill fs-4 text-warning"></i>
+  <div>
+    <strong>분기 마감 월입니다!</strong>
+    현재 <strong>{{ today.year }}년 Q{{ cur_q }}</strong> ({{ today.month }}월) — 다음 분기 신청 시즌입니다.
+    아래 권장 신청수량을 참고하여 발주하세요.
+  </div>
+</div>
+{% endif %}
+
+{# ── 분기 정보 카드 ── #}
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div style="background:#eff6ff;border-radius:10px;padding:12px">
+          <i class="bi bi-calendar3 fs-4 text-primary"></i>
+        </div>
+        <div>
+          <div class="fw-bold" style="font-size:1.1rem">Q{{ cur_q }}</div>
+          <div class="stat-label">현재 분기</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card stat-card" style="border-top:3px solid #f59e0b">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div style="background:#fff7ed;border-radius:10px;padding:12px">
+          <i class="bi bi-calendar-check fs-4 text-warning"></i>
+        </div>
+        <div>
+          <div class="fw-bold text-warning" style="font-size:1.1rem">
+            {{ nq_y }}년 Q{{ next_q }}
+          </div>
+          <div class="stat-label">다음 분기 ({{ nq_start_m }}~{{ nq_end_m }}월)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div style="background:#fef2f2;border-radius:10px;padding:12px">
+          <i class="bi bi-boxes fs-4 text-danger"></i>
+        </div>
+        <div>
+          <div class="fw-bold text-danger" style="font-size:1.1rem">
+            {{ forecast_sections | map(attribute='form_items') | sum(start=[]) | selectattr('recommended','gt',0) | list | length }}
+          </div>
+          <div class="stat-label">신청 필요 품목</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div style="background:#f5f3ff;border-radius:10px;padding:12px">
+          <i class="bi bi-graph-up-arrow fs-4" style="color:#7c3aed"></i>
+        </div>
+        <div>
+          <div class="fw-bold" style="font-size:1.1rem;color:#7c3aed">6개월</div>
+          <div class="stat-label">분석 기준 기간</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── 필터 + 다운로드 ── #}
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      {% if session.role == 'admin' %}
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold mb-1">지점</label>
+        <select name="branch_id" class="form-select form-select-sm">
+          <option value="">전체 지점</option>
+          <optgroup label="국내">
+            {% for b in branches %}{% if b.type=='DOM' %}
+              <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+            {% endif %}{% endfor %}
+          </optgroup>
+          <optgroup label="국제">
+            {% for b in branches %}{% if b.type=='INTL' %}
+              <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+            {% endif %}{% endfor %}
+          </optgroup>
+          <optgroup label="화물">
+            {% for b in branches %}{% if b.type=='CARGO' %}
+              <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+            {% endif %}{% endfor %}
+          </optgroup>
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-search me-1"></i>조회
+        </button>
+        <a href="{{ url_for('forecast_download') }}{% if bf %}?branch_id={{ bf }}{% endif %}"
+           class="btn btn-success btn-sm">
+          <i class="bi bi-file-earmark-excel me-1"></i>엑셀 다운로드
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── 범례 ── #}
+<div class="d-flex gap-3 mb-3 small align-items-center">
+  <span><span class="badge bg-danger">5+ 필요</span> 즉시 신청</span>
+  <span><span class="badge bg-warning text-dark">1~5 필요</span> 신청 권장</span>
+  <span><span class="badge bg-success">0</span> 재고 충분</span>
+  <span class="ms-2 text-muted">추세 — <strong>↑ 증가</strong> / <strong>→ 안정</strong> / <strong>↓ 감소</strong></span>
+</div>
+
+{# ── 알고리즘 안내 ── #}
+<div class="alert alert-info py-2 small mb-3">
+  <i class="bi bi-info-circle me-1"></i>
+  <strong>추정 방식:</strong> 최근 6개월 월평균 출고 × 3개월 × 추세보정(±15%) — 현재재고 = 권장 신청수량
+</div>
+
+{# ── 지점별 추정 테이블 ── #}
+{% if forecast_sections %}
+  {% for section in forecast_sections %}
+  <div class="card mb-4">
+    <div class="card-header py-3 d-flex align-items-center gap-2"
+         style="background:#1a2340;color:#fff">
+      <i class="bi bi-geo-alt-fill" style="color:#60a5fa"></i>
+      <strong>{{ section.branch_code }}</strong>
+      <span class="text-light opacity-75">{{ section.branch_name }}</span>
+      <span class="badge ms-1
+        {% if section.branch_type=='DOM' %}badge-dom
+        {% elif section.branch_type=='INTL' %}badge-intl
+        {% else %}badge-cargo{% endif %}">
+        {% if section.branch_type=='DOM' %}국내{% elif section.branch_type=='INTL' %}국제{% else %}화물{% endif %}
+      </span>
+      {% set need_cnt = section.form_items | selectattr('recommended','gt',0) | list | length %}
+      {% if need_cnt %}
+        <span class="badge bg-danger ms-1">신청 필요 {{ need_cnt }}개</span>
+      {% else %}
+        <span class="badge bg-success ms-1">전 품목 충분</span>
+      {% endif %}
+      <span class="ms-auto small opacity-75">총 {{ section.form_items|length }}개 품목 분석</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="min-width:220px">양식명</th>
+              <th class="text-center">단위</th>
+              {% for mo in month_labels %}
+              <th class="text-center small text-muted" style="min-width:52px">{{ mo[5:] }}월</th>
+              {% endfor %}
+              <th class="text-center">월평균</th>
+              <th class="text-center">추세</th>
+              <th class="text-center">현재<br>재고</th>
+              <th class="text-center">다음분기<br>예상소비</th>
+              <th class="text-center fw-bold" style="min-width:90px">권장<br>신청수량</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in section.form_items %}
+            {% set rec = item.recommended %}
+            <tr class="{% if rec > 5 %}table-danger{% elif rec > 0 %}table-warning{% endif %}">
+              <td class="small fw-semibold">{{ item.form_name }}</td>
+              <td class="text-center small text-muted">{{ item.unit }}</td>
+
+              {# 6개월 출고 미니 바 #}
+              {% set max_val = item.vals | max %}
+              {% for v in item.vals %}
+              <td class="text-center p-1" style="vertical-align:bottom">
+                <div class="d-flex flex-column align-items-center gap-0">
+                  {% if max_val > 0 %}
+                  <div style="width:28px;height:{{ [(v/max_val*32)|int, 4]|max }}px;
+                              background:{% if v==0 %}#e2e8f0{% else %}#60a5fa{% endif %};
+                              border-radius:3px 3px 0 0"></div>
+                  {% endif %}
+                  <small style="font-size:.68rem;color:{% if v==0 %}#94a3b8{% else %}#1e40af{% endif %}">
+                    {{ v if v else '—' }}
+                  </small>
+                </div>
+              </td>
+              {% endfor %}
+
+              <td class="text-center fw-semibold">{{ item.avg_monthly }}</td>
+              <td class="text-center">
+                {% if item.trend_label == '증가' %}
+                  <span class="text-danger fw-bold">↑ 증가</span>
+                  <div class="small text-muted">+{{ item.trend_pct }}%</div>
+                {% elif item.trend_label == '감소' %}
+                  <span class="text-primary fw-bold">↓ 감소</span>
+                  <div class="small text-muted">{{ item.trend_pct }}%</div>
+                {% else %}
+                  <span class="text-success fw-bold">→ 안정</span>
+                {% endif %}
+              </td>
+              <td class="text-center fw-semibold
+                {% if item.cur_stock == 0 %}text-danger
+                {% elif item.cur_stock <= 2 %}text-warning{% else %}text-success{% endif %}">
+                {{ item.cur_stock }}
+              </td>
+              <td class="text-center">{{ item.nq_est }}</td>
+              <td class="text-center">
+                {% if rec > 5 %}
+                  <span class="badge bg-danger fs-6 px-3">{{ rec }}</span>
+                {% elif rec > 0 %}
+                  <span class="badge bg-warning text-dark fs-6 px-3">{{ rec }}</span>
+                {% else %}
+                  <span class="badge bg-success fs-6 px-3">충분</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-secondary fw-semibold">
+            <tr>
+              <td>합계</td>
+              <td></td>
+              {% for i in range(6) %}
+              <td class="text-center">{{ section.col_sums[i] }}</td>
+              {% endfor %}
+              <td></td><td></td>
+              <td class="text-center">{{ section.form_items | map(attribute='cur_stock') | list | sum }}</td>
+              <td class="text-center">{{ section.form_items | map(attribute='nq_est') | list | sum }}</td>
+              <td class="text-center text-danger">
+                {{ section.form_items | map(attribute='recommended') | list | sum }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+    최근 6개월 출고 이력이 없습니다. 출고 데이터가 쌓인 후 이용하세요.
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 6개월 월별 합계 - nth 필터 없으므로 tfoot 는 서버에서 계산하거나 JS로 처리
+// (Jinja2 map|nth 는 기본 제공 아님 → 아래에서 JS로 채움)
+document.querySelectorAll('tfoot tr').forEach(tr => {
+  // tfoot는 이미 서버에서 계산된 값으로 렌더링됨
+});
+</script>
+{% endblock %}

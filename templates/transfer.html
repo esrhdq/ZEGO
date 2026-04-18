@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}지점 간 이전{% endblock %}
+{% block page_title %}<i class="bi bi-arrow-left-right me-2"></i>지점 간 이전{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <strong>양식 이전</strong>
+        <small class="text-muted ms-2">지점 간 양식 이동을 처리합니다.</small>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          <div class="row g-3 mb-3">
+
+            <!-- 출발 지점 -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">출발 지점</label>
+              {% if session.role == 'admin' %}
+                <select name="from_branch_id" id="fromBranch" class="form-select" required onchange="fetchFromStock()">
+                  <option value="">-- 출발 지점 --</option>
+                  <optgroup label="국내">
+                    {% for b in branches %}{% if b.type=='DOM' %}
+                      <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                        {{ b.code }} — {{ b.name }}
+                      </option>
+                    {% endif %}{% endfor %}
+                  </optgroup>
+                  <optgroup label="국제">
+                    {% for b in branches %}{% if b.type=='INTL' %}
+                      <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                    {% endif %}{% endfor %}
+                  </optgroup>
+                  <optgroup label="화물">
+                    {% for b in branches %}{% if b.type=='CARGO' %}
+                      <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                    {% endif %}{% endfor %}
+                  </optgroup>
+                </select>
+              {% else %}
+                {# 직원: 본인 지점 고정 #}
+                <input type="hidden" name="from_branch_id" value="{{ session.branch_id }}" id="fromBranch">
+                <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
+                  <i class="bi bi-geo-alt-fill text-primary"></i>
+                  <strong>{{ session.branch_name }}</strong>
+                  <span class="badge bg-secondary ms-1">내 지점</span>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- 도착 지점 (모든 사용자 선택 가능) -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">도착 지점 <span class="text-danger">*</span></label>
+              <select name="to_branch_id" class="form-select" required>
+                <option value="">-- 도착 지점 --</option>
+                <optgroup label="국내">
+                  {% for b in branches %}{% if b.type=='DOM' %}
+                    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="국제">
+                  {% for b in branches %}{% if b.type=='INTL' %}
+                    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="화물">
+                  {% for b in branches %}{% if b.type=='CARGO' %}
+                    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+            <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchFromStock()">
+              <option value="">-- 양식 선택 --</option>
+              {% for f in form_types %}
+                <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
+                  {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- 출발지 현재 재고 -->
+          <div id="stockInfo" class="d-none mb-3">
+            <div class="p-3 rounded" id="stockBox" style="background:#f0fdf4;border:1px solid #86efac;">
+              <div class="small text-muted mb-1">출발 지점 현재 재고</div>
+              <div class="fs-5 fw-bold status-ok" id="stockQty">—</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">이전 수량 <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="수량 입력">
+              <span class="input-group-text" id="unitLabel">단위</span>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">비고</label>
+            <input type="text" name="notes" class="form-control" placeholder="선택 입력">
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-arrow-left-right me-1"></i>이전 처리
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function fetchFromStock() {
+  const bidEl = document.getElementById('fromBranch');
+  const bid   = bidEl.value || bidEl.getAttribute('value');
+  const fid   = document.getElementById('formSelect').value;
+  const sel   = document.getElementById('formSelect');
+  const opt   = sel.options[sel.selectedIndex];
+
+  if (opt && opt.dataset.unit) {
+    document.getElementById('unitLabel').textContent =
+      opt.dataset.unit + ' (' + opt.dataset.detail + ')';
+  }
+  if (!bid || !fid) { document.getElementById('stockInfo').classList.add('d-none'); return; }
+
+  const res  = await fetch(`/api/stock?branch_id=${bid}&form_type_id=${fid}`);
+  const data = await res.json();
+  const qty  = data.quantity;
+
+  document.getElementById('stockQty').textContent = qty + ' ' + (opt.dataset.unit || '');
+  document.getElementById('qtyInput').max = qty;
+
+  const box = document.getElementById('stockBox');
+  if (qty === 0) {
+    box.style.background = '#fef2f2'; box.style.borderColor = '#fca5a5';
+    document.getElementById('stockQty').className = 'fs-5 fw-bold status-empty';
+  } else {
+    box.style.background = '#f0fdf4'; box.style.borderColor = '#86efac';
+    document.getElementById('stockQty').className = 'fs-5 fw-bold status-ok';
+  }
+  document.getElementById('stockInfo').classList.remove('d-none');
+}
+</script>
+{% endblock %}

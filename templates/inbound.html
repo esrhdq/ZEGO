@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% block title %}입고 처리{% endblock %}
+{% block page_title %}<i class="bi bi-box-arrow-in-down me-2"></i>입고 처리{% endblock %}
+
+{% block content %}
+<!-- 엑셀 업로드 섹션 -->
+<div class="card mb-4" style="border-left:4px solid #16a34a">
+  <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
+    <i class="bi bi-file-earmark-arrow-up text-success fs-5"></i>
+    <strong>엑셀 일괄 입고</strong>
+    <span class="badge bg-success ms-1">권장</span>
+    <button class="btn btn-sm btn-outline-secondary ms-auto" type="button"
+            data-bs-toggle="collapse" data-bs-target="#uploadSection">
+      <i class="bi bi-chevron-down"></i> 펼치기
+    </button>
+  </div>
+  <div class="collapse" id="uploadSection">
+    <div class="card-body">
+      <div class="row g-4 align-items-start">
+
+        <!-- 안내 + 템플릿 다운로드 -->
+        <div class="col-md-5">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-info-circle text-primary me-1"></i>사용 방법</h6>
+          <ol class="small text-muted ps-3 mb-3" style="line-height:2">
+            <li>아래 <strong>템플릿 다운로드</strong> 버튼으로 양식을 받습니다.</li>
+            <li>
+              {% if session.role == 'admin' %}
+                <strong>지점코드</strong>와 <strong>양식명</strong>을 드롭다운에서 선택하고 수량을 입력합니다.
+              {% else %}
+                <strong>양식명</strong>을 드롭다운에서 선택하고 수량을 입력합니다.<br>
+                <span class="text-primary">(지점코드는 본인 지점으로 자동 적용됩니다.)</span>
+              {% endif %}
+            </li>
+            <li>저장 후 아래 <strong>파일 선택 → 업로드</strong>합니다.</li>
+          </ol>
+          <a href="{{ url_for('inbound_template') }}" class="btn btn-outline-success w-100">
+            <i class="bi bi-file-earmark-excel me-2"></i>템플릿 다운로드
+          </a>
+          <div class="text-muted small mt-2 text-center">
+            <i class="bi bi-info-circle me-1"></i>
+            "참고" 시트에 유효한 지점코드·양식명 목록이 포함되어 있습니다.
+          </div>
+        </div>
+
+        <!-- 파일 업로드 -->
+        <div class="col-md-7">
+          <h6 class="fw-semibold mb-3"><i class="bi bi-upload text-primary me-1"></i>파일 업로드</h6>
+          <form method="post" action="{{ url_for('inbound_upload') }}" enctype="multipart/form-data" id="uploadForm">
+            <div id="dropZone"
+                 class="border rounded p-4 text-center mb-3"
+                 style="border-style:dashed!important;border-color:#94a3b8;background:#f8fafc;cursor:pointer;transition:.2s"
+                 onclick="document.getElementById('fileInput').click()"
+                 ondragover="event.preventDefault();this.style.background='#eff6ff'"
+                 ondragleave="this.style.background='#f8fafc'"
+                 ondrop="handleDrop(event)">
+              <i class="bi bi-cloud-arrow-up fs-2 text-muted"></i>
+              <div class="mt-2 small text-muted">파일을 드래그하거나 클릭하여 선택</div>
+              <div id="fileName" class="mt-1 small text-primary fw-semibold"></div>
+              <input type="file" id="fileInput" name="file"
+                     accept=".xlsx,.xls" class="d-none"
+                     onchange="showFileName(this)">
+            </div>
+            <button type="submit" id="uploadBtn" class="btn btn-success w-100" disabled>
+              <i class="bi bi-cloud-upload me-2"></i>업로드 및 반영
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 수기 입고 -->
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <strong>양식 입고 등록</strong>
+        <small class="text-muted ms-2">본사에서 지점으로 양식을 수령할 때 등록합니다.</small>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" id="inboundForm">
+
+          <!-- 지점 선택 -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">지점</label>
+            {% if session.role == 'admin' %}
+              <select name="branch_id" id="branchSelect" class="form-select" required onchange="fetchStock()">
+                <option value="">-- 지점 선택 --</option>
+                <optgroup label="국내">
+                  {% for b in branches %}{% if b.type=='DOM' %}
+                    <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      {{ b.code }} — {{ b.name }}
+                    </option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="국제">
+                  {% for b in branches %}{% if b.type=='INTL' %}
+                    <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      {{ b.code }} — {{ b.name }}
+                    </option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="화물">
+                  {% for b in branches %}{% if b.type=='CARGO' %}
+                    <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      {{ b.code }} — {{ b.name }}
+                    </option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+              </select>
+            {% else %}
+              {# 직원: 본인 지점 고정 표시 #}
+              <input type="hidden" name="branch_id" value="{{ session.branch_id }}" id="branchSelect">
+              <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
+                <i class="bi bi-geo-alt-fill text-primary"></i>
+                <strong>{{ session.branch_name }}</strong>
+                <span class="badge bg-secondary ms-1">내 지점</span>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+            <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchStock()">
+              <option value="">-- 양식 선택 --</option>
+              {% for f in form_types %}
+                <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
+                  {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="stockInfo" class="alert alert-info d-none py-2 small mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            현재 재고: <strong id="stockQty">—</strong>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">입고 수량 <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" name="quantity" class="form-control" min="1" required placeholder="수량 입력">
+              <span class="input-group-text" id="unitLabel">단위</span>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">비고</label>
+            <input type="text" name="notes" class="form-control" placeholder="선택 입력">
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success px-4">
+              <i class="bi bi-check-lg me-1"></i>입고 등록
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function fetchStock() {
+  const bidEl = document.getElementById('branchSelect');
+  const bid   = bidEl.value || bidEl.getAttribute('value');
+  const fid   = document.getElementById('formSelect').value;
+  const sel   = document.getElementById('formSelect');
+  const opt   = sel.options[sel.selectedIndex];
+
+  if (opt && opt.dataset.unit) {
+    document.getElementById('unitLabel').textContent =
+      opt.dataset.unit + ' (' + opt.dataset.detail + ')';
+  }
+  if (!bid || !fid) { document.getElementById('stockInfo').classList.add('d-none'); return; }
+
+  const res  = await fetch(`/api/stock?branch_id=${bid}&form_type_id=${fid}`);
+  const data = await res.json();
+  document.getElementById('stockQty').textContent =
+    data.quantity + ' ' + (opt.dataset.unit || '');
+  document.getElementById('stockInfo').classList.remove('d-none');
+}
+
+// 파일 선택 시 파일명 표시 및 업로드 버튼 활성화
+function showFileName(input) {
+  const name = input.files[0]?.name || '';
+  document.getElementById('fileName').textContent  = name ? '선택됨: ' + name : '';
+  document.getElementById('uploadBtn').disabled    = !name;
+}
+
+// 드래그 앤 드롭
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.background = '#f8fafc';
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById('fileInput');
+  const dt    = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  showFileName(input);
+}
+
+// 업로드 중 버튼 상태
+document.getElementById('uploadForm')?.addEventListener('submit', function() {
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled   = true;
+  btn.innerHTML  = '<span class="spinner-border spinner-border-sm me-2"></span>처리 중...';
+});
+</script>
+{% endblock %}
