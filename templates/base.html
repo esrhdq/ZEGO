@@ -98,7 +98,7 @@
     <small class="text-muted">ZEGO · 26년도 2분기</small>
   </div>
 
-  {% set messages = get_flashed_messages() %}
+  {% set messages = get_flashed_messages(with_categories=true) %}
   {% for cat, msg in messages %}
     <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
       {{ msg }}
