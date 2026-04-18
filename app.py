@@ -820,16 +820,16 @@ def report():
     ''').fetchall()
 
     monthly_raw = conn.execute(f'''
-        SELECT TO_CHAR(t.created_at, 'YYYY-MM') month, t.type,
+        SELECT TO_CHAR(t.created_at, 'YYYY-MM') mo, t.type,
                COUNT(*) tx_count, COALESCE(SUM(t.quantity),0) total_qty
         FROM transactions t
         WHERE t.created_at >= CURRENT_DATE - INTERVAL '6 months' {t_cond}
         GROUP BY TO_CHAR(t.created_at, 'YYYY-MM'), t.type ORDER BY TO_CHAR(t.created_at, 'YYYY-MM') ASC
     ''').fetchall()
 
-    months_set = sorted({r['month'] for r in monthly_raw})
+    months_set = sorted({r['mo'] for r in monthly_raw})
     def _monthly_vals(tx_type):
-        m = {r['month']: r['total_qty'] for r in monthly_raw if r['type'] == tx_type}
+        m = {r['mo']: r['total_qty'] for r in monthly_raw if r['type'] == tx_type}
         return [m.get(mo, 0) for mo in months_set]
     chart_monthly = {
         'labels':   months_set,
