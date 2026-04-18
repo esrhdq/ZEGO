@@ -114,6 +114,15 @@ def login_required(f):
     return decorated
 
 
+# ── Jinja2 필터 ──────────────────────────────────────────────────────────────
+
+@app.template_filter('dt')
+def dt_filter(value):
+    if value is None:
+        return '—'
+    return str(value)[:16]
+
+
 # ── 오류 핸들러 (디버그용) ────────────────────────────────────────────────────
 
 @app.errorhandler(Exception)
