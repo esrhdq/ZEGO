@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운송본부 양식 재고관리</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+  :root { --sidebar-w: 240px; }
+  body { background: #f0f2f5; font-size: 0.875rem; }
+  #sidebar {
+    width: var(--sidebar-w); min-height: 100vh; background: #1a1d23;
+    position: fixed; top: 0; left: 0; z-index: 100;
+    display: flex; flex-direction: column;
+  }
+  #sidebar .brand {
+    padding: 1.25rem 1rem; border-bottom: 1px solid #2d3139;
+    font-weight: 700; font-size: 0.95rem; color: #fff;
+    line-height: 1.3;
+  }
+  #sidebar .brand small { display: block; font-weight: 400; font-size: 0.7rem; color: #8b949e; margin-top: 2px; }
+  #sidebar nav { flex: 1; padding: 0.5rem 0; }
+  #sidebar nav a {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.6rem 1rem; color: #8b949e; text-decoration: none;
+    font-size: 0.82rem; transition: all .15s;
+  }
+  #sidebar nav a:hover { color: #fff; background: #2d3139; }
+  #sidebar nav a.active { color: #fff; background: #0d6efd; border-radius: 0 0.25rem 0.25rem 0; }
+  #sidebar nav .nav-section {
+    padding: 0.75rem 1rem 0.25rem;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: .08em;
+    color: #484f58; text-transform: uppercase;
+  }
+  #sidebar .user-panel {
+    padding: 0.75rem 1rem; border-top: 1px solid #2d3139;
+    color: #8b949e; font-size: 0.75rem;
+  }
+  #sidebar .user-panel .username { color: #fff; font-weight: 600; }
+  #sidebar .user-panel .logout-btn {
+    color: #8b949e; cursor: pointer; background: none; border: none;
+    padding: 0; font-size: 0.75rem;
+  }
+  #sidebar .user-panel .logout-btn:hover { color: #fff; }
+  #main { margin-left: var(--sidebar-w); padding: 1.5rem; min-height: 100vh; }
+  #login-page {
+    min-height: 100vh; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stat-card { border: none; border-radius: 0.5rem; }
+  .flash-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; min-width: 280px; }
+  .table-sm td, .table-sm th { padding: 0.35rem 0.5rem; }
+  .badge-in { background: #198754; }
+  .badge-out { background: #dc3545; }
+  .badge-transfer { background: #0d6efd; }
+  .status-ok { color: #198754; font-weight: 600; }
+  .status-low { color: #fd7e14; font-weight: 600; }
+  .status-empty { color: #dc3545; font-weight: 600; }
+  .chart-container { position: relative; height: 280px; }
+  @media (max-width: 768px) {
+    #sidebar { transform: translateX(-100%); }
+    #main { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div id="flash-container" class="flash-container"></div>
+<div id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+
+// ─────────────────────────── DB ────────────────────────────
+const DB = {
+  prefix: 'inv_',
+  get(key) { try { return JSON.parse(localStorage.getItem(this.prefix + key)) || []; } catch { return []; } },
+  set(key, val) { localStorage.setItem(this.prefix + key, JSON.stringify(val)); },
+  nextId(arr) { return arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1; },
+
+  // branches
+  getBranches() { return this.get('branches'); },
+  setBranches(v) { this.set('branches', v); },
+
+  // form_types
+  getFormTypes() { return this.get('form_types'); },
+  setFormTypes(v) { this.set('form_types', v); },
+
+  // inventory
+  getInventory() { return this.get('inventory'); },
+  setInventory(v) { this.set('inventory', v); },
+  getInventoryItem(branchId, formTypeId) {
+    return this.getInventory().find(i => i.branch_id === branchId && i.form_type_id === formTypeId);
+  },
+  upsertInventory(branchId, formTypeId, delta) {
+    const inv = this.getInventory();
+    const idx = inv.findIndex(i => i.branch_id === branchId && i.form_type_id === formTypeId);
+    if (idx >= 0) {
+      inv[idx].quantity = Math.max(0, inv[idx].quantity + delta);
+      inv[idx].last_updated = new Date().toISOString();
+    } else {
+      inv.push({ id: this.nextId(inv), branch_id: branchId, form_type_id: formTypeId, quantity: Math.max(0, delta), last_updated: new Date().toISOString() });
+    }
+    this.setInventory(inv);
+  },
+
+  // transactions
+  getTransactions() { return this.get('transactions'); },
+  setTransactions(v) { this.set('transactions', v); },
+  addTransaction(tx) {
+    const txs = this.getTransactions();
+    tx.id = this.nextId(txs);
+    tx.created_at = new Date().toISOString();
+    txs.push(tx);
+    this.setTransactions(txs);
+    return tx;
+  },
+
+  // users
+  getUsers() { return this.get('users'); },
+  setUsers(v) { this.set('users', v); },
+  findUser(username) { return this.getUsers().find(u => u.username === username); },
+};
+
+// ─────────────────────────── AUTH ────────────────────────────
+const Auth = {
+  currentUser: null,
+  async hashPassword(pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  },
+  async login(username, password) {
+    const user = DB.findUser(username);
+    if (!user) return false;
+    const hash = await this.hashPassword(password);
+    if (user.password !== hash) return false;
+    this.currentUser = user;
+    sessionStorage.setItem('inv_session', JSON.stringify(user));
+    return true;
+  },
+  logout() {
+    this.currentUser = null;
+    sessionStorage.removeItem('inv_session');
+  },
+  loadSession() {
+    const s = sessionStorage.getItem('inv_session');
+    if (s) { try { this.currentUser = JSON.parse(s); return true; } catch {} }
+    return false;
+  },
+  isAdmin() { return this.currentUser && this.currentUser.role === 'admin'; },
+  branchId() { return this.currentUser ? this.currentUser.branch_id : null; },
+};
+
+// ─────────────────────────── SEED ────────────────────────────
+async function seedData() {
+  if (localStorage.getItem('inv_seeded')) return;
+
+  const branches = [
+    { id:1,  code:'GMP', name:'김포',    type:'DOM'  },
+    { id:2,  code:'CJU', name:'제주',    type:'DOM'  },
+    { id:3,  code:'CJJ', name:'청주',    type:'DOM'  },
+    { id:4,  code:'PUS', name:'부산',    type:'DOM'  },
+    { id:5,  code:'TSA', name:'송산',    type:'DOM'  },
+    { id:6,  code:'KMJ', name:'광주',    type:'DOM'  },
+    { id:7,  code:'SRV', name:'서울역',  type:'DOM'  },
+    { id:8,  code:'KMX', name:'광명역',  type:'DOM'  },
+    { id:9,  code:'EZD', name:'이지드랍',type:'DOM'  },
+    { id:10, code:'ICN', name:'인천',    type:'INTL' },
+    { id:11, code:'TPE', name:'타이페이',type:'INTL' },
+    { id:12, code:'NRT', name:'나리타',  type:'INTL' },
+    { id:13, code:'KIX', name:'간사이',  type:'INTL' },
+    { id:14, code:'FUK', name:'후쿠오카',type:'INTL' },
+    { id:15, code:'CTS', name:'삿포로',  type:'INTL' },
+    { id:16, code:'OKA', name:'오키나와',type:'INTL' },
+    { id:17, code:'TKS', name:'도쿠시마',type:'INTL' },
+    { id:18, code:'BKK', name:'방콕',    type:'INTL' },
+    { id:19, code:'CNX', name:'치앙마이',type:'INTL' },
+    { id:20, code:'DAD', name:'다낭',    type:'INTL' },
+    { id:21, code:'CXR', name:'나트랑',  type:'INTL' },
+    { id:22, code:'PQC', name:'푸꾸옥',  type:'INTL' },
+    { id:23, code:'MDC', name:'마나도',  type:'INTL' },
+    { id:24, code:'PVG', name:'상하이',  type:'INTL' },
+    { id:25, code:'YNJ', name:'연길',    type:'INTL' },
+    { id:26, code:'CGO', name:'정저우',  type:'INTL' },
+    { id:27, code:'YNT', name:'옌타이',  type:'INTL' },
+    { id:28, code:'HKG', name:'홍콩',    type:'INTL' },
+    { id:29, code:'ALA', name:'알마티',  type:'INTL' },
+    { id:30, code:'CGO2',name:'CARGO',   type:'CARGO'},
+  ];
+
+  const formTypes = [
+    { id:1,  name:'DOM BOARDING PASS',           unit:'롤',  unit_detail:'50롤',   unit_price:60000,  min_threshold:3 },
+    { id:2,  name:'INTL BOARDING PASS(QR)',       unit:'BOX', unit_detail:'5000장', unit_price:175000, min_threshold:3 },
+    { id:3,  name:'INTL BOARDING PASS(QR, ICN)',  unit:'BOX', unit_detail:'5000장', unit_price:175000, min_threshold:2 },
+    { id:4,  name:'AUTO BAG TAG',                 unit:'BOX', unit_detail:'10롤',  unit_price:118000, min_threshold:5 },
+    { id:5,  name:'BAG TIPS',                     unit:'BOX', unit_detail:'5000장', unit_price:50000,  min_threshold:3 },
+    { id:6,  name:'BAG TIPS (SNOOPY, DOM)',        unit:'BOX', unit_detail:'5000장', unit_price:57000,  min_threshold:2 },
+    { id:7,  name:'MANUAL BAG TAG',               unit:'BOX', unit_detail:'5000장', unit_price:180000, min_threshold:2 },
+    { id:8,  name:'Carry on Bag TAG (INTL)',       unit:'BOX', unit_detail:'5000장', unit_price:145000, min_threshold:2 },
+    { id:9,  name:'SRI 봉투(大)',                  unit:'BOX', unit_detail:'500장',  unit_price:330000, min_threshold:1 },
+    { id:10, name:'CO-MAIL 봉투(NEW)',             unit:'BOX', unit_detail:'200장',  unit_price:160000, min_threshold:1 },
+    { id:11, name:'유상비닐(小/PPS)',               unit:'포대',unit_detail:'100개',  unit_price:110000, min_threshold:2 },
+    { id:12, name:'유상비닐(大/PPL)',               unit:'포대',unit_detail:'100개',  unit_price:130000, min_threshold:2 },
+    { id:13, name:'BOX TAPE',                     unit:'BOX', unit_detail:'50개',   unit_price:55000,  min_threshold:3 },
+    { id:14, name:'PREMIUM TAG(D/S)',              unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:2 },
+    { id:15, name:'FRAGILE TAG(NEW)',              unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:2 },
+    { id:16, name:'HEAVY TAG',                    unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:2 },
+    { id:17, name:'GTOG TAG',                     unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:2 },
+    { id:18, name:'TRANSFER TAG',                 unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:19, name:'비상구열 스티커',                unit:'BOX', unit_detail:'20000장',unit_price:110000, min_threshold:1 },
+    { id:20, name:'AOC LABEL',                    unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:21, name:'POB LABEL',                    unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:22, name:'COB LABEL',                    unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:23, name:'UP SIDE LABEL',                unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:24, name:'휠체어 배터리 분리 L/B',         unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:25, name:'CORROSIVE LABEL',              unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:26, name:'Dry Ice LABEL',                unit:'BOX', unit_detail:'5000장', unit_price:80000,  min_threshold:1 },
+    { id:27, name:'한국 입국신고서 (ENG/CNA)',      unit:'BOX', unit_detail:'5000장', unit_price:150000, min_threshold:1 },
+    { id:28, name:'제주 E/D카드',                  unit:'BOX', unit_detail:'5000장', unit_price:150000, min_threshold:1 },
+    { id:29, name:'한국 세관신고서 (ENG/CNA)',      unit:'BOX', unit_detail:'5000장', unit_price:150000, min_threshold:1 },
+    { id:30, name:'한국 세관신고서 (ENG/JPN)',      unit:'BOX', unit_detail:'5000장', unit_price:150000, min_threshold:1 },
+    { id:31, name:'서약서',                        unit:'권',  unit_detail:'100조',  unit_price:8500,   min_threshold:3 },
+    { id:32, name:'합의서',                        unit:'권',  unit_detail:'100조',  unit_price:8500,   min_threshold:2 },
+    { id:33, name:'반려동물 서약서',                unit:'권',  unit_detail:'100조',  unit_price:10000,  min_threshold:2 },
+    { id:34, name:'악기서약서',                    unit:'권',  unit_detail:'100조',  unit_price:10000,  min_threshold:1 },
+    { id:35, name:'보호자 서약서',                  unit:'권',  unit_detail:'100조',  unit_price:8500,   min_threshold:1 },
+    { id:36, name:'총기인수인계서',                 unit:'권',  unit_detail:'100조',  unit_price:10000,  min_threshold:1 },
+    { id:37, name:'PIR',                          unit:'권',  unit_detail:'100조',  unit_price:10000,  min_threshold:2 },
+    { id:38, name:'SHR',                          unit:'권',  unit_detail:'100조',  unit_price:14000,  min_threshold:1 },
+    { id:39, name:'NOTOC',                        unit:'권',  unit_detail:'100조',  unit_price:10000,  min_threshold:1 },
+    { id:40, name:'BAG BINGO CHART(양면)',          unit:'권',  unit_detail:'100조',  unit_price:3200,   min_threshold:5 },
+  ];
+
+  DB.setBranches(branches);
+  DB.setFormTypes(formTypes);
+
+  const gmpId = branches.find(b => b.code === 'GMP').id;
+  const icnId = branches.find(b => b.code === 'ICN').id;
+
+  const adminHash = await Auth.hashPassword('admin1234');
+  const staffHash = await Auth.hashPassword('staff1234');
+
+  DB.setUsers([
+    { id:1, username:'admin', password:adminHash, branch_id:null, role:'admin' },
+    { id:2, username:'gmp',   password:staffHash, branch_id:gmpId, role:'staff' },
+    { id:3, username:'icn',   password:staffHash, branch_id:icnId, role:'staff' },
+  ]);
+
+  // seed some demo inventory
+  const inv = [];
+  let iid = 1;
+  branches.forEach(b => {
+    formTypes.slice(0, 10).forEach(ft => {
+      const qty = Math.floor(Math.random() * 8);
+      inv.push({ id: iid++, branch_id: b.id, form_type_id: ft.id, quantity: qty, last_updated: new Date().toISOString() });
+    });
+  });
+  DB.setInventory(inv);
+
+  localStorage.setItem('inv_seeded', '1');
+}
+
+// ─────────────────────────── FLASH ────────────────────────────
+function flash(msg, type = 'success') {
+  const c = document.getElementById('flash-container');
+  const id = 'fl_' + Date.now();
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = `alert alert-${type} alert-dismissible shadow-sm py-2 px-3`;
+  el.innerHTML = `${msg}<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>`;
+  c.appendChild(el);
+  setTimeout(() => { const e = document.getElementById(id); if(e) e.remove(); }, 3000);
+}
+
+// ─────────────────────────── HELPERS ────────────────────────────
+function fmt(n) { return Number(n).toLocaleString('ko-KR'); }
+function fmtDate(iso) { if (!iso) return '-'; return iso.slice(0,16).replace('T',' '); }
+function today() { return new Date().toISOString().slice(0,10); }
+function currentMonth() { return new Date().toISOString().slice(0,7); }
+
+function branchLabel(b) { return b ? `${b.code} ${b.name}` : '-'; }
+
+function getBranch(id) { return DB.getBranches().find(b => b.id === id); }
+function getFormType(id) { return DB.getFormTypes().find(f => f.id === id); }
+function getUser(id) { return DB.getUsers().find(u => u.id === id); }
+
+function getStockStatus(qty, threshold) {
+  if (qty === 0) return 'empty';
+  if (qty <= threshold) return 'low';
+  return 'ok';
+}
+function statusBadge(qty, threshold) {
+  const s = getStockStatus(qty, threshold);
+  if (s === 'empty') return '<span class="status-empty">소진</span>';
+  if (s === 'low')   return '<span class="status-low">부족</span>';
+  return '<span class="status-ok">정상</span>';
+}
+
+function visibleBranches() {
+  if (Auth.isAdmin()) return DB.getBranches();
+  return DB.getBranches().filter(b => b.id === Auth.branchId());
+}
+
+function branchOptions(selected = null, includeAll = false) {
+  const branches = visibleBranches();
+  let html = includeAll ? '<option value="">전체 지점</option>' : '<option value="">지점 선택</option>';
+  branches.forEach(b => {
+    html += `<option value="${b.id}" ${selected == b.id ? 'selected' : ''}>${branchLabel(b)}</option>`;
+  });
+  return html;
+}
+
+function formTypeOptions(selected = null, includeAll = false) {
+  const fts = DB.getFormTypes();
+  let html = includeAll ? '<option value="">전체 양식</option>' : '<option value="">양식 선택</option>';
+  fts.forEach(f => {
+    html += `<option value="${f.id}" ${selected == f.id ? 'selected' : ''}>${f.name}</option>`;
+  });
+  return html;
+}
+
+// ─────────────────────────── APP ────────────────────────────
+const App = {
+  charts: {},
+
+  destroyChart(name) {
+    if (this.charts[name]) { this.charts[name].destroy(); delete this.charts[name]; }
+  },
+
+  navigate(hash) {
+    window.location.hash = hash;
+  },
+
+  render() {
+    if (!Auth.currentUser) {
+      this.renderLogin();
+      return;
+    }
+    const hash = window.location.hash || '#dashboard';
+    const page = hash.slice(1);
+    document.getElementById('app').innerHTML = this.layoutHTML(page);
+    this.bindSidebar();
+
+    switch(page) {
+      case 'dashboard':   this.renderDashboard(); break;
+      case 'inventory':   this.renderInventory(); break;
+      case 'inbound':     this.renderInbound(); break;
+      case 'outbound':    this.renderOutbound(); break;
+      case 'transfer':    this.renderTransfer(); break;
+      case 'transactions':this.renderTransactions(); break;
+      case 'report':      this.renderReport(); break;
+      case 'users':       Auth.isAdmin() ? this.renderUsers() : this.renderDashboard(); break;
+      default:            this.renderDashboard();
+    }
+  },
+
+  layoutHTML(active) {
+    const u = Auth.currentUser;
+    const branch = u.branch_id ? getBranch(u.branch_id) : null;
+    const branchLabel2 = branch ? `${branch.code} ${branch.name}` : '본부';
+    const navItem = (hash, icon, label, adminOnly=false) => {
+      if (adminOnly && !Auth.isAdmin()) return '';
+      const isActive = active === hash ? 'active' : '';
+      return `<a href="#${hash}" class="${isActive}"><i class="bi bi-${icon}"></i> ${label}</a>`;
+    };
+    return `
+<div id="sidebar">
+  <div class="brand">
+    <i class="bi bi-airplane-fill me-1 text-primary"></i> 운송본부<br>
+    <small>양식 재고관리 시스템</small>
+  </div>
+  <nav>
+    <div class="nav-section">메인</div>
+    ${navItem('dashboard','speedometer2','대시보드')}
+    ${navItem('inventory','box-seam','재고 현황')}
+    <div class="nav-section">입출고</div>
+    ${navItem('inbound','box-arrow-in-down','입 고')}
+    ${navItem('outbound','box-arrow-up','출 고')}
+    ${navItem('transfer','arrow-left-right','이 전')}
+    ${navItem('transactions','list-ul','입출고 내역')}
+    <div class="nav-section">분석</div>
+    ${navItem('report','bar-chart-fill','리 포 트')}
+    <div class="nav-section">관리</div>
+    ${navItem('users','people-fill','사용자 관리',true)}
+  </nav>
+  <div class="user-panel">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <div class="username"><i class="bi bi-person-circle me-1"></i>${u.username}</div>
+        <div>${branchLabel2} · ${u.role === 'admin' ? '관리자' : '스태프'}</div>
+      </div>
+      <button class="logout-btn" id="logoutBtn" title="로그아웃"><i class="bi bi-box-arrow-right fs-5"></i></button>
+    </div>
+  </div>
+</div>
+<div id="main">
+  <div id="page-content"></div>
+</div>`;
+  },
+
+  bindSidebar() {
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+      Auth.logout();
+      this.render();
+    });
+  },
+
+  pc() { return document.getElementById('page-content'); },
+
+  // ─── LOGIN ───────────────────────────────────────────────
+  renderLogin() {
+    document.getElementById('app').innerHTML = `
+<div id="login-page">
+  <div class="col-11 col-sm-8 col-md-5 col-lg-4 col-xl-3">
+    <div class="card shadow-lg border-0 rounded-3 overflow-hidden">
+      <div class="card-header py-4 text-center text-white" style="background:linear-gradient(135deg,#0d6efd,#0a58ca)">
+        <i class="bi bi-airplane-fill fs-1"></i>
+        <h5 class="mb-0 mt-2 fw-bold">운송본부 양식 재고관리</h5>
+        <small class="opacity-75">Korean Air Forms Inventory</small>
+      </div>
+      <div class="card-body p-4">
+        <div id="login-err" class="alert alert-danger d-none py-2"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">사용자명</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text" id="un" class="form-control" placeholder="username" autocomplete="username">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">비밀번호</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" id="pw" class="form-control" placeholder="password" autocomplete="current-password">
+          </div>
+        </div>
+        <button id="loginBtn" class="btn btn-primary w-100 py-2 fw-semibold">
+          <i class="bi bi-box-arrow-in-right me-1"></i> 로그인
+        </button>
+        <div class="mt-3 p-2 bg-light rounded small text-muted">
+          <strong>테스트 계정</strong><br>
+          admin / admin1234 (관리자)<br>
+          gmp / staff1234 (김포)<br>
+          icn / staff1234 (인천)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+    const doLogin = async () => {
+      const un = document.getElementById('un').value.trim();
+      const pw = document.getElementById('pw').value;
+      const err = document.getElementById('login-err');
+      if (!un || !pw) { err.textContent = '사용자명과 비밀번호를 입력하세요.'; err.classList.remove('d-none'); return; }
+      const ok = await Auth.login(un, pw);
+      if (ok) { window.location.hash = '#dashboard'; this.render(); }
+      else { err.textContent = '사용자명 또는 비밀번호가 올바르지 않습니다.'; err.classList.remove('d-none'); }
+    };
+    document.getElementById('loginBtn').addEventListener('click', doLogin);
+    document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  },
+
+  // ─── DASHBOARD ───────────────────────────────────────────
+  renderDashboard() {
+    const branches = DB.getBranches();
+    const formTypes = DB.getFormTypes();
+    const inventory = DB.getInventory();
+    const transactions = DB.getTransactions();
+
+    const todayStr = today();
+    const todayTxs = transactions.filter(t => t.created_at && t.created_at.startsWith(todayStr));
+
+    const visibleInv = Auth.isAdmin() ? inventory : inventory.filter(i => i.branch_id === Auth.branchId());
+
+    const lowStock = [];
+    const emptyStock = [];
+    visibleInv.forEach(inv => {
+      const ft = getFormType(inv.form_type_id);
+      const br = getBranch(inv.branch_id);
+      if (!ft || !br) return;
+      if (inv.quantity === 0) emptyStock.push({ inv, ft, br });
+      else if (inv.quantity <= ft.min_threshold) lowStock.push({ inv, ft, br });
+    });
+
+    const recentTxs = [...transactions].sort((a,b) => b.id - a.id).slice(0,10);
+
+    const html = `
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="mb-0 fw-bold"><i class="bi bi-speedometer2 me-2 text-primary"></i>대시보드</h4>
+  <span class="text-muted small">${new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}</span>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="rounded-3 p-3 bg-primary bg-opacity-10"><i class="bi bi-building fs-3 text-primary"></i></div>
+        <div><div class="text-muted small">운영 지점</div><div class="fs-4 fw-bold">${branches.length}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="rounded-3 p-3 bg-success bg-opacity-10"><i class="bi bi-files fs-3 text-success"></i></div>
+        <div><div class="text-muted small">양식 종류</div><div class="fs-4 fw-bold">${formTypes.length}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="rounded-3 p-3 bg-info bg-opacity-10"><i class="bi bi-arrow-down-up fs-3 text-info"></i></div>
+        <div><div class="text-muted small">오늘 입출고</div><div class="fs-4 fw-bold">${todayTxs.length}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="rounded-3 p-3 bg-danger bg-opacity-10"><i class="bi bi-exclamation-triangle fs-3 text-danger"></i></div>
+        <div><div class="text-muted small">재고 부족 알림</div><div class="fs-4 fw-bold text-danger">${lowStock.length + emptyStock.length}</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold text-warning"><i class="bi bi-exclamation-triangle me-1"></i>재고 부족 항목 (${lowStock.length})</span>
+        <a href="#inbound" class="btn btn-sm btn-outline-primary">입고</a>
+      </div>
+      <div class="card-body p-0">
+        ${lowStock.length === 0 ? '<p class="text-muted text-center py-3 mb-0 small">부족 항목 없음</p>' : `
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light"><tr><th>지점</th><th>양식명</th><th>수량</th><th>최소</th></tr></thead>
+            <tbody>${lowStock.map(({inv,ft,br}) => `
+              <tr><td>${branchLabel(br)}</td><td>${ft.name}</td>
+              <td class="text-warning fw-bold">${inv.quantity}</td><td>${ft.min_threshold}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold text-danger"><i class="bi bi-x-circle me-1"></i>소진 항목 (${emptyStock.length})</span>
+        <a href="#inbound" class="btn btn-sm btn-outline-primary">입고</a>
+      </div>
+      <div class="card-body p-0">
+        ${emptyStock.length === 0 ? '<p class="text-muted text-center py-3 mb-0 small">소진 항목 없음</p>' : `
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light"><tr><th>지점</th><th>양식명</th><th>최종수정</th></tr></thead>
+            <tbody>${emptyStock.map(({inv,ft,br}) => `
+              <tr><td>${branchLabel(br)}</td><td>${ft.name}</td><td>${fmtDate(inv.last_updated)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header bg-white py-2 fw-semibold"><i class="bi bi-clock-history me-1"></i>최근 입출고 내역</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>유형</th><th>지점</th><th>양식명</th><th>수량</th><th>일시</th></tr></thead>
+        <tbody>
+          ${recentTxs.length === 0 ? '<tr><td colspan="5" class="text-center text-muted py-3">내역 없음</td></tr>' :
+            recentTxs.map(tx => {
+              const ft = getFormType(tx.form_type_id);
+              const br = tx.type === 'TRANSFER' ? getBranch(tx.from_branch_id) : getBranch(tx.to_branch_id || tx.from_branch_id);
+              const typeBadge = tx.type === 'IN' ? '<span class="badge badge-in">입고</span>' : tx.type === 'OUT' ? '<span class="badge badge-out">출고</span>' : '<span class="badge badge-transfer">이전</span>';
+              return `<tr><td>${typeBadge}</td><td>${branchLabel(br)}</td><td>${ft?.name||'-'}</td><td>${fmt(tx.quantity)}</td><td>${fmtDate(tx.created_at)}</td></tr>`;
+            }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 flex-wrap">
+  <a href="#inbound" class="btn btn-success"><i class="bi bi-box-arrow-in-down me-1"></i>입고 처리</a>
+  <a href="#outbound" class="btn btn-danger"><i class="bi bi-box-arrow-up me-1"></i>출고 처리</a>
+  <a href="#transfer" class="btn btn-primary"><i class="bi bi-arrow-left-right me-1"></i>재고 이전</a>
+</div>`;
+    this.pc().innerHTML = html;
+  },
+
+  // ─── INVENTORY ───────────────────────────────────────────
+  renderInventory(filterBranch = '', filterFt = '') {
+    const branches = visibleBranches();
+    const formTypes = DB.getFormTypes();
+    const inventory = DB.getInventory();
+
+    // build map: ft_id -> { branch_id -> qty }
+    const ftMap = {};
+    formTypes.forEach(ft => ftMap[ft.id] = {});
+    inventory.forEach(inv => {
+      if (!ftMap[inv.form_type_id]) return;
+      const br = getBranch(inv.branch_id);
+      if (!br) return;
+      if (!Auth.isAdmin() && inv.branch_id !== Auth.branchId()) return;
+      ftMap[inv.form_type_id][inv.branch_id] = inv.quantity;
+    });
+
+    const visibleFts = filterFt ? formTypes.filter(f => f.id == filterFt) : formTypes;
+    const visibleBrs = filterBranch ? branches.filter(b => b.id == filterBranch) : branches;
+
+    // summary rows
+    let summaryRows = '';
+    visibleFts.forEach(ft => {
+      const bqtys = Object.values(ftMap[ft.id] || {});
+      const totalQty = bqtys.reduce((a,b) => a+b, 0);
+      const brCount = bqtys.filter(q => q > 0).length;
+      const emptyCount = visibleBrs.filter(b => (ftMap[ft.id][b.id]||0) === 0).length;
+      const lowCount = visibleBrs.filter(b => { const q = ftMap[ft.id][b.id]||0; return q > 0 && q <= ft.min_threshold; }).length;
+      const totalVal = totalQty * ft.unit_price;
+      summaryRows += `<tr>
+        <td>${ft.name}</td><td class="text-muted small">${ft.unit_detail}</td>
+        <td class="fw-bold">${fmt(totalQty)} ${ft.unit}</td>
+        <td>${brCount}</td>
+        <td class="text-danger">${emptyCount}</td>
+        <td class="text-warning">${lowCount}</td>
+        <td>₩${fmt(totalVal)}</td>
+      </tr>`;
+    });
+
+    // detail rows
+    let detailRows = '';
+    visibleBrs.forEach(br => {
+      visibleFts.forEach(ft => {
+        const qty = ftMap[ft.id][br.id] || 0;
+        const lastInv = inventory.find(i => i.branch_id === br.id && i.form_type_id === ft.id);
+        detailRows += `<tr>
+          <td>${branchLabel(br)}</td><td>${ft.name}</td>
+          <td>${fmt(qty)} ${ft.unit}</td>
+          <td>₩${fmt(qty * ft.unit_price)}</td>
+          <td>${statusBadge(qty, ft.min_threshold)}</td>
+          <td class="text-muted small">${fmtDate(lastInv?.last_updated)}</td>
+        </tr>`;
+      });
+    });
+
+    // CSV download
+    const csvDownload = () => {
+      let csv = 'BOM지점,양식명,수량,단위,재고가치,상태,최종수정\n';
+      visibleBrs.forEach(br => {
+        visibleFts.forEach(ft => {
+          const qty = ftMap[ft.id][br.id] || 0;
+          const lastInv = inventory.find(i => i.branch_id === br.id && i.form_type_id === ft.id);
+          const st = getStockStatus(qty, ft.min_threshold);
+          csv += `"${branchLabel(br)}","${ft.name}",${qty},${ft.unit},${qty*ft.unit_price},${st==='ok'?'정상':st==='low'?'부족':'소진'},${fmtDate(lastInv?.last_updated)}\n`;
+        });
+      });
+      const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `inventory_${today()}.csv`;
+      a.click();
+    };
+
+    this.pc().innerHTML = `
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2 text-primary"></i>재고 현황</h4>
+  <button id="csvBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>CSV 다운로드</button>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2">
+      <div class="col-md-4">
+        <select id="fbranch" class="form-select form-select-sm">${branchOptions(filterBranch, true)}</select>
+      </div>
+      <div class="col-md-5">
+        <select id="fft" class="form-select form-select-sm">${formTypeOptions(filterFt, true)}</select>
+      </div>
+      <div class="col-md-3">
+        <button id="filterBtn" class="btn btn-primary btn-sm w-100">조회</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header bg-white py-2 fw-semibold">양식별 요약</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>양식명</th><th>규격</th><th>총 재고</th><th>보유지점</th><th>소진</th><th>부족</th><th>총 가치</th></tr></thead>
+        <tbody>${summaryRows || '<tr><td colspan="7" class="text-center text-muted py-3">데이터 없음</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white py-2 fw-semibold">지점별 상세 재고</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>지점</th><th>양식명</th><th>수량</th><th>재고가치</th><th>상태</th><th>최종수정</th></tr></thead>
+        <tbody>${detailRows || '<tr><td colspan="6" class="text-center text-muted py-3">데이터 없음</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
+</div>`;
+
+    document.getElementById('filterBtn').addEventListener('click', () => {
+      const b = document.getElementById('fbranch').value;
+      const f = document.getElementById('fft').value;
+      this.renderInventory(b, f);
+    });
+    document.getElementById('csvBtn').addEventListener('click', csvDownload);
+  },
+
+  // ─── INBOUND ─────────────────────────────────────────────
+  renderInbound() {
+    this.pc().innerHTML = `
+<h4 class="fw-bold mb-3"><i class="bi bi-box-arrow-in-down me-2 text-success"></i>입 고</h4>
+<div class="card shadow-sm" style="max-width:540px">
+  <div class="card-body">
+    ${Auth.isAdmin() ? `
+    <div class="mb-3">
+      <label class="form-label fw-semibold">입고 지점 <span class="text-danger">*</span></label>
+      <select id="ib_branch" class="form-select">${branchOptions()}</select>
+    </div>` : `<input type="hidden" id="ib_branch" value="${Auth.branchId()}">`}
+    <div class="mb-3">
+      <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+      <select id="ib_ft" class="form-select">${formTypeOptions()}</select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">수량 <span class="text-danger">*</span></label>
+      <input type="number" id="ib_qty" class="form-control" min="1" placeholder="수량 입력">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">비고</label>
+      <input type="text" id="ib_notes" class="form-control" placeholder="비고 (선택)">
+    </div>
+    <div class="d-flex gap-2">
+      <button id="ibSubmit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>입고 처리</button>
+      <a href="#dashboard" class="btn btn-outline-secondary">취소</a>
+    </div>
+  </div>
+</div>`;
+
+    document.getElementById('ibSubmit').addEventListener('click', () => {
+      const branchId = parseInt(document.getElementById('ib_branch').value);
+      const ftId     = parseInt(document.getElementById('ib_ft').value);
+      const qty      = parseInt(document.getElementById('ib_qty').value);
+      const notes    = document.getElementById('ib_notes').value.trim();
+      if (!branchId) { flash('지점을 선택하세요.','warning'); return; }
+      if (!ftId)     { flash('양식을 선택하세요.','warning'); return; }
+      if (!qty || qty < 1) { flash('수량을 올바르게 입력하세요.','warning'); return; }
+
+      DB.upsertInventory(branchId, ftId, qty);
+      DB.addTransaction({ type:'IN', form_type_id:ftId, from_branch_id:null, to_branch_id:branchId, quantity:qty, notes, created_by:Auth.currentUser.id, period_month:currentMonth() });
+      flash(`입고 완료: ${getFormType(ftId)?.name} ${fmt(qty)}개`,'success');
+      this.renderInbound();
+    });
+  },
+
+  // ─── OUTBOUND ────────────────────────────────────────────
+  renderOutbound() {
+    this.pc().innerHTML = `
+<h4 class="fw-bold mb-3"><i class="bi bi-box-arrow-up me-2 text-danger"></i>출 고</h4>
+<div class="card shadow-sm" style="max-width:540px">
+  <div class="card-body">
+    ${Auth.isAdmin() ? `
+    <div class="mb-3">
+      <label class="form-label fw-semibold">출고 지점 <span class="text-danger">*</span></label>
+      <select id="ob_branch" class="form-select">${branchOptions()}</select>
+    </div>` : `<input type="hidden" id="ob_branch" value="${Auth.branchId()}">`}
+    <div class="mb-3">
+      <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+      <select id="ob_ft" class="form-select">${formTypeOptions()}</select>
+    </div>
+    <div id="ob_stock_info" class="mb-2 small text-muted"></div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">수량 <span class="text-danger">*</span></label>
+      <input type="number" id="ob_qty" class="form-control" min="1" placeholder="수량 입력">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">사용 기간 (YYYY-MM) <span class="text-danger">*</span></label>
+      <input type="month" id="ob_period" class="form-control" value="${currentMonth()}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">비고</label>
+      <input type="text" id="ob_notes" class="form-control" placeholder="비고 (선택)">
+    </div>
+    <div class="d-flex gap-2">
+      <button id="obSubmit" class="btn btn-danger"><i class="bi bi-check-lg me-1"></i>출고 처리</button>
+      <a href="#dashboard" class="btn btn-outline-secondary">취소</a>
+    </div>
+  </div>
+</div>`;
+
+    const updateStockInfo = () => {
+      const brId = parseInt(document.getElementById('ob_branch')?.value) || Auth.branchId();
+      const ftId = parseInt(document.getElementById('ob_ft').value);
+      const el = document.getElementById('ob_stock_info');
+      if (brId && ftId) {
+        const inv = DB.getInventoryItem(brId, ftId);
+        const qty = inv?.quantity || 0;
+        const ft = getFormType(ftId);
+        el.innerHTML = `현재 재고: <strong>${fmt(qty)} ${ft?.unit||''}</strong>`;
+      } else { el.innerHTML = ''; }
+    };
+    const brEl = document.getElementById('ob_branch');
+    if (brEl) brEl.addEventListener('change', updateStockInfo);
+    document.getElementById('ob_ft').addEventListener('change', updateStockInfo);
+
+    document.getElementById('obSubmit').addEventListener('click', () => {
+      const branchId = parseInt(document.getElementById('ob_branch').value) || Auth.branchId();
+      const ftId     = parseInt(document.getElementById('ob_ft').value);
+      const qty      = parseInt(document.getElementById('ob_qty').value);
+      const period   = document.getElementById('ob_period').value;
+      const notes    = document.getElementById('ob_notes').value.trim();
+      if (!branchId) { flash('지점을 선택하세요.','warning'); return; }
+      if (!ftId)     { flash('양식을 선택하세요.','warning'); return; }
+      if (!qty || qty < 1) { flash('수량을 올바르게 입력하세요.','warning'); return; }
+      const inv = DB.getInventoryItem(branchId, ftId);
+      if (!inv || inv.quantity < qty) { flash('재고가 부족합니다.','danger'); return; }
+
+      DB.upsertInventory(branchId, ftId, -qty);
+      DB.addTransaction({ type:'OUT', form_type_id:ftId, from_branch_id:branchId, to_branch_id:null, quantity:qty, notes, created_by:Auth.currentUser.id, period_month:period||currentMonth() });
+      flash(`출고 완료: ${getFormType(ftId)?.name} ${fmt(qty)}개`,'success');
+      this.renderOutbound();
+    });
+  },
+
+  // ─── TRANSFER ────────────────────────────────────────────
+  renderTransfer() {
+    const branches = DB.getBranches();
+    const allBranchOpts = (sel='') => {
+      let h = '<option value="">지점 선택</option>';
+      branches.forEach(b => h += `<option value="${b.id}" ${sel==b.id?'selected':''}>${branchLabel(b)}</option>`);
+      return h;
+    };
+
+    this.pc().innerHTML = `
+<h4 class="fw-bold mb-3"><i class="bi bi-arrow-left-right me-2 text-primary"></i>재고 이전</h4>
+<div class="card shadow-sm" style="max-width:540px">
+  <div class="card-body">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">출발 지점 <span class="text-danger">*</span></label>
+      <select id="tr_from" class="form-select">${Auth.isAdmin() ? allBranchOpts() : `<option value="${Auth.branchId()}" selected>${branchLabel(getBranch(Auth.branchId()))}</option>`}</select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">도착 지점 <span class="text-danger">*</span></label>
+      <select id="tr_to" class="form-select">${allBranchOpts()}</select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+      <select id="tr_ft" class="form-select">${formTypeOptions()}</select>
+    </div>
+    <div id="tr_stock_info" class="mb-2 small text-muted"></div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">수량 <span class="text-danger">*</span></label>
+      <input type="number" id="tr_qty" class="form-control" min="1" placeholder="수량 입력">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">비고</label>
+      <input type="text" id="tr_notes" class="form-control" placeholder="비고 (선택)">
+    </div>
+    <div class="d-flex gap-2">
+      <button id="trSubmit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>이전 처리</button>
+      <a href="#dashboard" class="btn btn-outline-secondary">취소</a>
+    </div>
+  </div>
+</div>`;
+
+    const updateInfo = () => {
+      const fromId = parseInt(document.getElementById('tr_from').value);
+      const ftId   = parseInt(document.getElementById('tr_ft').value);
+      const el = document.getElementById('tr_stock_info');
+      if (fromId && ftId) {
+        const inv = DB.getInventoryItem(fromId, ftId);
+        const ft = getFormType(ftId);
+        el.innerHTML = `출발지 재고: <strong>${fmt(inv?.quantity||0)} ${ft?.unit||''}</strong>`;
+      } else el.innerHTML = '';
+    };
+    document.getElementById('tr_from').addEventListener('change', updateInfo);
+    document.getElementById('tr_ft').addEventListener('change', updateInfo);
+
+    document.getElementById('trSubmit').addEventListener('click', () => {
+      const fromId = parseInt(document.getElementById('tr_from').value);
+      const toId   = parseInt(document.getElementById('tr_to').value);
+      const ftId   = parseInt(document.getElementById('tr_ft').value);
+      const qty    = parseInt(document.getElementById('tr_qty').value);
+      const notes  = document.getElementById('tr_notes').value.trim();
+      if (!fromId) { flash('출발 지점을 선택하세요.','warning'); return; }
+      if (!toId)   { flash('도착 지점을 선택하세요.','warning'); return; }
+      if (fromId === toId) { flash('출발지와 도착지가 같습니다.','warning'); return; }
+      if (!ftId)   { flash('양식을 선택하세요.','warning'); return; }
+      if (!qty || qty < 1) { flash('수량을 올바르게 입력하세요.','warning'); return; }
+      const inv = DB.getInventoryItem(fromId, ftId);
+      if (!inv || inv.quantity < qty) { flash('출발 지점의 재고가 부족합니다.','danger'); return; }
+
+      DB.upsertInventory(fromId, ftId, -qty);
+      DB.upsertInventory(toId, ftId, qty);
+      DB.addTransaction({ type:'TRANSFER', form_type_id:ftId, from_branch_id:fromId, to_branch_id:toId, quantity:qty, notes, created_by:Auth.currentUser.id, period_month:currentMonth() });
+      flash(`이전 완료: ${getFormType(ftId)?.name} ${fmt(qty)}개 → ${branchLabel(getBranch(toId))}`,'success');
+      this.renderTransfer();
+    });
+  },
+
+  // ─── TRANSACTIONS ─────────────────────────────────────────
+  renderTransactions(filters = {}) {
+    const { fBranch='', fFt='', fType='', fFrom='', fTo='' } = filters;
+    let txs = DB.getTransactions();
+    if (!Auth.isAdmin()) {
+      const bid = Auth.branchId();
+      txs = txs.filter(t => t.from_branch_id === bid || t.to_branch_id === bid);
+    }
+    if (fBranch) txs = txs.filter(t => t.from_branch_id == fBranch || t.to_branch_id == fBranch);
+    if (fFt)     txs = txs.filter(t => t.form_type_id == fFt);
+    if (fType)   txs = txs.filter(t => t.type === fType);
+    if (fFrom)   txs = txs.filter(t => t.created_at >= fFrom);
+    if (fTo)     txs = txs.filter(t => t.created_at <= fTo + 'T23:59:59');
+    txs = txs.sort((a,b) => b.id - a.id).slice(0, 300);
+
+    const typeBadgeHtml = (type) => {
+      if (type === 'IN')       return '<span class="badge badge-in">입고</span>';
+      if (type === 'OUT')      return '<span class="badge badge-out">출고</span>';
+      if (type === 'TRANSFER') return '<span class="badge badge-transfer">이전</span>';
+      return type;
+    };
+
+    this.pc().innerHTML = `
+<h4 class="fw-bold mb-3"><i class="bi bi-list-ul me-2 text-primary"></i>입출고 내역</h4>
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2">
+      <div class="col-md-3"><select id="f_branch" class="form-select form-select-sm">${branchOptions(fBranch, true)}</select></div>
+      <div class="col-md-3"><select id="f_ft" class="form-select form-select-sm">${formTypeOptions(fFt, true)}</select></div>
+      <div class="col-md-2">
+        <select id="f_type" class="form-select form-select-sm">
+          <option value="" ${!fType?'selected':''}>전체 유형</option>
+          <option value="IN" ${fType==='IN'?'selected':''}>입고</option>
+          <option value="OUT" ${fType==='OUT'?'selected':''}>출고</option>
+          <option value="TRANSFER" ${fType==='TRANSFER'?'selected':''}>이전</option>
+        </select>
+      </div>
+      <div class="col-md-2"><input type="date" id="f_from" class="form-control form-control-sm" value="${fFrom}" placeholder="시작일"></div>
+      <div class="col-md-2"><input type="date" id="f_to" class="form-control form-control-sm" value="${fTo}" placeholder="종료일"></div>
+    </div>
+    <div class="mt-2">
+      <button id="txFilterBtn" class="btn btn-primary btn-sm me-2">조회</button>
+      <button id="txResetBtn" class="btn btn-outline-secondary btn-sm">초기화</button>
+      <span class="ms-2 text-muted small">총 ${txs.length}건 (최대 300건)</span>
+    </div>
+  </div>
+</div>
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>#</th><th>유형</th><th>출발지</th><th>도착지</th><th>양식명</th><th>수량</th><th>기간</th><th>비고</th><th>일시</th></tr>
+        </thead>
+        <tbody>
+          ${txs.length === 0 ? '<tr><td colspan="9" class="text-center text-muted py-3">내역 없음</td></tr>' :
+            txs.map(tx => {
+              const ft = getFormType(tx.form_type_id);
+              const frBr = getBranch(tx.from_branch_id);
+              const toBr = getBranch(tx.to_branch_id);
+              return `<tr>
+                <td class="text-muted">${tx.id}</td>
+                <td>${typeBadgeHtml(tx.type)}</td>
+                <td>${frBr ? branchLabel(frBr) : '-'}</td>
+                <td>${toBr ? branchLabel(toBr) : '-'}</td>
+                <td>${ft?.name||'-'}</td>
+                <td>${fmt(tx.quantity)}</td>
+                <td class="text-muted small">${tx.period_month||'-'}</td>
+                <td class="text-muted small">${tx.notes||''}</td>
+                <td class="text-muted small">${fmtDate(tx.created_at)}</td>
+              </tr>`;
+            }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>`;
+
+    document.getElementById('txFilterBtn').addEventListener('click', () => {
+      this.renderTransactions({
+        fBranch: document.getElementById('f_branch').value,
+        fFt:     document.getElementById('f_ft').value,
+        fType:   document.getElementById('f_type').value,
+        fFrom:   document.getElementById('f_from').value,
+        fTo:     document.getElementById('f_to').value,
+      });
+    });
+    document.getElementById('txResetBtn').addEventListener('click', () => this.renderTransactions());
+  },
+
+  // ─── REPORT ──────────────────────────────────────────────
+  renderReport() {
+    this.destroyChart('monthly');
+    this.destroyChart('status');
+    this.destroyChart('topOut');
+
+    const branches  = visibleBranches();
+    const formTypes = DB.getFormTypes();
+    const inventory = DB.getInventory();
+    const transactions = DB.getTransactions();
+
+    // Branch summary
+    const branchSummary = branches.map(br => {
+      const brInv = inventory.filter(i => i.branch_id === br.id);
+      let ok=0, low=0, empty=0, totalVal=0;
+      formTypes.forEach(ft => {
+        const inv = brInv.find(i => i.form_type_id === ft.id);
+        const qty = inv?.quantity || 0;
+        totalVal += qty * ft.unit_price;
+        const st = getStockStatus(qty, ft.min_threshold);
+        if (st==='ok') ok++; else if (st==='low') low++; else empty++;
+      });
+      return { br, ok, low, empty, totalVal };
+    });
+
+    // Monthly IN/OUT/TRANSFER for last 6 months
+    const months = [];
+    for (let i=5; i>=0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth()-i);
+      months.push(d.toISOString().slice(0,7));
+    }
+    const monthIn = months.map(m => transactions.filter(t => t.type==='IN' && t.period_month===m).reduce((s,t)=>s+t.quantity,0));
+    const monthOut= months.map(m => transactions.filter(t => t.type==='OUT'&& t.period_month===m).reduce((s,t)=>s+t.quantity,0));
+    const monthTr = months.map(m => transactions.filter(t => t.type==='TRANSFER'&&t.period_month===m).reduce((s,t)=>s+t.quantity,0));
+
+    // Stock status counts
+    let totalOk=0, totalLow=0, totalEmpty=0;
+    const visibleInv = Auth.isAdmin() ? inventory : inventory.filter(i => i.branch_id === Auth.branchId());
+    visibleInv.forEach(i => {
+      const ft = getFormType(i.form_type_id);
+      if (!ft) return;
+      const st = getStockStatus(i.quantity, ft.min_threshold);
+      if (st==='ok') totalOk++; else if (st==='low') totalLow++; else totalEmpty++;
+    });
+
+    // Top 10 form types by outbound last 30 days
+    const d30 = new Date(); d30.setDate(d30.getDate()-30);
+    const d30Str = d30.toISOString();
+    const ftOutMap = {};
+    transactions.filter(t => t.type==='OUT' && t.created_at >= d30Str).forEach(t => {
+      ftOutMap[t.form_type_id] = (ftOutMap[t.form_type_id]||0) + t.quantity;
+    });
+    const topFts = Object.entries(ftOutMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+    this.pc().innerHTML = `
+<h4 class="fw-bold mb-3"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>리 포 트</h4>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header bg-white py-2 fw-semibold">지점별 재고 현황 요약</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>지점</th><th>유형</th><th class="text-success">정상</th><th class="text-warning">부족</th><th class="text-danger">소진</th><th>총 재고가치</th></tr></thead>
+        <tbody>
+          ${branchSummary.map(({br,ok,low,empty,totalVal}) => `
+            <tr>
+              <td>${branchLabel(br)}</td><td><span class="badge bg-secondary">${br.type}</span></td>
+              <td class="text-success">${ok}</td><td class="text-warning">${low}</td><td class="text-danger">${empty}</td>
+              <td>₩${fmt(totalVal)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white py-2 fw-semibold">월별 입출고 현황 (최근 6개월)</div>
+      <div class="card-body"><div class="chart-container"><canvas id="chartMonthly"></canvas></div></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white py-2 fw-semibold">재고 상태 분포</div>
+      <div class="card-body"><div class="chart-container"><canvas id="chartStatus"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white py-2 fw-semibold">최다 출고 양식 TOP 10 (최근 30일)</div>
+  <div class="card-body"><div class="chart-container"><canvas id="chartTopOut"></canvas></div></div>
+</div>`;
+
+    // Monthly chart
+    this.charts['monthly'] = new Chart(document.getElementById('chartMonthly'), {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [
+          { label:'입고', data:monthIn, backgroundColor:'rgba(25,135,84,0.7)' },
+          { label:'출고', data:monthOut, backgroundColor:'rgba(220,53,69,0.7)' },
+          { label:'이전', data:monthTr, backgroundColor:'rgba(13,110,253,0.7)' },
+        ]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top'}} }
+    });
+
+    // Status doughnut
+    this.charts['status'] = new Chart(document.getElementById('chartStatus'), {
+      type: 'doughnut',
+      data: {
+        labels: ['정상','부족','소진'],
+        datasets: [{ data:[totalOk,totalLow,totalEmpty], backgroundColor:['#198754','#fd7e14','#dc3545'] }]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+    });
+
+    // Top outbound
+    const topLabels = topFts.map(([id]) => getFormType(parseInt(id))?.name || id);
+    const topData   = topFts.map(([,qty]) => qty);
+    this.charts['topOut'] = new Chart(document.getElementById('chartTopOut'), {
+      type: 'bar',
+      data: {
+        labels: topLabels,
+        datasets: [{ label:'출고 수량', data:topData, backgroundColor:'rgba(220,53,69,0.7)' }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, indexAxis:'y',
+        plugins:{legend:{display:false}}
+      }
+    });
+  },
+
+  // ─── USERS ───────────────────────────────────────────────
+  renderUsers() {
+    const users = DB.getUsers();
+    const branches = DB.getBranches();
+
+    const renderTable = () => users.map(u => {
+      const br = u.branch_id ? getBranch(u.branch_id) : null;
+      return `<tr>
+        <td>${u.id}</td><td><strong>${u.username}</strong></td>
+        <td><span class="badge ${u.role==='admin'?'bg-danger':'bg-primary'}">${u.role==='admin'?'관리자':'스태프'}</span></td>
+        <td>${br ? branchLabel(br) : '본부'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-warning me-1" onclick="App.showResetPw(${u.id})">비밀번호 재설정</button>
+          ${u.id !== Auth.currentUser.id ? `<button class="btn btn-sm btn-outline-danger" onclick="App.deleteUser(${u.id})">삭제</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+
+    const branchOptsAll = () => {
+      let h = '<option value="">본부 (없음)</option>';
+      branches.forEach(b => h += `<option value="${b.id}">${branchLabel(b)}</option>`);
+      return h;
+    };
+
+    this.pc().innerHTML = `
+<h4 class="fw-bold mb-3"><i class="bi bi-people-fill me-2 text-primary"></i>사용자 관리</h4>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white py-2 fw-semibold">사용자 목록</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0" id="usersTable">
+            <thead class="table-light"><tr><th>#</th><th>사용자명</th><th>역할</th><th>지점</th><th>작업</th></tr></thead>
+            <tbody>${renderTable()}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white py-2 fw-semibold">신규 사용자 등록</div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">사용자명</label>
+          <input type="text" id="new_un" class="form-control form-control-sm" placeholder="username">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">비밀번호</label>
+          <input type="password" id="new_pw" class="form-control form-control-sm" placeholder="password">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">역할</label>
+          <select id="new_role" class="form-select form-select-sm">
+            <option value="staff">스태프</option>
+            <option value="admin">관리자</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">지점</label>
+          <select id="new_branch" class="form-select form-select-sm">${branchOptsAll()}</select>
+        </div>
+        <button id="createUserBtn" class="btn btn-success btn-sm w-100">사용자 생성</button>
+      </div>
+    </div>
+    <div id="resetPwPanel" class="card shadow-sm d-none">
+      <div class="card-header bg-white py-2 fw-semibold">비밀번호 재설정</div>
+      <div class="card-body">
+        <p id="resetPwLabel" class="small text-muted mb-2"></p>
+        <input type="password" id="reset_pw" class="form-control form-control-sm mb-2" placeholder="새 비밀번호">
+        <div class="d-flex gap-2">
+          <button id="confirmResetBtn" class="btn btn-warning btn-sm">확인</button>
+          <button id="cancelResetBtn" class="btn btn-outline-secondary btn-sm">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+    document.getElementById('createUserBtn').addEventListener('click', async () => {
+      const un    = document.getElementById('new_un').value.trim();
+      const pw    = document.getElementById('new_pw').value;
+      const role  = document.getElementById('new_role').value;
+      const brId  = parseInt(document.getElementById('new_branch').value) || null;
+      if (!un)    { flash('사용자명을 입력하세요.','warning'); return; }
+      if (!pw)    { flash('비밀번호를 입력하세요.','warning'); return; }
+      if (DB.findUser(un)) { flash('이미 존재하는 사용자명입니다.','warning'); return; }
+      const hash = await Auth.hashPassword(pw);
+      const users2 = DB.getUsers();
+      users2.push({ id: DB.nextId(users2), username:un, password:hash, branch_id:brId, role });
+      DB.setUsers(users2);
+      flash('사용자가 생성되었습니다.','success');
+      this.renderUsers();
+    });
+  },
+
+  showResetPw(userId) {
+    const user = DB.getUsers().find(u => u.id === userId);
+    if (!user) return;
+    const panel = document.getElementById('resetPwPanel');
+    panel.classList.remove('d-none');
+    document.getElementById('resetPwLabel').textContent = `대상: ${user.username}`;
+    document.getElementById('reset_pw').value = '';
+    document.getElementById('confirmResetBtn').onclick = async () => {
+      const pw = document.getElementById('reset_pw').value;
+      if (!pw) { flash('새 비밀번호를 입력하세요.','warning'); return; }
+      const hash = await Auth.hashPassword(pw);
+      const users = DB.getUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx>=0) { users[idx].password = hash; DB.setUsers(users); }
+      flash('비밀번호가 재설정되었습니다.','success');
+      panel.classList.add('d-none');
+    };
+    document.getElementById('cancelResetBtn').onclick = () => panel.classList.add('d-none');
+  },
+
+  deleteUser(userId) {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    const users = DB.getUsers().filter(u => u.id !== userId);
+    DB.setUsers(users);
+    flash('사용자가 삭제되었습니다.','success');
+    this.renderUsers();
+  },
+};
+
+// ─────────────────────────── BOOT ────────────────────────────
+(async () => {
+  await seedData();
+  Auth.loadSession();
+
+  window.addEventListener('hashchange', () => App.render());
+  App.render();
+})();
+</script>
+</body>
+</html>
