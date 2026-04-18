@@ -382,6 +382,12 @@ def init_db():
                     END IF;
                 END $$
             ''')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_inventory_branch   ON inventory(branch_id)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_inventory_form     ON inventory(form_type_id)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_created_at      ON transactions(created_at)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_from_branch     ON transactions(from_branch_id)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_to_branch       ON transactions(to_branch_id)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_tx_period_month    ON transactions(period_month)')
         conn.commit()
 
     except Exception:
@@ -465,12 +471,16 @@ def dashboard():
         ORDER BY t.created_at DESC LIMIT 10
     ''').fetchall()
 
+    _s = conn.execute('''
+        SELECT
+            (SELECT COUNT(*) FROM branches)   AS branch_cnt,
+            (SELECT COUNT(*) FROM form_types) AS form_cnt,
+            (SELECT COUNT(*) FROM transactions WHERE created_at::date = CURRENT_DATE) AS today_cnt
+    ''').fetchone()
     stats = {
-        'branches': conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'],
-        'forms':    conn.execute('SELECT COUNT(*) AS cnt FROM form_types').fetchone()['cnt'],
-        'today_tx': conn.execute(
-            "SELECT COUNT(*) AS cnt FROM transactions WHERE created_at::date = CURRENT_DATE"
-        ).fetchone()['cnt'],
+        'branches': _s['branch_cnt'],
+        'forms':    _s['form_cnt'],
+        'today_tx': _s['today_cnt'],
         'alerts':   len(low_stock) + len(empty_stock),
     }
     conn.close()
