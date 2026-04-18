@@ -334,25 +334,24 @@ def init_db():
                 (name, unit, ud, price, thr)
             )
 
-        admin_pw = hash_pw('admin1234')
-        conn.execute(
-            'INSERT INTO users (username, password, branch_id, role) VALUES (%s,%s,NULL,%s) '
-            'ON CONFLICT(username) DO NOTHING',
-            ('admin', admin_pw, 'admin')
-        )
-        staff_pw = hash_pw('staff1234')
-        conn.execute(
-            "INSERT INTO users (username, password, branch_id, role) "
-            "SELECT %s, %s, id, 'staff' FROM branches WHERE code='GMP' "
-            "ON CONFLICT(username) DO NOTHING",
-            ('gmp', staff_pw)
-        )
-        conn.execute(
-            "INSERT INTO users (username, password, branch_id, role) "
-            "SELECT %s, %s, id, 'staff' FROM branches WHERE code='ICN' "
-            "ON CONFLICT(username) DO NOTHING",
-            ('icn', staff_pw)
-        )
+        user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+        if user_count == 0:
+            admin_pw = hash_pw('admin1234')
+            conn.execute(
+                'INSERT INTO users (username, password, branch_id, role) VALUES (%s,%s,NULL,%s)',
+                ('admin', admin_pw, 'admin')
+            )
+            staff_pw = hash_pw('staff1234')
+            conn.execute(
+                "INSERT INTO users (username, password, branch_id, role) "
+                "SELECT %s, %s, id, 'staff' FROM branches WHERE code='GMP'",
+                ('gmp', staff_pw)
+            )
+            conn.execute(
+                "INSERT INTO users (username, password, branch_id, role) "
+                "SELECT %s, %s, id, 'staff' FROM branches WHERE code='ICN'",
+                ('icn', staff_pw)
+            )
         conn.commit()
 
         if USE_SQLITE:
