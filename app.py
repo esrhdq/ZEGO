@@ -114,6 +114,16 @@ def login_required(f):
     return decorated
 
 
+# ── 오류 핸들러 (디버그용) ────────────────────────────────────────────────────
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    tb = traceback.format_exc()
+    print(f"[UNHANDLED ERROR] {tb}")
+    return f"<pre style='color:red'>{tb}</pre>", 500
+
+
 # ── IP 화이트리스트 ───────────────────────────────────────────────────────────
 
 @app.before_request
