@@ -265,74 +265,78 @@ def init_db():
                 )
             ''')
 
-        branches = [
-            ('GMP', '김포', 'DOM'), ('CJU', '제주', 'DOM'), ('CJJ', '청주', 'DOM'),
-            ('PUS', '부산', 'DOM'), ('TSA', '송산', 'DOM'), ('KMJ', '광주', 'DOM'),
-            ('서울역', '서울역', 'DOM'), ('광명역', '광명역', 'DOM'), ('이지드랍', '이지드랍', 'DOM'),
-            ('ICN', '인천', 'DOM'), ('TPE', '타이페이', 'INTL'), ('NRT', '나리타', 'INTL'),
-            ('KIX', '간사이', 'INTL'), ('FUK', '후쿠오카', 'INTL'), ('CTS', '삿포로', 'INTL'),
-            ('OKA', '오키나와', 'INTL'), ('TKS', '도쿠시마', 'INTL'), ('BKK', '방콕', 'INTL'),
-            ('CNX', '치앙마이', 'INTL'), ('DAD', '다낭', 'INTL'), ('CXR', '나트랑', 'INTL'),
-            ('PQC', '푸꾸옥', 'INTL'), ('MDC', '마나도', 'INTL'), ('PVG', '상하이', 'INTL'),
-            ('YNJ', '연길', 'INTL'), ('CGO', '정저우', 'INTL'), ('YNT', '옌타이', 'INTL'),
-            ('HKG', '홍콩', 'INTL'), ('ALA', '알마티', 'INTL'),
-            ('CARGO', '화물파트', 'CARGO'),
-        ]
-        for code, name, btype in branches:
-            conn.execute(
-                'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
-                (code, name, btype)
-            )
-        conn.execute("UPDATE branches SET type='DOM' WHERE code='ICN'")
+        already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
 
-        form_types = [
-            ('DOM BOARDING PASS (롤)',        'BOX', '50롤',    60000,  3),
-            ('INTL BOARDING PASS(QR)',         'BOX', '5,000장', 175000, 3),
-            ('INTL BOARDING PASS(QR, ICN)',    'BOX', '5,000장', 175000, 2),
-            ('AUTO BAG TAG',                   'BOX', '10롤',   118000,  5),
-            ('BAG TIPS',                       'BOX', '5,000장',  50000, 3),
-            ('BAG TIPS (SNOOPY, DOM)',         'BOX', '5,000장',  57000, 2),
-            ('MANUAL BAG TAG',                 'BOX', '5,000장', 180000, 2),
-            ('Carry on Bag TAG (INTL)',        'BOX', '5,000장', 145000, 2),
-            ('SRI 봉투(大)',                   'BOX', '500장',   330000, 1),
-            ('CO-MAIL 봉투(NEW)',              'BOX', '200장',   160000, 1),
-            ('유상비닐(小/PPS)',               '포대', '100개',  110000, 2),
-            ('유상비닐(大/PPL)',               '포대', '100개',  130000, 2),
-            ('BOX TAPE',                       'BOX', '50개',    55000, 3),
-            ('PREMIUM TAG(D/S)',               'BOX', '5,000장',  80000, 2),
-            ('FRAGILE TAG(NEW)',               'BOX', '5,000장',  80000, 2),
-            ('HEAVY TAG',                      'BOX', '5,000장',  80000, 2),
-            ('GTOG TAG',                       'BOX', '5,000장',  80000, 2),
-            ('TRANSFER TAG',                   'BOX', '5,000장',  80000, 1),
-            ('비상구열 스티커',                'BOX', '20,000장',110000, 1),
-            ('AOC LABEL',                      'BOX', '5,000장',  80000, 1),
-            ('POB LABEL',                      'BOX', '5,000장',  80000, 1),
-            ('COB LABEL',                      'BOX', '5,000장',  80000, 1),
-            ('UP SIDE LABEL',                  'BOX', '5,000장',  80000, 1),
-            ('휠체어 배터리 분리 L/B',         'BOX', '5,000장',  80000, 1),
-            ('CORROSIVE LABEL',                'BOX', '5,000장',  80000, 1),
-            ('Dry Ice LABEL',                  'BOX', '5,000장',  80000, 1),
-            ('한국 입국신고서 (ENG/CNA)',       'BOX', '5,000장', 150000, 1),
-            ('제주 E/D카드',                   'BOX', '5,000장', 150000, 1),
-            ('한국 세관신고서 (ENG/CNA)',       'BOX', '5,000장', 150000, 1),
-            ('한국 세관신고서 (ENG/JPN)',       'BOX', '5,000장', 150000, 1),
-            ('서약서',                         '권',  '100조',    8500, 3),
-            ('합의서',                         '권',  '100조',    8500, 2),
-            ('반려동물 서약서',                '권',  '100조',   10000, 2),
-            ('악기서약서',                     '권',  '100조',   10000, 1),
-            ('보호자 서약서',                  '권',  '100조',    8500, 1),
-            ('총기인수인계서',                 '권',  '100조',   10000, 1),
-            ('PIR',                            '권',  '100조',   10000, 2),
-            ('SHR',                            '권',  '100조',   14000, 1),
-            ('NOTOC',                          '권',  '100조',   10000, 1),
-            ('BAG BINGO CHART(양면)',          '권',  '100조',    3200, 5),
-        ]
-        for name, unit, ud, price, thr in form_types:
-            conn.execute(
-                'INSERT INTO form_types (name, unit, unit_detail, unit_price, min_threshold) '
-                'VALUES (%s,%s,%s,%s,%s) ON CONFLICT(name) DO NOTHING',
-                (name, unit, ud, price, thr)
-            )
+        if not already_seeded:
+            branches = [
+                ('GMP', '김포', 'DOM'), ('CJU', '제주', 'DOM'), ('CJJ', '청주', 'DOM'),
+                ('PUS', '부산', 'DOM'), ('TSA', '송산', 'DOM'), ('KMJ', '광주', 'DOM'),
+                ('서울역', '서울역', 'DOM'), ('광명역', '광명역', 'DOM'), ('이지드랍', '이지드랍', 'DOM'),
+                ('ICN', '인천', 'DOM'), ('TPE', '타이페이', 'INTL'), ('NRT', '나리타', 'INTL'),
+                ('KIX', '간사이', 'INTL'), ('FUK', '후쿠오카', 'INTL'), ('CTS', '삿포로', 'INTL'),
+                ('OKA', '오키나와', 'INTL'), ('TKS', '도쿠시마', 'INTL'), ('BKK', '방콕', 'INTL'),
+                ('CNX', '치앙마이', 'INTL'), ('DAD', '다낭', 'INTL'), ('CXR', '나트랑', 'INTL'),
+                ('PQC', '푸꾸옥', 'INTL'), ('MDC', '마나도', 'INTL'), ('PVG', '상하이', 'INTL'),
+                ('YNJ', '연길', 'INTL'), ('CGO', '정저우', 'INTL'), ('YNT', '옌타이', 'INTL'),
+                ('HKG', '홍콩', 'INTL'), ('ALA', '알마티', 'INTL'),
+                ('CARGO', '화물파트', 'CARGO'),
+            ]
+            for code, name, btype in branches:
+                conn.execute(
+                    'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
+                    (code, name, btype)
+                )
+
+            form_types = [
+                ('DOM BOARDING PASS (롤)',        'BOX', '50롤',    60000,  3),
+                ('INTL BOARDING PASS(QR)',         'BOX', '5,000장', 175000, 3),
+                ('INTL BOARDING PASS(QR, ICN)',    'BOX', '5,000장', 175000, 2),
+                ('AUTO BAG TAG',                   'BOX', '10롤',   118000,  5),
+                ('BAG TIPS',                       'BOX', '5,000장',  50000, 3),
+                ('BAG TIPS (SNOOPY, DOM)',         'BOX', '5,000장',  57000, 2),
+                ('MANUAL BAG TAG',                 'BOX', '5,000장', 180000, 2),
+                ('Carry on Bag TAG (INTL)',        'BOX', '5,000장', 145000, 2),
+                ('SRI 봉투(大)',                   'BOX', '500장',   330000, 1),
+                ('CO-MAIL 봉투(NEW)',              'BOX', '200장',   160000, 1),
+                ('유상비닐(小/PPS)',               '포대', '100개',  110000, 2),
+                ('유상비닐(大/PPL)',               '포대', '100개',  130000, 2),
+                ('BOX TAPE',                       'BOX', '50개',    55000, 3),
+                ('PREMIUM TAG(D/S)',               'BOX', '5,000장',  80000, 2),
+                ('FRAGILE TAG(NEW)',               'BOX', '5,000장',  80000, 2),
+                ('HEAVY TAG',                      'BOX', '5,000장',  80000, 2),
+                ('GTOG TAG',                       'BOX', '5,000장',  80000, 2),
+                ('TRANSFER TAG',                   'BOX', '5,000장',  80000, 1),
+                ('비상구열 스티커',                'BOX', '20,000장',110000, 1),
+                ('AOC LABEL',                      'BOX', '5,000장',  80000, 1),
+                ('POB LABEL',                      'BOX', '5,000장',  80000, 1),
+                ('COB LABEL',                      'BOX', '5,000장',  80000, 1),
+                ('UP SIDE LABEL',                  'BOX', '5,000장',  80000, 1),
+                ('휠체어 배터리 분리 L/B',         'BOX', '5,000장',  80000, 1),
+                ('CORROSIVE LABEL',                'BOX', '5,000장',  80000, 1),
+                ('Dry Ice LABEL',                  'BOX', '5,000장',  80000, 1),
+                ('한국 입국신고서 (ENG/CNA)',       'BOX', '5,000장', 150000, 1),
+                ('제주 E/D카드',                   'BOX', '5,000장', 150000, 1),
+                ('한국 세관신고서 (ENG/CNA)',       'BOX', '5,000장', 150000, 1),
+                ('한국 세관신고서 (ENG/JPN)',       'BOX', '5,000장', 150000, 1),
+                ('서약서',                         '권',  '100조',    8500, 3),
+                ('합의서',                         '권',  '100조',    8500, 2),
+                ('반려동물 서약서',                '권',  '100조',   10000, 2),
+                ('악기서약서',                     '권',  '100조',   10000, 1),
+                ('보호자 서약서',                  '권',  '100조',    8500, 1),
+                ('총기인수인계서',                 '권',  '100조',   10000, 1),
+                ('PIR',                            '권',  '100조',   10000, 2),
+                ('SHR',                            '권',  '100조',   14000, 1),
+                ('NOTOC',                          '권',  '100조',   10000, 1),
+                ('BAG BINGO CHART(양면)',          '권',  '100조',    3200, 5),
+            ]
+            for name, unit, ud, price, thr in form_types:
+                conn.execute(
+                    'INSERT INTO form_types (name, unit, unit_detail, unit_price, min_threshold) '
+                    'VALUES (%s,%s,%s,%s,%s) ON CONFLICT(name) DO NOTHING',
+                    (name, unit, ud, price, thr)
+                )
+        else:
+            conn.execute("UPDATE branches SET type='DOM' WHERE code='ICN' AND type != 'DOM'")
 
         user_count = conn.execute('SELECT COUNT(*) AS cnt FROM users').fetchone()['cnt']
         if user_count == 0:
