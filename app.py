@@ -269,7 +269,7 @@ def init_db():
             ('GMP', '김포', 'DOM'), ('CJU', '제주', 'DOM'), ('CJJ', '청주', 'DOM'),
             ('PUS', '부산', 'DOM'), ('TSA', '송산', 'DOM'), ('KMJ', '광주', 'DOM'),
             ('서울역', '서울역', 'DOM'), ('광명역', '광명역', 'DOM'), ('이지드랍', '이지드랍', 'DOM'),
-            ('ICN', '인천', 'INTL'), ('TPE', '타이페이', 'INTL'), ('NRT', '나리타', 'INTL'),
+            ('ICN', '인천', 'DOM'), ('TPE', '타이페이', 'INTL'), ('NRT', '나리타', 'INTL'),
             ('KIX', '간사이', 'INTL'), ('FUK', '후쿠오카', 'INTL'), ('CTS', '삿포로', 'INTL'),
             ('OKA', '오키나와', 'INTL'), ('TKS', '도쿠시마', 'INTL'), ('BKK', '방콕', 'INTL'),
             ('CNX', '치앙마이', 'INTL'), ('DAD', '다낭', 'INTL'), ('CXR', '나트랑', 'INTL'),
@@ -283,6 +283,7 @@ def init_db():
                 'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
                 (code, name, btype)
             )
+        conn.execute("UPDATE branches SET type='DOM' WHERE code='ICN'")
 
         form_types = [
             ('DOM BOARDING PASS (롤)',        'BOX', '50롤',    60000,  3),
