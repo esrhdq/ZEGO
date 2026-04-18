@@ -248,27 +248,36 @@ const C = {
 // ── 1. 상태 분포 도넛 ──
 {
   const d = {{ chart_status | tojson }};
-  new Chart(document.getElementById('chartStatus'), {
-    type: 'doughnut',
-    data: {
-      labels: ['정상','부족','소진'],
-      datasets: [{ data: [d.ok, d.low, d.empty],
-        backgroundColor: [C.ok, C.low, C.empty],
-        borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
-    },
-    options: {
-      plugins: {
-        legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } }
+  if (d.ok + d.low + d.empty > 0) {
+    new Chart(document.getElementById('chartStatus'), {
+      type: 'doughnut',
+      data: {
+        labels: ['정상','부족','소진'],
+        datasets: [{ data: [d.ok, d.low, d.empty],
+          backgroundColor: [C.ok, C.low, C.empty],
+          borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
       },
-      cutout: '65%',
-    }
-  });
+      options: {
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } }
+        },
+        cutout: '65%',
+      }
+    });
+  } else {
+    document.getElementById('chartStatus').closest('.card-body').innerHTML =
+      '<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>재고 데이터 없음</div>';
+  }
 }
 
 // ── 2. 월별 입출고 추이 라인 ──
 {
   const d = {{ chart_monthly | tojson }};
+  if (!d.labels.length) {
+    document.getElementById('chartMonthly').closest('.card-body').innerHTML =
+      '<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>최근 6개월 거래 데이터 없음</div>';
+  } else
   new Chart(document.getElementById('chartMonthly'), {
     type: 'line',
     data: {
@@ -302,6 +311,10 @@ const C = {
 // ── 3. 지점별 재고 수량 바 ──
 {
   const d = {{ chart_branch_qty | tojson }};
+  if (!d.labels.length) {
+    document.getElementById('chartBranchQty').closest('.card-body').innerHTML =
+      '<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>지점 재고 데이터 없음</div>';
+  } else
   new Chart(document.getElementById('chartBranchQty'), {
     type: 'bar',
     data: {
@@ -354,6 +367,10 @@ const C = {
 // ── 5. 지점별 상태 분포 스택 바 ──
 {
   const d = {{ chart_branch_status | tojson }};
+  if (!d.labels.length) {
+    document.getElementById('chartBranchStatus').closest('.card-body').innerHTML =
+      '<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>지점 상태 데이터 없음</div>';
+  } else
   new Chart(document.getElementById('chartBranchStatus'), {
     type: 'bar',
     data: {
@@ -380,6 +397,10 @@ const C = {
 // ── 6. 양식별 재고 수량 수평 바 ──
 {
   const d = {{ chart_form_qty | tojson }};
+  if (!d.labels.length) {
+    document.getElementById('chartFormQty').closest('.card-body').innerHTML =
+      '<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>양식 재고 데이터 없음</div>';
+  } else
   new Chart(document.getElementById('chartFormQty'), {
     type: 'bar',
     data: {

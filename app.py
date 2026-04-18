@@ -564,7 +564,7 @@ def inventory():
         FROM transactions t
         JOIN form_types f ON t.form_type_id = f.id
         WHERE {" AND ".join(mo_conditions)}
-        GROUP BY f.id, mo
+        GROUP BY f.id, COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
         ORDER BY f.name, mo
     ''', mo_params).fetchall()
 
@@ -824,7 +824,7 @@ def report():
                COUNT(*) tx_count, COALESCE(SUM(t.quantity),0) total_qty
         FROM transactions t
         WHERE t.created_at >= CURRENT_DATE - INTERVAL '6 months' {t_cond}
-        GROUP BY month, t.type ORDER BY month ASC
+        GROUP BY TO_CHAR(t.created_at, 'YYYY-MM'), t.type ORDER BY TO_CHAR(t.created_at, 'YYYY-MM') ASC
     ''').fetchall()
 
     months_set = sorted({r['month'] for r in monthly_raw})
@@ -973,7 +973,7 @@ def forecast():
           AND COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
               BETWEEN TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
                   AND TO_CHAR(CURRENT_DATE, 'YYYY-MM')
-        GROUP BY t.from_branch_id, f.id, f.name, f.unit, f.unit_detail, month
+        GROUP BY t.from_branch_id, f.id, f.name, f.unit, f.unit_detail, COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
     ''').fetchall()
 
     inv_map = {(r['branch_id'], r['form_type_id']): r['quantity']
@@ -1103,7 +1103,7 @@ def forecast_download():
           AND COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
               BETWEEN TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
                   AND TO_CHAR(CURRENT_DATE, 'YYYY-MM')
-        GROUP BY t.from_branch_id, f.id, f.name, f.unit, month
+        GROUP BY t.from_branch_id, f.id, f.name, f.unit, COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
     ''').fetchall()
 
     inv_map = {(r['branch_id'], r['form_type_id']): r['quantity']
