@@ -1,12 +1,24 @@
 import sys
 import os
+import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import app, init_db
-
-# Vercel cold start 시 DB 초기화 (테이블 없으면 생성)
 try:
+    from app import app, init_db
     init_db()
 except Exception as e:
-    print(f"[init_db] {e}")
+    import flask
+    _err = traceback.format_exc()
+    print(f"[STARTUP ERROR] {_err}")
+
+    # 에러 내용을 /error 페이지로 확인 가능하게 노출 (디버깅용)
+    _app = flask.Flask(__name__)
+    @_app.route('/', defaults={'path': ''})
+    @_app.route('/<path:path>')
+    def error_page(path):
+        return flask.Response(
+            f"<pre>시작 오류:\n{_err}</pre>",
+            status=500, mimetype='text/html'
+        )
+    app = _app

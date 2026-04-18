@@ -16,6 +16,9 @@ app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspa
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
+# Supabase는 SSL 필수 — sslmode가 없으면 자동 추가
+if DATABASE_URL and 'sslmode' not in DATABASE_URL:
+    DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not DATABASE_URL
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
