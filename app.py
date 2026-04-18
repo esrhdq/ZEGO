@@ -334,7 +334,7 @@ def init_db():
                 (name, unit, ud, price, thr)
             )
 
-        user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+        user_count = conn.execute('SELECT COUNT(*) AS cnt FROM users').fetchone()['cnt']
         if user_count == 0:
             admin_pw = hash_pw('admin1234')
             conn.execute(
