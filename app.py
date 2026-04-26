@@ -202,16 +202,17 @@ def init_db():
             ''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS transactions (
-                    id             INTEGER PRIMARY KEY,
-                    type           TEXT NOT NULL,
-                    form_type_id   INTEGER NOT NULL,
-                    from_branch_id INTEGER,
-                    to_branch_id   INTEGER,
-                    quantity       INTEGER NOT NULL,
-                    notes          TEXT,
-                    created_by     TEXT,
-                    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    period_month   TEXT,
+                    id               INTEGER PRIMARY KEY,
+                    type             TEXT NOT NULL,
+                    form_type_id     INTEGER NOT NULL,
+                    from_branch_id   INTEGER,
+                    to_branch_id     INTEGER,
+                    quantity         INTEGER NOT NULL,
+                    notes            TEXT,
+                    created_by       TEXT,
+                    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    period_month     TEXT,
+                    transaction_date DATE DEFAULT (date('now')),
                     FOREIGN KEY (form_type_id)   REFERENCES form_types(id),
                     FOREIGN KEY (from_branch_id) REFERENCES branches(id),
                     FOREIGN KEY (to_branch_id)   REFERENCES branches(id)
@@ -285,15 +286,17 @@ def init_db():
                     UNIQUE(branch_id, form_type_id)
                 );
                 CREATE TABLE IF NOT EXISTS transactions (
-                    id             SERIAL PRIMARY KEY,
-                    type           TEXT NOT NULL,
-                    form_type_id   INTEGER NOT NULL,
-                    from_branch_id INTEGER,
-                    to_branch_id   INTEGER,
-                    quantity       INTEGER NOT NULL,
-                    notes          TEXT,
-                    created_by     TEXT,
-                    created_at     TIMESTAMP DEFAULT NOW(),
+                    id               SERIAL PRIMARY KEY,
+                    type             TEXT NOT NULL,
+                    form_type_id     INTEGER NOT NULL,
+                    from_branch_id   INTEGER,
+                    to_branch_id     INTEGER,
+                    quantity         INTEGER NOT NULL,
+                    notes            TEXT,
+                    created_by       TEXT,
+                    created_at       TIMESTAMP DEFAULT NOW(),
+                    period_month     TEXT,
+                    transaction_date DATE DEFAULT CURRENT_DATE,
                     FOREIGN KEY (form_type_id)   REFERENCES form_types(id),
                     FOREIGN KEY (from_branch_id) REFERENCES branches(id),
                     FOREIGN KEY (to_branch_id)   REFERENCES branches(id)
@@ -428,15 +431,16 @@ def init_db():
         conn.commit()
 
         if USE_SQLITE:
-            # SQLite: period_month 컬럼이 없으면 추가
             cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
             if 'period_month' not in cols:
                 conn.execute('ALTER TABLE transactions ADD COLUMN period_month TEXT')
                 conn.execute(
                     "UPDATE transactions SET period_month = strftime('%Y-%m', created_at) WHERE type='OUT'"
                 )
+            if 'transaction_date' not in cols:
+                conn.execute('ALTER TABLE transactions ADD COLUMN transaction_date TEXT')
+                conn.execute("UPDATE transactions SET transaction_date = date(created_at)")
         else:
-            # PostgreSQL: 마이그레이션 + 인덱스를 단일 DO $$ 블록으로 (1 round trip)
             conn.execute('''
                 DO $$
                 BEGIN
@@ -449,12 +453,20 @@ def init_db():
                            SET period_month = TO_CHAR(created_at, 'YYYY-MM')
                          WHERE type = 'OUT';
                     END IF;
-                    CREATE INDEX IF NOT EXISTS idx_inventory_branch  ON inventory(branch_id);
-                    CREATE INDEX IF NOT EXISTS idx_inventory_form    ON inventory(form_type_id);
-                    CREATE INDEX IF NOT EXISTS idx_tx_created_at     ON transactions(created_at);
-                    CREATE INDEX IF NOT EXISTS idx_tx_from_branch    ON transactions(from_branch_id);
-                    CREATE INDEX IF NOT EXISTS idx_tx_to_branch      ON transactions(to_branch_id);
-                    CREATE INDEX IF NOT EXISTS idx_tx_period_month   ON transactions(period_month);
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='transactions' AND column_name='transaction_date'
+                    ) THEN
+                        ALTER TABLE transactions ADD COLUMN transaction_date DATE DEFAULT CURRENT_DATE;
+                        UPDATE transactions SET transaction_date = created_at::date;
+                    END IF;
+                    CREATE INDEX IF NOT EXISTS idx_inventory_branch    ON inventory(branch_id);
+                    CREATE INDEX IF NOT EXISTS idx_inventory_form      ON inventory(form_type_id);
+                    CREATE INDEX IF NOT EXISTS idx_tx_created_at       ON transactions(created_at);
+                    CREATE INDEX IF NOT EXISTS idx_tx_from_branch      ON transactions(from_branch_id);
+                    CREATE INDEX IF NOT EXISTS idx_tx_to_branch        ON transactions(to_branch_id);
+                    CREATE INDEX IF NOT EXISTS idx_tx_period_month     ON transactions(period_month);
+                    CREATE INDEX IF NOT EXISTS idx_tx_transaction_date ON transactions(transaction_date);
                 END $$
             ''')
         conn.commit()
@@ -544,7 +556,7 @@ def dashboard():
         SELECT
             (SELECT COUNT(*) FROM branches)   AS branch_cnt,
             (SELECT COUNT(*) FROM form_types) AS form_cnt,
-            (SELECT COUNT(*) FROM transactions WHERE created_at::date = CURRENT_DATE) AS today_cnt
+            (SELECT COUNT(*) FROM transactions WHERE transaction_date = CURRENT_DATE) AS today_cnt
     ''').fetchone()
     stats = {
         'branches': _s['branch_cnt'],
@@ -693,6 +705,8 @@ def inbound():
         fid = request.form['form_type_id']
         qty = int(request.form['quantity'])
         notes = request.form.get('notes', '')
+        from datetime import date as _date
+        tx_date = request.form.get('transaction_date') or _date.today().isoformat()
 
         conn.execute('''
             INSERT INTO inventory (branch_id, form_type_id, quantity, last_updated)
@@ -702,23 +716,26 @@ def inbound():
               last_updated = NOW()
         ''', (bid, fid, qty))
         conn.execute(
-            "INSERT INTO transactions (type, form_type_id, to_branch_id, quantity, notes, created_by) "
-            "VALUES ('IN',%s,%s,%s,%s,%s)",
-            (fid, bid, qty, notes, session['username'])
+            "INSERT INTO transactions "
+            "(type, form_type_id, to_branch_id, quantity, notes, created_by, transaction_date) "
+            "VALUES ('IN',%s,%s,%s,%s,%s,%s)",
+            (fid, bid, qty, notes, session['username'], tx_date)
         )
         conn.commit()
 
         b = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
         f = conn.execute('SELECT name FROM form_types WHERE id=%s', (fid,)).fetchone()
-        flash(f'입고 완료 ✔ {b["name"]} — {f["name"]} {qty}개', 'success')
+        flash(f'입고 완료 ✔ {b["name"]} — {f["name"]} {qty}개 ({tx_date})', 'success')
         conn.close()
         return redirect(url_for('inbound'))
 
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
     form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
     conn.close()
+    from datetime import date
     return render_template('inbound.html', branches=branches, form_types=form_types,
-                           selected_branch=session.get('branch_id'))
+                           selected_branch=session.get('branch_id'),
+                           today=date.today().isoformat())
 
 
 @app.route('/outbound', methods=['GET', 'POST'])
@@ -737,7 +754,9 @@ def outbound():
         fid = request.form['form_type_id']
         qty = int(request.form['quantity'])
         notes = request.form.get('notes', '')
-        period_month = request.form.get('period_month', '')
+        from datetime import date as _date
+        tx_date = request.form.get('transaction_date') or _date.today().isoformat()
+        period_month = tx_date[:7]  # YYYY-MM
 
         cur = conn.execute(
             'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s',
@@ -753,12 +772,13 @@ def outbound():
             (qty, bid, fid)
         )
         conn.execute(
-            "INSERT INTO transactions (type, form_type_id, from_branch_id, quantity, notes, created_by, period_month) "
-            "VALUES ('OUT',%s,%s,%s,%s,%s,%s)",
-            (fid, bid, qty, notes, session['username'], period_month)
+            "INSERT INTO transactions "
+            "(type, form_type_id, from_branch_id, quantity, notes, created_by, period_month, transaction_date) "
+            "VALUES ('OUT',%s,%s,%s,%s,%s,%s,%s)",
+            (fid, bid, qty, notes, session['username'], period_month, tx_date)
         )
         conn.commit()
-        flash('출고 처리 완료 ✔', 'success')
+        flash(f'출고 처리 완료 ✔ ({tx_date})', 'success')
         conn.close()
         return redirect(url_for('outbound'))
 
@@ -768,7 +788,7 @@ def outbound():
     from datetime import date
     return render_template('outbound.html', branches=branches, form_types=form_types,
                            selected_branch=session.get('branch_id'),
-                           today_ym=date.today().strftime('%Y-%m'))
+                           today=date.today().isoformat())
 
 
 _TR_SELECT = '''
@@ -1072,6 +1092,7 @@ def transactions():
     bf        = request.args.get('branch_id', '')
     ff        = request.args.get('form_type_id', '')
     tf        = request.args.get('type', '')
+    month_f   = request.args.get('month_f', '')
     date_from = request.args.get('date_from', '')
     date_to   = request.args.get('date_to', '')
 
@@ -1088,10 +1109,12 @@ def transactions():
         conditions.append('t.form_type_id=%s'); params.append(ff)
     if tf:
         conditions.append('t.type=%s'); params.append(tf)
+    if month_f:
+        conditions.append("TO_CHAR(t.transaction_date, 'YYYY-MM') = %s"); params.append(month_f)
     if date_from:
-        conditions.append('t.created_at::date >= %s'); params.append(date_from)
+        conditions.append('t.transaction_date >= %s'); params.append(date_from)
     if date_to:
-        conditions.append('t.created_at::date <= %s'); params.append(date_to)
+        conditions.append('t.transaction_date <= %s'); params.append(date_to)
 
     rows = conn.execute(f'''
         SELECT t.*, f.name form_name, f.unit,
@@ -1102,11 +1125,12 @@ def transactions():
         LEFT JOIN branches fb ON t.from_branch_id = fb.id
         LEFT JOIN branches tb ON t.to_branch_id   = tb.id
         WHERE {" AND ".join(conditions)}
-        ORDER BY t.created_at DESC LIMIT 300
+        ORDER BY t.transaction_date DESC, t.created_at DESC LIMIT 300
     ''', params).fetchall()
     conn.close()
     return render_template('transactions.html', rows=rows, branches=branches, form_types=form_types,
-                           bf=bf, ff=ff, tf=tf, date_from=date_from, date_to=date_to)
+                           bf=bf, ff=ff, tf=tf, month_f=month_f,
+                           date_from=date_from, date_to=date_to)
 
 
 @app.route('/report')
@@ -2049,6 +2073,7 @@ def transactions_download():
     bf        = request.args.get('branch_id', '')
     ff        = request.args.get('form_type_id', '')
     tf        = request.args.get('type', '')
+    month_f   = request.args.get('month_f', '')
     date_from = request.args.get('date_from', '')
     date_to   = request.args.get('date_to', '')
 
@@ -2063,10 +2088,12 @@ def transactions_download():
         conditions.append('t.form_type_id=%s'); params.append(ff)
     if tf:
         conditions.append('t.type=%s'); params.append(tf)
+    if month_f:
+        conditions.append("TO_CHAR(t.transaction_date, 'YYYY-MM') = %s"); params.append(month_f)
     if date_from:
-        conditions.append('t.created_at::date >= %s'); params.append(date_from)
+        conditions.append('t.transaction_date >= %s'); params.append(date_from)
     if date_to:
-        conditions.append('t.created_at::date <= %s'); params.append(date_to)
+        conditions.append('t.transaction_date <= %s'); params.append(date_to)
 
     rows = conn.execute(f'''
         SELECT t.*, f.name form_name, f.unit,
@@ -2077,7 +2104,7 @@ def transactions_download():
         LEFT JOIN branches fb ON t.from_branch_id = fb.id
         LEFT JOIN branches tb ON t.to_branch_id   = tb.id
         WHERE {" AND ".join(conditions)}
-        ORDER BY t.created_at DESC
+        ORDER BY t.transaction_date DESC, t.created_at DESC
     ''', params).fetchall()
     conn.close()
 
@@ -2085,8 +2112,8 @@ def transactions_download():
     ws = wb.active
     ws.title = '입출고이력'
 
-    headers    = ['일시','구분','양식명','단위','출발지점코드','출발지점','도착지점코드','도착지점','수량','비고','처리자']
-    col_widths = [18, 8, 32, 8, 12, 14, 12, 14, 10, 20, 12]
+    headers    = ['거래일자','등록일시','구분','양식명','단위','출발지점코드','출발지점','도착지점코드','도착지점','수량','비고','처리자']
+    col_widths = [12, 16, 8, 32, 8, 12, 14, 12, 14, 10, 20, 12]
     _apply_header(ws, headers, col_widths)
 
     type_kr = {'IN':'입고', 'OUT':'출고', 'TRANSFER':'이전'}
@@ -2098,6 +2125,7 @@ def transactions_download():
         t_kr = type_kr.get(row['type'], row['type'])
         fill = in_fill if row['type']=='IN' else (out_fill if row['type']=='OUT' else tr_fill)
         vals = [
+            str(row['transaction_date'] or '')[:10],
             str(row['created_at'] or '')[:16], t_kr, row['form_name'], row['unit'],
             row['from_branch_code'] or '', row['from_branch_name'] or '',
             row['to_branch_code']   or '', row['to_branch_name']   or '',
@@ -2107,10 +2135,10 @@ def transactions_download():
             cell = ws.cell(row=r, column=c, value=v)
             cell.border    = _border()
             cell.alignment = Alignment(vertical='center')
-            if c == 2:
+            if c == 3:
                 cell.fill = fill
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-            if c == 9:
+            if c == 10:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
         ws.row_dimensions[r].height = 16
 
