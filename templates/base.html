@@ -363,22 +363,22 @@
     </a>
     <a href="{{ url_for('inventory') }}"
        class="nav-link {% if endpoint=='inventory' %}active{% endif %}">
-      <i class="fa-solid fa-boxes-stacked"></i>재고 현황
+      <i class="fa-solid fa-warehouse"></i>재고 현황
     </a>
 
     <div class="section-label">처리</div>
     <a href="{{ url_for('inbound') }}"
        class="nav-link {% if endpoint=='inbound' %}active{% endif %}">
-      <i class="fa-solid fa-download"></i>입고
+      <i class="fa-solid fa-truck-ramp-box"></i>입고
     </a>
     <a href="{{ url_for('outbound') }}"
        class="nav-link {% if endpoint=='outbound' %}active{% endif %}">
-      <i class="fa-solid fa-upload"></i>출고
+      <i class="fa-solid fa-dolly"></i>출고
     </a>
     <a href="{{ url_for('transfer') }}"
        class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}"
        style="position:relative">
-      <i class="fa-solid fa-right-left"></i>지점 간 이전
+      <i class="fa-solid fa-truck-moving"></i>지점 간 이전
       {% if notif_count > 0 %}
       <span class="position-absolute top-50 end-0 translate-middle-y me-2">
         <span class="badge rounded-pill bg-danger" style="font-size:.6rem">{{ notif_count }}</span>
@@ -389,11 +389,11 @@
     <div class="section-label">조회</div>
     <a href="{{ url_for('transactions') }}"
        class="nav-link {% if endpoint=='transactions' %}active{% endif %}">
-      <i class="fa-solid fa-clock-rotate-left"></i>입출고 이력
+      <i class="fa-solid fa-receipt"></i>입출고 이력
     </a>
     <a href="{{ url_for('report') }}"
        class="nav-link {% if endpoint=='report' %}active{% endif %}">
-      <i class="fa-solid fa-chart-line"></i>리포트
+      <i class="fa-solid fa-chart-bar"></i>리포트
     </a>
     <a href="{{ url_for('forecast') }}"
        class="nav-link {% if endpoint=='forecast' %}active{% endif %}"
@@ -408,7 +408,7 @@
     <div class="section-label">관리자</div>
     <a href="{{ url_for('manage_users') }}"
        class="nav-link {% if endpoint=='manage_users' %}active{% endif %}">
-      <i class="fa-solid fa-users"></i>사용자 관리
+      <i class="fa-solid fa-users-gear"></i>사용자 관리
     </a>
     {% endif %}
   </nav>
