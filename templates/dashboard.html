@@ -1,6 +1,7 @@
 ﻿{% extends 'base.html' %}
 {% block title %}대시보드{% endblock %}
-{% block page_title %}<i class="fa-solid fa-gauge me-2"></i>대시보드{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-gauge"></i>{% endblock %}
+{% block page_title %}대시보드{% endblock %}
 
 {% block content %}
 <!-- 통계 카드 -->
@@ -8,11 +9,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#eff6ff;border-radius:10px;padding:14px;">
-          <i class="fa-solid fa-location-dot fs-4 text-primary"></i>
+        <div class="stat-icon" style="background:#EFF6FF;color:#2563EB">
+          <i class="fa-solid fa-location-dot"></i>
         </div>
         <div>
-          <div class="stat-num text-primary">{{ stats.branches }}</div>
+          <div class="stat-num" style="color:#2563EB">{{ stats.branches }}</div>
           <div class="stat-label">운영 지점</div>
         </div>
       </div>
@@ -21,11 +22,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#f5f3ff;border-radius:10px;padding:14px;">
-          <i class="fa-solid fa-copy fs-4 text-purple" style="color:#7c3aed"></i>
+        <div class="stat-icon" style="background:#F5F3FF;color:#7C3AED">
+          <i class="fa-solid fa-copy"></i>
         </div>
         <div>
-          <div class="stat-num" style="color:#7c3aed">{{ stats.forms }}</div>
+          <div class="stat-num" style="color:#7C3AED">{{ stats.forms }}</div>
           <div class="stat-label">양식 종류</div>
         </div>
       </div>
@@ -34,11 +35,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#f0fdf4;border-radius:10px;padding:14px;">
-          <i class="fa-solid fa-arrows-rotate fs-4 text-success"></i>
+        <div class="stat-icon" style="background:#F0FDF4;color:#16A34A">
+          <i class="fa-solid fa-arrows-rotate"></i>
         </div>
         <div>
-          <div class="stat-num text-success">{{ stats.today_tx }}</div>
+          <div class="stat-num" style="color:#16A34A">{{ stats.today_tx }}</div>
           <div class="stat-label">오늘 입출고</div>
         </div>
       </div>
@@ -47,11 +48,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#fff7ed;border-radius:10px;padding:14px;">
-          <i class="fa-solid fa-triangle-exclamation fs-4 text-warning"></i>
+        <div class="stat-icon" style="background:var(--orange-light);color:var(--orange)">
+          <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
         <div>
-          <div class="stat-num text-warning">{{ stats.alerts }}</div>
+          <div class="stat-num" style="color:var(--orange)">{{ stats.alerts }}</div>
           <div class="stat-label">재고 부족 알림</div>
         </div>
       </div>

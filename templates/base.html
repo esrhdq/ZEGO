@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -8,97 +8,331 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
   <style>
-    * { font-family: 'Pretendard', -apple-system, sans-serif; }
-    body { background: #f4f6fb; }
+    :root {
+      --orange:       #FF5A00;
+      --orange-dark:  #E04D00;
+      --orange-mid:   #FF7530;
+      --orange-light: #FFF3EE;
+      --orange-pale:  #FFF8F5;
+      --navy:         #0D1B3E;
+      --navy-mid:     #162447;
+      --navy-light:   #1E3060;
+      --navy-border:  rgba(255,255,255,.07);
+      --sidebar-text: #A8BCD8;
+      --sidebar-muted:#4E6A98;
+      --bg:           #EEF2F8;
+      --card-bg:      #FFFFFF;
+      --border:       #E4E9F2;
+      --text:         #1E293B;
+      --text-muted:   #64748B;
+    }
+    *, *::before, *::after { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); }
 
-    /* ── 사이드바 ── */
+    /* ════════════════════════════════════════
+       사이드바
+    ════════════════════════════════════════ */
     .sidebar {
-      width: 220px; height: 100vh; background: #1a2340;
+      width: 230px;
+      height: 100vh;
+      background: linear-gradient(180deg, var(--navy) 0%, var(--navy-mid) 100%);
       position: fixed; top: 0; left: 0; z-index: 1040;
       display: flex; flex-direction: column; overflow: hidden;
-      transition: transform .25s ease;
+      transition: transform .26s cubic-bezier(.4,0,.2,1);
+      box-shadow: 4px 0 24px rgba(0,0,0,.18);
     }
-    .sidebar .brand {
-      padding: 20px 16px 10px; flex-shrink: 0;
-      color: #fff; font-weight: 700; font-size: 1rem; border-bottom: 1px solid #2d3a5a;
+
+    /* 브랜드 영역 */
+    .sidebar-brand {
+      padding: 18px 16px 14px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--navy-border);
+      display: flex; align-items: center; gap: 11px;
     }
-    .sidebar .brand small { display: block; color: #8899bb; font-weight: 400; font-size: .75rem; margin-top: 2px; }
-    .sidebar .nav-link {
-      color: #a0aec0; padding: 9px 18px; font-size: .9rem; border-radius: 6px; margin: 1px 8px;
+    .brand-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--orange), var(--orange-mid));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(255,90,0,.35);
     }
-    .sidebar .nav-link:hover, .sidebar .nav-link.active {
-      background: #2d3a5a; color: #fff;
+    .brand-text .brand-name {
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: .12em;
+      line-height: 1;
     }
-    .sidebar .nav-link i { margin-right: 8px; font-size: 1rem; }
-    .sidebar .section-label {
-      color: #4a5a80; font-size: .7rem; font-weight: 700; text-transform: uppercase;
-      padding: 12px 18px 4px; letter-spacing: .08em;
+    .brand-text .brand-sub {
+      color: var(--sidebar-muted);
+      font-size: .68rem;
+      font-weight: 500;
+      letter-spacing: .02em;
+      margin-top: 2px;
     }
-    .sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; }
-    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+
+    /* 네비 */
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 0 4px;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 3px; }
     .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-    .sidebar-nav::-webkit-scrollbar-thumb { background: #2d3a5a; border-radius: 4px; }
-    .sidebar-footer { padding: 8px; border-top: 1px solid #2d3a5a; flex-shrink: 0; }
-    /* 아이콘 너비 고정으로 텍스트 정렬 */
-    .sidebar .nav-link i { width: 20px; text-align: center; margin-right: 10px; font-size: .95rem; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+    .section-label {
+      color: var(--orange);
+      font-size: .62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      padding: 14px 20px 5px;
+      opacity: .7;
+    }
+    .section-label:first-child { padding-top: 8px; }
+
+    .sidebar .nav-link {
+      display: flex;
+      align-items: center;
+      color: var(--sidebar-text);
+      padding: 9px 16px 9px 18px;
+      font-size: .875rem;
+      font-weight: 500;
+      border-radius: 8px;
+      margin: 1px 8px;
+      transition: all .18s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+    .sidebar .nav-link i {
+      width: 20px;
+      text-align: center;
+      margin-right: 10px;
+      font-size: .9rem;
+      flex-shrink: 0;
+    }
+    .sidebar .nav-link:hover {
+      background: rgba(255,90,0,.1);
+      color: #FF8040;
+      border-left-color: rgba(255,90,0,.4);
+    }
+    .sidebar .nav-link.active {
+      background: rgba(255,90,0,.14);
+      color: #FF7530;
+      border-left-color: var(--orange);
+      font-weight: 600;
+    }
+
+    /* 사이드바 푸터 */
+    .sidebar-footer {
+      padding: 8px;
+      border-top: 1px solid var(--navy-border);
+      flex-shrink: 0;
+    }
+    .sidebar-user {
+      padding: 10px 12px 6px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .user-avatar {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--navy-light), var(--navy-mid));
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sidebar-text);
+      font-size: .85rem;
+      flex-shrink: 0;
+    }
+    .user-info .user-name {
+      color: #C8D8EE;
+      font-size: .82rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .user-info .user-branch {
+      color: var(--sidebar-muted);
+      font-size: .7rem;
+      line-height: 1.2;
+    }
 
     /* 모바일 오버레이 */
     .sidebar-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.5); z-index: 1039;
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 1039;
+      backdrop-filter: blur(2px);
     }
     .sidebar-overlay.show { display: block; }
 
-    /* ── 메인 콘텐츠 ── */
-    .main-content { margin-left: 220px; padding: 24px; }
+    /* ════════════════════════════════════════
+       메인 콘텐츠
+    ════════════════════════════════════════ */
+    .main-content {
+      margin-left: 230px;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* 탑바 */
     .topbar {
-      background: #fff; border-bottom: 1px solid #e2e8f0;
-      padding: 10px 24px; margin: -24px -24px 24px -24px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 58px;
       display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      flex-shrink: 0;
     }
-    .topbar h5 { margin: 0; font-weight: 600; color: #1a2340; font-size: 1rem; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .page-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .page-title-icon {
+      width: 30px; height: 30px;
+      background: var(--orange-light);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--orange);
+      font-size: .8rem;
+    }
+    .zego-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--orange-pale);
+      border: 1px solid rgba(255,90,0,.15);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--orange);
+      letter-spacing: .06em;
+    }
     .hamburger {
-      display: none; background: none; border: none;
-      color: #1a2340; font-size: 1.4rem; padding: 2px 6px; cursor: pointer;
+      display: none;
+      background: none; border: none;
+      color: var(--text);
+      font-size: 1.2rem;
+      padding: 6px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background .15s;
+    }
+    .hamburger:hover { background: var(--orange-light); color: var(--orange); }
+
+    /* 페이지 바디 */
+    .page-body { padding: 22px 24px 32px; flex: 1; }
+
+    /* ════════════════════════════════════════
+       공통 컴포넌트
+    ════════════════════════════════════════ */
+    .card {
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.03);
+      border-radius: 12px;
+      background: var(--card-bg);
+    }
+    .card-header {
+      border-bottom: 1px solid var(--border);
+      border-radius: 12px 12px 0 0 !important;
     }
 
-    /* ── 공통 컴포넌트 ── */
-    .badge-dom   { background: #3b82f6; }
-    .badge-intl  { background: #8b5cf6; }
-    .badge-cargo { background: #f59e0b; }
-    .status-ok    { color: #16a34a; font-weight: 600; }
-    .status-low   { color: #d97706; font-weight: 600; }
-    .status-empty { color: #dc2626; font-weight: 600; }
-    .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,.07); border-radius: 10px; }
-    .stat-card .card-body { padding: 20px 24px; }
-    .stat-card .stat-num { font-size: 2rem; font-weight: 700; }
-    .stat-card .stat-label { color: #64748b; font-size: .85rem; }
+    /* 통계 카드 */
+    .stat-card { transition: transform .2s, box-shadow .2s; }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.1) !important;
+    }
+    .stat-card .card-body { padding: 20px 22px; }
+    .stat-card .stat-num  { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .stat-card .stat-label { color: var(--text-muted); font-size: .82rem; margin-top: 2px; }
+    .stat-icon {
+      width: 46px; height: 46px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem;
+      flex-shrink: 0;
+    }
 
-    /* ── 모바일 (≤ 767px) ── */
+    /* 상태 컬러 */
+    .status-ok    { color: #16A34A; font-weight: 600; }
+    .status-low   { color: #D97706; font-weight: 600; }
+    .status-empty { color: #DC2626; font-weight: 600; }
+
+    /* 지점 뱃지 */
+    .badge-dom   { background: #3B82F6; }
+    .badge-intl  { background: #8B5CF6; }
+    .badge-cargo { background: #F59E0B; }
+
+    /* 버튼 오렌지 오버라이드 */
+    .btn-primary {
+      background: var(--orange);
+      border-color: var(--orange);
+    }
+    .btn-primary:hover, .btn-primary:focus, .btn-primary:active,
+    .btn-primary:not(:disabled):not(.disabled):active {
+      background: var(--orange-dark);
+      border-color: var(--orange-dark);
+      box-shadow: 0 0 0 .2rem rgba(255,90,0,.25) !important;
+    }
+    .btn-outline-primary {
+      color: var(--orange);
+      border-color: var(--orange);
+    }
+    .btn-outline-primary:hover {
+      background: var(--orange);
+      border-color: var(--orange);
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 .2rem rgba(255,90,0,.15);
+    }
+
+    /* 테이블 */
+    .table { --bs-table-striped-bg: #FAFBFD; }
+    .table thead th {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+    .table-hover tbody tr:hover { background: var(--orange-pale); }
+
+    /* ════════════════════════════════════════
+       모바일 (≤ 767px)
+    ════════════════════════════════════════ */
     @media (max-width: 767.98px) {
-      .sidebar { transform: translateX(-100%); width: 260px; }
+      .sidebar { transform: translateX(-100%); width: 270px; }
       .sidebar.open { transform: translateX(0); }
       .hamburger { display: inline-flex; }
-      .main-content { margin-left: 0; padding: 0; }
-      .topbar {
-        margin: 0 0 16px 0; padding: 10px 16px;
-        position: sticky; top: 0;
-      }
-      .topbar-title { font-size: .9rem; }
-      .page-body { padding: 0 12px 24px; }
+      .main-content { margin-left: 0; }
+      .topbar { padding: 0 14px; }
+      .page-body { padding: 14px 12px 28px; }
+      .stat-card .stat-num { font-size: 1.6rem; }
       .stat-card .card-body { padding: 14px 16px; }
-      .stat-card .stat-num { font-size: 1.5rem; }
-      /* 바로가기 버튼 세로 쌓기 */
       .shortcut-row .col-auto { width: 100%; }
       .shortcut-row .btn { width: 100%; }
+      .zego-chip { display: none; }
     }
 
-    /* ── 태블릿 (768px ~ 991px) ── */
+    /* ════════════════════════════════════════
+       태블릿 (768~991px)
+    ════════════════════════════════════════ */
     @media (min-width: 768px) and (max-width: 991.98px) {
       .sidebar { width: 200px; }
-      .main-content { margin-left: 200px; padding: 16px; }
-      .topbar { margin: -16px -16px 16px -16px; }
+      .main-content { margin-left: 200px; }
+      .page-body { padding: 16px 18px 28px; }
       .stat-card .stat-num { font-size: 1.6rem; }
     }
   </style>
@@ -108,19 +342,42 @@
 <!-- 모바일 오버레이 -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+<!-- ── 사이드바 ──────────────────────────────────────────── -->
 <div class="sidebar" id="sidebar">
-  <div class="brand">
-    <i class="fa-solid fa-plane-departure" style="color:#60a5fa"></i> ZEGO
-    <small>운송본부 양식 재고관리</small>
+
+  <div class="sidebar-brand">
+    <div class="brand-icon">
+      <i class="fa-solid fa-plane-departure"></i>
+    </div>
+    <div class="brand-text">
+      <div class="brand-name">ZEGO</div>
+      <div class="brand-sub">이스타항공 운송본부</div>
+    </div>
   </div>
-  <nav class="sidebar-nav mt-2">
+
+  <nav class="sidebar-nav">
     <div class="section-label">메뉴</div>
-    <a href="{{ url_for('dashboard') }}"     class="nav-link {% if endpoint=='dashboard'    %}active{% endif %}"><i class="fa-solid fa-gauge"></i>대시보드</a>
-    <a href="{{ url_for('inventory') }}"    class="nav-link {% if endpoint=='inventory'   %}active{% endif %}"><i class="fa-solid fa-boxes-stacked"></i>재고 현황</a>
-    <div class="section-label mt-2">처리</div>
-    <a href="{{ url_for('inbound') }}"      class="nav-link {% if endpoint=='inbound'     %}active{% endif %}"><i class="fa-solid fa-download"></i>입고</a>
-    <a href="{{ url_for('outbound') }}"     class="nav-link {% if endpoint=='outbound'    %}active{% endif %}"><i class="fa-solid fa-upload"></i>출고</a>
-    <a href="{{ url_for('transfer') }}"      class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}" style="position:relative">
+    <a href="{{ url_for('dashboard') }}"
+       class="nav-link {% if endpoint=='dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-gauge"></i>대시보드
+    </a>
+    <a href="{{ url_for('inventory') }}"
+       class="nav-link {% if endpoint=='inventory' %}active{% endif %}">
+      <i class="fa-solid fa-boxes-stacked"></i>재고 현황
+    </a>
+
+    <div class="section-label">처리</div>
+    <a href="{{ url_for('inbound') }}"
+       class="nav-link {% if endpoint=='inbound' %}active{% endif %}">
+      <i class="fa-solid fa-download"></i>입고
+    </a>
+    <a href="{{ url_for('outbound') }}"
+       class="nav-link {% if endpoint=='outbound' %}active{% endif %}">
+      <i class="fa-solid fa-upload"></i>출고
+    </a>
+    <a href="{{ url_for('transfer') }}"
+       class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}"
+       style="position:relative">
       <i class="fa-solid fa-right-left"></i>지점 간 이전
       {% if notif_count > 0 %}
       <span class="position-absolute top-50 end-0 translate-middle-y me-2">
@@ -128,63 +385,107 @@
       </span>
       {% endif %}
     </a>
-    <div class="section-label mt-2">조회</div>
-    <a href="{{ url_for('transactions') }}"  class="nav-link {% if endpoint=='transactions' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i>입출고 이력</a>
-    <a href="{{ url_for('report') }}"       class="nav-link {% if endpoint=='report'    %}active{% endif %}"><i class="fa-solid fa-chart-line"></i>리포트</a>
-    <a href="{{ url_for('forecast') }}"     class="nav-link {% if endpoint=='forecast'  %}active{% endif %}" style="position:relative">
+
+    <div class="section-label">조회</div>
+    <a href="{{ url_for('transactions') }}"
+       class="nav-link {% if endpoint=='transactions' %}active{% endif %}">
+      <i class="fa-solid fa-clock-rotate-left"></i>입출고 이력
+    </a>
+    <a href="{{ url_for('report') }}"
+       class="nav-link {% if endpoint=='report' %}active{% endif %}">
+      <i class="fa-solid fa-chart-line"></i>리포트
+    </a>
+    <a href="{{ url_for('forecast') }}"
+       class="nav-link {% if endpoint=='forecast' %}active{% endif %}"
+       style="position:relative">
       <i class="fa-solid fa-calculator"></i>분기 신청 추정
       <span class="position-absolute top-50 end-0 translate-middle-y me-2">
-        <span class="badge" style="background:#f59e0b;font-size:.6rem">NEW</span>
+        <span class="badge" style="background:var(--orange);font-size:.58rem">NEW</span>
       </span>
     </a>
+
     {% if session.role == 'admin' %}
-    <div class="section-label mt-2">관리자</div>
-    <a href="{{ url_for('manage_users') }}"  class="nav-link {% if endpoint=='manage_users' %}active{% endif %}"><i class="fa-solid fa-users"></i>사용자 관리</a>
+    <div class="section-label">관리자</div>
+    <a href="{{ url_for('manage_users') }}"
+       class="nav-link {% if endpoint=='manage_users' %}active{% endif %}">
+      <i class="fa-solid fa-users"></i>사용자 관리
+    </a>
     {% endif %}
   </nav>
+
   <div class="sidebar-footer">
-    <div style="color:#6b7fa0;font-size:.8rem;padding:8px 10px;">
-      <i class="fa-solid fa-circle-user"></i>
-      {{ session.username }}
-      {% if session.role=='admin' %}<span class="badge bg-danger ms-1" style="font-size:.65rem">관리자</span>{% endif %}
-      {% if session.branch_name %}<br><small class="text-muted">{{ session.branch_name }}</small>{% endif %}
+    <div class="sidebar-user">
+      <div class="user-avatar">
+        <i class="fa-solid fa-user" style="font-size:.75rem"></i>
+      </div>
+      <div class="user-info">
+        <div class="user-name">
+          {{ session.username }}
+          {% if session.role=='admin' %}
+            <span class="badge ms-1" style="background:var(--orange);font-size:.58rem;vertical-align:middle">관리자</span>
+          {% endif %}
+        </div>
+        {% if session.branch_name %}
+          <div class="user-branch">{{ session.branch_name }}</div>
+        {% endif %}
+      </div>
     </div>
-    <a href="{{ url_for('change_password') }}" class="nav-link" style="color:#94a3b8">
+    <a href="{{ url_for('change_password') }}" class="nav-link" style="color:var(--sidebar-muted);font-size:.82rem">
       <i class="fa-solid fa-key"></i>비밀번호 변경
     </a>
-    <a href="{{ url_for('logout') }}" class="nav-link" style="color:#ef4444"><i class="fa-solid fa-right-from-bracket"></i>로그아웃</a>
+    <a href="{{ url_for('logout') }}" class="nav-link" style="color:#EF4444;font-size:.82rem">
+      <i class="fa-solid fa-right-from-bracket"></i>로그아웃
+    </a>
   </div>
+
 </div>
 
+<!-- ── 메인 콘텐츠 ──────────────────────────────────────── -->
 <div class="main-content">
+
   <div class="topbar">
-    <div class="d-flex align-items-center gap-2">
+    <div class="topbar-left">
       <button class="hamburger" id="hamburgerBtn" aria-label="메뉴 열기">
         <i class="fa-solid fa-bars"></i>
       </button>
-      <h5 class="topbar-title">{% block page_title %}{% endblock %}</h5>
+      <h5 class="page-title">
+        <span class="page-title-icon d-none d-md-flex">
+          {% block title_icon %}<i class="fa-solid fa-circle"></i>{% endblock %}
+        </span>
+        {% block page_title %}{% endblock %}
+      </h5>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="topbar-right">
       {% if session.branch_id %}
-      <a href="{{ url_for('transfer') }}" class="btn btn-sm btn-outline-secondary position-relative" title="알림">
+      <a href="{{ url_for('transfer') }}"
+         class="btn btn-sm position-relative"
+         style="background:var(--orange-light);color:var(--orange);border:1px solid rgba(255,90,0,.2);border-radius:8px;"
+         title="이전 알림">
         <i class="fa-solid fa-bell"></i>
         {% if notif_count > 0 %}
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem">
-          {{ notif_count }}
-        </span>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              style="font-size:.58rem">{{ notif_count }}</span>
         {% endif %}
       </a>
       {% endif %}
-      <small class="text-muted d-none d-sm-block">ZEGO · 26년도 2분기</small>
+      <div class="zego-chip">
+        <i class="fa-solid fa-plane-departure"></i>
+        ZEGO &nbsp;·&nbsp; 26년 2분기
+      </div>
     </div>
   </div>
 
   <div class="page-body">
     {% set messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
-      <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
-        {{ msg }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      <div class="alert alert-{{ cat }} alert-dismissible fade show d-flex align-items-center gap-2"
+           role="alert" style="border-radius:10px;font-size:.88rem">
+        {% if cat=='success' %}<i class="fa-solid fa-circle-check text-success"></i>
+        {% elif cat=='danger' %}<i class="fa-solid fa-circle-xmark text-danger"></i>
+        {% elif cat=='warning' %}<i class="fa-solid fa-triangle-exclamation text-warning"></i>
+        {% else %}<i class="fa-solid fa-circle-info text-primary"></i>{% endif %}
+        <span>{{ msg }}</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
       </div>
     {% endfor %}
 
@@ -194,20 +495,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  const sidebar  = document.getElementById('sidebar');
-  const overlay  = document.getElementById('sidebarOverlay');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
   const hamburger = document.getElementById('hamburgerBtn');
 
-  function openSidebar()  { sidebar.classList.add('open');  overlay.classList.add('show'); }
+  function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
   function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
 
-  hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  hamburger.addEventListener('click', () =>
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+  );
   overlay.addEventListener('click', closeSidebar);
-
-  /* 사이드바 링크 클릭 시 모바일에서 자동 닫기 */
-  sidebar.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', () => { if (window.innerWidth < 768) closeSidebar(); });
-  });
+  sidebar.querySelectorAll('.nav-link').forEach(link =>
+    link.addEventListener('click', () => { if (window.innerWidth < 768) closeSidebar(); })
+  );
 </script>
 {% block scripts %}{% endblock %}
 </body>

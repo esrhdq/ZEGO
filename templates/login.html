@@ -1,65 +1,339 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>로그인 — ZEGO</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
   <style>
-    * { font-family: 'Pretendard', -apple-system, sans-serif; }
-    body { background: #1a2340; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .login-card { width: 380px; border-radius: 16px; border: none; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
-    .login-header { background: linear-gradient(135deg,#2563eb,#7c3aed); border-radius: 16px 16px 0 0; padding: 32px; text-align: center; color: #fff; }
-    .login-header .icon { font-size: 2.5rem; margin-bottom: 4px; }
-    .login-header .zego-logo { font-size: 2.2rem; font-weight: 800; letter-spacing: .18em; margin: 6px 0 2px; line-height: 1; }
-    .login-header .sub-title { font-size: .92rem; font-weight: 500; opacity: .88; margin: 0; letter-spacing: .02em; }
-    .login-body { padding: 28px; }
-    .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 .2rem rgba(37,99,235,.2); }
-    .btn-login { background: linear-gradient(135deg,#2563eb,#7c3aed); border: none; }
-    .hint { background: #f0f4ff; border-radius: 8px; padding: 10px 14px; font-size: .82rem; color: #475569; }
+    *, *::before, *::after { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; }
+
+    body {
+      background: #0B172E;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 배경 그리드 패턴 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    /* 배경 오브 */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(90px);
+    }
+    .bg-orb-1 {
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(255,90,0,.16) 0%, transparent 70%);
+      top: -160px; left: -120px;
+    }
+    .bg-orb-2 {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(255,90,0,.1) 0%, transparent 70%);
+      bottom: -120px; right: -100px;
+    }
+
+    /* 메인 래퍼 */
+    .login-wrap {
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* 상단 브랜드 */
+    .top-brand { text-align: center; margin-bottom: 28px; }
+    .airline-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,90,0,.13);
+      border: 1px solid rgba(255,90,0,.28);
+      border-radius: 20px;
+      padding: 5px 16px;
+      color: #FF7A30;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .app-logo {
+      color: #fff;
+      font-size: 3.2rem;
+      font-weight: 900;
+      letter-spacing: .28em;
+      line-height: 1;
+    }
+    .app-logo .accent { color: #FF5A00; }
+
+    /* 로그인 카드 */
+    .login-card {
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.05),
+        0 24px 64px rgba(0,0,0,.55),
+        0 8px 24px rgba(0,0,0,.3);
+    }
+
+    /* 카드 헤더 */
+    .card-hd {
+      background: linear-gradient(140deg, #FF5A00 0%, #FF7030 55%, #FF9050 100%);
+      padding: 26px 30px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-hd::before {
+      content: '';
+      position: absolute;
+      width: 240px; height: 240px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.1);
+      top: -90px; right: -60px;
+    }
+    .card-hd::after {
+      content: '';
+      position: absolute;
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      background: rgba(0,0,0,.07);
+      bottom: -70px; left: -30px;
+    }
+    .card-hd-inner {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .hd-icon {
+      width: 50px; height: 50px;
+      background: rgba(255,255,255,.22);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.35rem; color: #fff;
+      flex-shrink: 0;
+    }
+    .hd-text h2 {
+      color: #fff;
+      font-size: 1.08rem;
+      font-weight: 700;
+      margin: 0 0 4px;
+      line-height: 1.3;
+    }
+    .hd-text p {
+      color: rgba(255,255,255,.8);
+      font-size: .76rem;
+      margin: 0;
+      letter-spacing: .03em;
+    }
+
+    /* 카드 바디 */
+    .card-bd { padding: 30px 30px 28px; }
+
+    .form-label {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    .ig-icon {
+      width: 42px;
+      background: #F8FAFC;
+      border: 1px solid #E4E9F0;
+      border-right: none;
+      display: flex; align-items: center; justify-content: center;
+      color: #9BAABB;
+      font-size: .82rem;
+      transition: all .2s;
+      border-radius: 10px 0 0 10px !important;
+    }
+    .form-control {
+      border: 1px solid #E4E9F0;
+      border-left: none;
+      padding: 10px 14px;
+      font-size: .88rem;
+      background: #FAFBFC;
+      border-radius: 0 10px 10px 0 !important;
+      transition: all .2s;
+    }
+    .form-control:focus {
+      border-color: #FF5A00;
+      background: #fff;
+      box-shadow: none;
+    }
+    .input-group:focus-within .ig-icon {
+      border-color: #FF5A00;
+      color: #FF5A00;
+      background: #FFF5F0;
+    }
+    .input-group:focus-within .form-control {
+      border-color: #FF5A00;
+    }
+
+    /* 로그인 버튼 */
+    .btn-login {
+      background: linear-gradient(135deg, #FF5A00 0%, #FF7530 100%);
+      border: none;
+      color: #fff;
+      width: 100%;
+      padding: 13px;
+      font-size: .95rem;
+      font-weight: 700;
+      border-radius: 12px;
+      letter-spacing: .04em;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all .22s;
+      box-shadow: 0 4px 18px rgba(255,90,0,.38);
+      cursor: pointer;
+    }
+    .btn-login:hover {
+      background: linear-gradient(135deg, #E04D00, #FF6520);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(255,90,0,.48);
+      color: #fff;
+    }
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: .75; transform: none; cursor: not-allowed; }
+    .btn-spin {
+      display: none;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 알럿 */
+    .alert {
+      border-radius: 10px;
+      font-size: .83rem;
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      border: none;
+    }
+    .alert-danger  { background: #FEF2F2; color: #B91C1C; }
+    .alert-success { background: #F0FDF4; color: #15803D; }
+    .alert-warning { background: #FFFBEB; color: #92400E; }
+
+    /* 푸터 */
+    .login-foot {
+      text-align: center;
+      margin-top: 20px;
+      color: rgba(255,255,255,.25);
+      font-size: .7rem;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 480px) {
+      .app-logo { font-size: 2.6rem; }
+      .card-bd  { padding: 24px 20px; }
+      .card-hd  { padding: 20px 20px 18px; }
+    }
   </style>
 </head>
 <body>
-<div class="card login-card">
-  <div class="login-header">
-    <div class="icon"><i class="fa-solid fa-plane-departure"></i></div>
-    <div class="zego-logo">ZEGO</div>
-    <p class="sub-title">운송본부 양식 재고관리</p>
+
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+
+<div class="login-wrap">
+
+  <!-- 상단 브랜드 -->
+  <div class="top-brand">
+    <div class="airline-badge">
+      <i class="fa-solid fa-plane-departure"></i>
+      이스타항공 &middot; EastarJet
+    </div>
+    <div class="app-logo">ZE<span class="accent">G</span>O</div>
   </div>
-  <div class="login-body">
-    {% set messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}
-      <div class="alert alert-{{ cat }} py-2 small">{{ msg }}</div>
-    {% endfor %}
-    <form id="loginForm" method="post">
-      <div class="mb-3">
-        <label class="form-label fw-semibold">아이디</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-person"></i></span>
-          <input type="text" name="username" class="form-control" placeholder="아이디 입력" required autofocus>
+
+  <!-- 카드 -->
+  <div class="login-card">
+
+    <div class="card-hd">
+      <div class="card-hd-inner">
+        <div class="hd-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <div class="hd-text">
+          <h2>운송본부 재고관리 시스템</h2>
+          <p>Ground Services Inventory System</p>
         </div>
       </div>
-      <div class="mb-4">
-        <label class="form-label fw-semibold">비밀번호</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-          <input type="password" name="password" class="form-control" placeholder="비밀번호 입력" required>
+    </div>
+
+    <div class="card-bd">
+
+      {% set messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">
+          <i class="fa-solid fa-circle-exclamation me-1"></i>{{ msg }}
         </div>
-      </div>
-      <button type="submit" class="btn btn-login btn-primary w-100 py-2 fw-semibold">
-        <i class="bi bi-box-arrow-in-right me-2"></i>로그인
-      </button>
-    </form>
+      {% endfor %}
+
+      <form id="loginForm" method="post">
+        <div class="mb-3">
+          <label class="form-label">아이디</label>
+          <div class="input-group">
+            <div class="ig-icon"><i class="fa-solid fa-user"></i></div>
+            <input type="text" name="username" class="form-control"
+                   placeholder="아이디 입력" required autofocus autocomplete="username">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">비밀번호</label>
+          <div class="input-group">
+            <div class="ig-icon"><i class="fa-solid fa-lock"></i></div>
+            <input type="password" name="password" class="form-control"
+                   placeholder="비밀번호 입력" required autocomplete="current-password">
+          </div>
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">
+          <i class="fa-solid fa-right-to-bracket" id="btnIcon"></i>
+          <span id="btnText">로그인</span>
+          <div class="btn-spin" id="btnSpin"></div>
+        </button>
+      </form>
+
+    </div>
   </div>
+
+  <div class="login-foot">
+    © 2026 이스타항공 운송본부 &nbsp;·&nbsp; All rights reserved<br>
+    문의: 운송본부 IT 담당자
+  </div>
+
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  document.querySelectorAll('#loginForm input').forEach(el => {
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('loginForm').requestSubmit();
-    });
+  const form = document.getElementById('loginForm');
+  form.addEventListener('submit', () => {
+    const btn  = document.getElementById('loginBtn');
+    const icon = document.getElementById('btnIcon');
+    const txt  = document.getElementById('btnText');
+    const spin = document.getElementById('btnSpin');
+    icon.style.display = 'none';
+    txt.textContent    = '로그인 중...';
+    spin.style.display = 'block';
+    btn.disabled = true;
   });
 </script>
 </body>
