@@ -27,10 +27,6 @@ DATABASE_URL = os.environ.get('DATABASE_URL', '')
 # URL → 키워드 인자 dict 변환 (psycopg2.connect(**_PG)로 사용)
 # URL 파싱 대신 키워드 인자를 쓰면 비밀번호 특수문자([, ], @ 등) 인코딩 불필요
 _PG = {}
-import logging as _logging
-_logging.basicConfig(level=_logging.INFO)
-_log = _logging.getLogger('zego')
-_log.info('[DB] DATABASE_URL set=%s', bool(DATABASE_URL))
 if DATABASE_URL:
     try:
         # 1차 시도: urlparse (Python < 3.12 또는 안전한 비밀번호)
@@ -44,9 +40,7 @@ if DATABASE_URL:
             'dbname':  (_p.path or '/postgres').lstrip('/') or 'postgres',
             'sslmode': 'require',
         }
-        _log.info('[DB] urlparse → user=%s host=%s port=%s', _p.username, _p.hostname, _p.port)
-    except Exception as _e:
-        _log.warning('[DB] urlparse failed (%s) → fallback', _e)
+    except Exception:
         # 2차 시도: 수동 파싱 — Python 3.12에서 [ 포함 비밀번호 URL 파싱 실패 시
         # rfind('@')로 userinfo/host 경계를 찾고 raw 비밀번호를 그대로 사용
         try:
@@ -70,14 +64,8 @@ if DATABASE_URL:
                 'dbname':  _path.split('?')[0] or 'postgres',
                 'sslmode': 'require',
             }
-            _log.info('[DB] fallback parse → user=%s host=%s port=%s', _user, _hp[0], _hp[1] if len(_hp)>1 else 5432)
-        except Exception as _e:
-            _log.error('[DB] fallback parse failed: %s', _e)
+        except Exception:
             _PG = {}
-if _PG:
-    _log.info('[DB] resolved user=%s host=%s port=%s', _PG.get('user'), _PG.get('host'), _PG.get('port'))
-else:
-    _log.warning('[DB] _PG empty — falling back to SQLite')
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not _PG
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
