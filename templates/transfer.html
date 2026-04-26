@@ -1,119 +1,327 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block title %}지점 간 이전{% endblock %}
 {% block page_title %}<i class="fa-solid fa-right-left me-2"></i>지점 간 이전{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header bg-white py-3">
-        <strong>양식 이전</strong>
-        <small class="text-muted ms-2">지점 간 양식 이동을 처리합니다.</small>
-      </div>
-      <div class="card-body p-4">
-        <form method="post">
-          <div class="row g-3 mb-3">
+<!-- 탭 네비게이션 -->
+<ul class="nav nav-tabs mb-3" id="transferTabs">
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='request' %}active{% endif %}"
+            data-tab="request" type="button">
+      <i class="fa-solid fa-paper-plane me-1"></i>이전 신청
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='inbox' %}active{% endif %} position-relative"
+            data-tab="inbox" type="button">
+      <i class="fa-solid fa-inbox me-1"></i>받은 신청
+      {% if inbox_count > 0 %}
+      <span class="badge rounded-pill bg-danger ms-1" style="font-size:.65rem">{{ inbox_count }}</span>
+      {% endif %}
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='outbox' %}active{% endif %}"
+            data-tab="outbox" type="button">
+      <i class="fa-solid fa-clock-rotate-left me-1"></i>보낸 신청
+    </button>
+  </li>
+</ul>
 
-            <!-- 출발 지점 -->
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">출발 지점</label>
-              {% if session.role == 'admin' %}
+<!-- ── 탭 1: 이전 신청 ───────────────────────────────────────────── -->
+<div id="tab-request" class="tab-pane {% if active_tab=='request' %}d-block{% else %}d-none{% endif %}">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-header bg-white py-3">
+          <strong>이전 신청</strong>
+          <small class="text-muted ms-2">여유 지점에 양식 이전을 요청합니다.</small>
+        </div>
+        <div class="card-body p-4">
+          <form method="post">
+            <div class="row g-3 mb-3">
+
+              <!-- 요청 대상 지점 (발신/여유지점) -->
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">요청 지점 (여유 지점) <span class="text-danger">*</span></label>
                 <select name="from_branch_id" id="fromBranch" class="form-select" required onchange="fetchFromStock()">
-                  <option value="">-- 출발 지점 --</option>
+                  <option value="">-- 요청할 지점 선택 --</option>
                   <optgroup label="국내">
                     {% for b in branches %}{% if b.type=='DOM' %}
-                      <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
+                      <option value="{{ b.id }}"
+                        {% if session.branch_id and session.branch_id==b.id %}disabled{% endif %}>
                         {{ b.code }} — {{ b.name }}
                       </option>
                     {% endif %}{% endfor %}
                   </optgroup>
                   <optgroup label="국제">
                     {% for b in branches %}{% if b.type=='INTL' %}
-                      <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                      <option value="{{ b.id }}"
+                        {% if session.branch_id and session.branch_id==b.id %}disabled{% endif %}>
+                        {{ b.code }} — {{ b.name }}
+                      </option>
                     {% endif %}{% endfor %}
                   </optgroup>
                   <optgroup label="화물">
                     {% for b in branches %}{% if b.type=='CARGO' %}
-                      <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                      <option value="{{ b.id }}"
+                        {% if session.branch_id and session.branch_id==b.id %}disabled{% endif %}>
+                        {{ b.code }} — {{ b.name }}
+                      </option>
                     {% endif %}{% endfor %}
                   </optgroup>
                 </select>
-              {% else %}
-                {# 직원: 본인 지점 고정 #}
-                <input type="hidden" name="from_branch_id" value="{{ session.branch_id }}" id="fromBranch">
-                <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
-                  <i class="fa-solid fa-location-dot text-primary"></i>
-                  <strong>{{ session.branch_name }}</strong>
-                  <span class="badge bg-secondary ms-1">내 지점</span>
-                </div>
-              {% endif %}
+              </div>
+
+              <!-- 내 지점 (수신) -->
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">내 지점 (수신)</label>
+                {% if session.role == 'admin' %}
+                  <select name="to_branch_id" class="form-select" required>
+                    <option value="">-- 수신 지점 선택 --</option>
+                    <optgroup label="국내">
+                      {% for b in branches %}{% if b.type=='DOM' %}
+                        <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                      {% endif %}{% endfor %}
+                    </optgroup>
+                    <optgroup label="국제">
+                      {% for b in branches %}{% if b.type=='INTL' %}
+                        <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                      {% endif %}{% endfor %}
+                    </optgroup>
+                    <optgroup label="화물">
+                      {% for b in branches %}{% if b.type=='CARGO' %}
+                        <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+                      {% endif %}{% endfor %}
+                    </optgroup>
+                  </select>
+                {% else %}
+                  <input type="hidden" name="to_branch_id" value="{{ session.branch_id }}">
+                  <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
+                    <i class="fa-solid fa-location-dot text-primary"></i>
+                    <strong>{{ session.branch_name }}</strong>
+                    <span class="badge bg-secondary ms-1">내 지점</span>
+                  </div>
+                {% endif %}
+              </div>
             </div>
 
-            <!-- 도착 지점 (모든 사용자 선택 가능) -->
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">도착 지점 <span class="text-danger">*</span></label>
-              <select name="to_branch_id" class="form-select" required>
-                <option value="">-- 도착 지점 --</option>
-                <optgroup label="국내">
-                  {% for b in branches %}{% if b.type=='DOM' %}
-                    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
-                  {% endif %}{% endfor %}
-                </optgroup>
-                <optgroup label="국제">
-                  {% for b in branches %}{% if b.type=='INTL' %}
-                    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
-                  {% endif %}{% endfor %}
-                </optgroup>
-                <optgroup label="화물">
-                  {% for b in branches %}{% if b.type=='CARGO' %}
-                    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
-                  {% endif %}{% endfor %}
-                </optgroup>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+              <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchFromStock()">
+                <option value="">-- 양식 선택 --</option>
+                {% for f in form_types %}
+                  <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
+                    {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                  </option>
+                {% endfor %}
               </select>
             </div>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
-            <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchFromStock()">
-              <option value="">-- 양식 선택 --</option>
-              {% for f in form_types %}
-                <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
-                  {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <!-- 출발지 현재 재고 -->
-          <div id="stockInfo" class="d-none mb-3">
-            <div class="p-3 rounded" id="stockBox" style="background:#f0fdf4;border:1px solid #86efac;">
-              <div class="small text-muted mb-1">출발 지점 현재 재고</div>
-              <div class="fs-5 fw-bold status-ok" id="stockQty">—</div>
+            <!-- 요청 지점 현재 재고 -->
+            <div id="stockInfo" class="d-none mb-3">
+              <div class="p-3 rounded" id="stockBox" style="background:#f0fdf4;border:1px solid #86efac;">
+                <div class="small text-muted mb-1">요청 지점 현재 재고</div>
+                <div class="fs-5 fw-bold status-ok" id="stockQty">—</div>
+              </div>
             </div>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">이전 수량 <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="수량 입력">
-              <span class="input-group-text" id="unitLabel">단위</span>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">신청 수량 <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="수량 입력">
+                <span class="input-group-text" id="unitLabel">단위</span>
+              </div>
             </div>
-          </div>
 
-          <div class="mb-4">
-            <label class="form-label fw-semibold">비고</label>
-            <input type="text" name="notes" class="form-control" placeholder="선택 입력">
-          </div>
+            <div class="mb-4">
+              <label class="form-label fw-semibold">비고</label>
+              <input type="text" name="notes" class="form-control" placeholder="선택 입력">
+            </div>
 
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary px-4">
-              <i class="fa-solid fa-right-left me-1"></i>이전 처리
-            </button>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
-          </div>
-        </form>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="fa-solid fa-paper-plane me-1"></i>이전 신청
+              </button>
+              <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+            </div>
+          </form>
+        </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 탭 2: 받은 신청 (inbox) ───────────────────────────────────── -->
+<div id="tab-inbox" class="tab-pane {% if active_tab=='inbox' %}d-block{% else %}d-none{% endif %}">
+  <div class="card">
+    <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
+      <i class="fa-solid fa-inbox text-primary"></i>
+      <strong>받은 이전 신청</strong>
+      <span class="badge bg-primary ms-1">{{ inbox|length }}</span>
+      <small class="text-muted ms-2">내 지점에 요청된 이전 신청 목록입니다. 재고를 확인 후 승인 또는 반려해 주세요.</small>
+    </div>
+    <div class="card-body p-0">
+      {% if inbox %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>요청일시</th>
+              <th>요청 지점</th>
+              <th>양식명</th>
+              <th class="text-center">신청 수량</th>
+              <th class="text-center">현재 재고</th>
+              <th>요청자</th>
+              <th class="text-center">처리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in inbox %}
+            <tr>
+              <td class="small text-muted">{{ r.created_at | dt }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ r.to_branch_code }}</span>
+                <span class="small ms-1">{{ r.to_branch_name }}</span>
+              </td>
+              <td class="small">{{ r.form_name }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center">
+                {% if r.stock_qty == 0 %}
+                  <span class="status-empty fw-bold">{{ r.stock_qty }}</span>
+                {% elif r.stock_qty <= r.quantity %}
+                  <span class="status-low fw-bold">{{ r.stock_qty }}</span>
+                {% else %}
+                  <span class="status-ok fw-bold">{{ r.stock_qty }}</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ r.requested_by }}</td>
+              <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center">
+                  <form method="post" action="{{ url_for('approve_transfer', req_id=r.id) }}"
+                        onsubmit="return confirm('승인하시겠습니까?')">
+                    <button type="submit" class="btn btn-sm btn-success">
+                      <i class="fa-solid fa-check me-1"></i>승인
+                    </button>
+                  </form>
+                  <button type="button" class="btn btn-sm btn-danger"
+                          onclick="openRejectModal({{ r.id }}, '{{ r.form_name|e }}', {{ r.quantity }})">
+                    <i class="fa-solid fa-xmark me-1"></i>반려
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
+        받은 이전 신청이 없습니다.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── 탭 3: 보낸 신청 (outbox) ─────────────────────────────────── -->
+<div id="tab-outbox" class="tab-pane {% if active_tab=='outbox' %}d-block{% else %}d-none{% endif %}">
+  <div class="card">
+    <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
+      <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
+      <strong>보낸 이전 신청</strong>
+    </div>
+    <div class="card-body p-0">
+      {% if outbox %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>신청일시</th>
+              <th>요청 지점</th>
+              <th>양식명</th>
+              <th class="text-center">수량</th>
+              <th class="text-center">상태</th>
+              <th>처리자</th>
+              <th class="text-center">비고/액션</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in outbox %}
+            <tr>
+              <td class="small text-muted">{{ r.created_at | dt }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ r.from_branch_code }}</span>
+                <span class="small ms-1">{{ r.from_branch_name }}</span>
+              </td>
+              <td class="small">{{ r.form_name }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center">
+                {% if r.status == 'PENDING' %}
+                  <span class="badge" style="background:#fef3c7;color:#92400e">대기중</span>
+                {% elif r.status == 'APPROVED' %}
+                  <span class="badge" style="background:#d1fae5;color:#065f46">승인</span>
+                {% elif r.status == 'REJECTED' %}
+                  <span class="badge" style="background:#fee2e2;color:#991b1b">반려</span>
+                {% elif r.status == 'CONFIRMED' %}
+                  <span class="badge" style="background:#dbeafe;color:#1e40af">완료</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ r.approved_by or '—' }}</td>
+              <td class="text-center">
+                {% if r.status == 'APPROVED' %}
+                  <form method="post" action="{{ url_for('confirm_transfer', req_id=r.id) }}"
+                        onsubmit="return confirm('실제 양식을 수령하셨습니까? 확인하면 재고가 자동 반영됩니다.')">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                      <i class="fa-solid fa-circle-check me-1"></i>수령 확인
+                    </button>
+                  </form>
+                {% elif r.status == 'REJECTED' %}
+                  <span class="small text-danger">{{ r.reject_reason }}</span>
+                {% elif r.status == 'CONFIRMED' %}
+                  <span class="small text-muted">{{ r.updated_at | dt }}</span>
+                {% else %}
+                  <span class="small text-muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="fa-solid fa-paper-plane fs-2 d-block mb-2"></i>
+        보낸 이전 신청이 없습니다.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- 반려 사유 모달 -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>이전 신청 반려</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="rejectForm" method="post">
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="rejectDesc"></p>
+          <label class="form-label fw-semibold">반려 사유 <span class="text-danger">*</span></label>
+          <textarea name="reject_reason" class="form-control" rows="3" required
+                    placeholder="반려 사유를 입력해주세요."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="fa-solid fa-xmark me-1"></i>반려 처리
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -121,18 +329,33 @@
 
 {% block scripts %}
 <script>
+// 탭 전환
+document.querySelectorAll('[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('d-none'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.remove('d-none');
+    history.replaceState(null, '', '?tab=' + btn.dataset.tab);
+  });
+});
+
+// 재고 조회
 async function fetchFromStock() {
   const bidEl = document.getElementById('fromBranch');
-  const bid   = bidEl.value || bidEl.getAttribute('value');
+  const bid   = bidEl ? bidEl.value : '';
   const fid   = document.getElementById('formSelect').value;
   const sel   = document.getElementById('formSelect');
   const opt   = sel.options[sel.selectedIndex];
 
   if (opt && opt.dataset.unit) {
     document.getElementById('unitLabel').textContent =
-      opt.dataset.unit + ' (' + opt.dataset.detail + ')';
+      opt.dataset.unit + ' (' + (opt.dataset.detail || '') + ')';
   }
-  if (!bid || !fid) { document.getElementById('stockInfo').classList.add('d-none'); return; }
+  if (!bid || !fid) {
+    document.getElementById('stockInfo').classList.add('d-none');
+    return;
+  }
 
   const res  = await fetch(`/api/stock?branch_id=${bid}&form_type_id=${fid}`);
   const data = await res.json();
@@ -150,6 +373,15 @@ async function fetchFromStock() {
     document.getElementById('stockQty').className = 'fs-5 fw-bold status-ok';
   }
   document.getElementById('stockInfo').classList.remove('d-none');
+}
+
+// 반려 모달
+function openRejectModal(reqId, formName, qty) {
+  document.getElementById('rejectForm').action = `/transfer/requests/${reqId}/reject`;
+  document.getElementById('rejectDesc').textContent =
+    `${formName} ${qty}개 이전 신청을 반려합니다.`;
+  document.querySelector('#rejectModal textarea').value = '';
+  new bootstrap.Modal(document.getElementById('rejectModal')).show();
 }
 </script>
 {% endblock %}

@@ -120,7 +120,14 @@
     <div class="section-label mt-2">처리</div>
     <a href="{{ url_for('inbound') }}"      class="nav-link {% if endpoint=='inbound'     %}active{% endif %}"><i class="fa-solid fa-download"></i>입고</a>
     <a href="{{ url_for('outbound') }}"     class="nav-link {% if endpoint=='outbound'    %}active{% endif %}"><i class="fa-solid fa-upload"></i>출고</a>
-    <a href="{{ url_for('transfer') }}"     class="nav-link {% if endpoint=='transfer'    %}active{% endif %}"><i class="fa-solid fa-right-left"></i>지점 간 이전</a>
+    <a href="{{ url_for('transfer') }}"      class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}" style="position:relative">
+      <i class="fa-solid fa-right-left"></i>지점 간 이전
+      {% if notif_count > 0 %}
+      <span class="position-absolute top-50 end-0 translate-middle-y me-2">
+        <span class="badge rounded-pill bg-danger" style="font-size:.6rem">{{ notif_count }}</span>
+      </span>
+      {% endif %}
+    </a>
     <div class="section-label mt-2">조회</div>
     <a href="{{ url_for('transactions') }}"  class="nav-link {% if endpoint=='transactions' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i>입출고 이력</a>
     <a href="{{ url_for('report') }}"       class="nav-link {% if endpoint=='report'    %}active{% endif %}"><i class="fa-solid fa-chart-line"></i>리포트</a>
@@ -157,7 +164,19 @@
       </button>
       <h5 class="topbar-title">{% block page_title %}{% endblock %}</h5>
     </div>
-    <small class="text-muted d-none d-sm-block">ZEGO · 26년도 2분기</small>
+    <div class="d-flex align-items-center gap-2">
+      {% if session.branch_id %}
+      <a href="{{ url_for('transfer') }}" class="btn btn-sm btn-outline-secondary position-relative" title="알림">
+        <i class="fa-solid fa-bell"></i>
+        {% if notif_count > 0 %}
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem">
+          {{ notif_count }}
+        </span>
+        {% endif %}
+      </a>
+      {% endif %}
+      <small class="text-muted d-none d-sm-block">ZEGO · 26년도 2분기</small>
+    </div>
   </div>
 
   <div class="page-body">

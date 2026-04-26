@@ -133,6 +133,26 @@ def handle_exception(e):
     return f"<pre style='color:red'>{tb}</pre>", 500
 
 
+# ── 템플릿 전역 컨텍스트 ────────────────────────────────────────────────────────
+
+@app.context_processor
+def inject_globals():
+    notif_count = 0
+    bid = session.get('branch_id')
+    if 'user_id' in session and bid:
+        try:
+            conn = get_db()
+            r = conn.execute(
+                'SELECT COUNT(*) AS cnt FROM notifications WHERE branch_id=%s AND is_read=0',
+                (bid,)
+            ).fetchone()
+            conn.close()
+            notif_count = int(r['cnt']) if r else 0
+        except Exception:
+            pass
+    return {'notif_count': notif_count, 'endpoint': request.endpoint}
+
+
 # ── IP 화이트리스트 ───────────────────────────────────────────────────────────
 
 @app.before_request
@@ -207,6 +227,36 @@ def init_db():
                     FOREIGN KEY (branch_id) REFERENCES branches(id)
                 )
             ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS transfer_requests (
+                    id              INTEGER PRIMARY KEY,
+                    from_branch_id  INTEGER NOT NULL,
+                    to_branch_id    INTEGER NOT NULL,
+                    form_type_id    INTEGER NOT NULL,
+                    quantity        INTEGER NOT NULL,
+                    notes           TEXT,
+                    status          TEXT DEFAULT 'PENDING',
+                    reject_reason   TEXT,
+                    requested_by    TEXT NOT NULL,
+                    approved_by     TEXT,
+                    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (from_branch_id) REFERENCES branches(id),
+                    FOREIGN KEY (to_branch_id)   REFERENCES branches(id),
+                    FOREIGN KEY (form_type_id)   REFERENCES form_types(id)
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id                  INTEGER PRIMARY KEY,
+                    branch_id           INTEGER NOT NULL,
+                    message             TEXT NOT NULL,
+                    transfer_request_id INTEGER,
+                    is_read             INTEGER DEFAULT 0,
+                    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (branch_id) REFERENCES branches(id)
+                )
+            ''')
         else:
             # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
             conn.execute('''
@@ -254,6 +304,32 @@ def init_db():
                     password  TEXT NOT NULL,
                     branch_id INTEGER,
                     role      TEXT DEFAULT 'staff',
+                    FOREIGN KEY (branch_id) REFERENCES branches(id)
+                );
+                CREATE TABLE IF NOT EXISTS transfer_requests (
+                    id              SERIAL PRIMARY KEY,
+                    from_branch_id  INTEGER NOT NULL,
+                    to_branch_id    INTEGER NOT NULL,
+                    form_type_id    INTEGER NOT NULL,
+                    quantity        INTEGER NOT NULL,
+                    notes           TEXT,
+                    status          TEXT DEFAULT 'PENDING',
+                    reject_reason   TEXT,
+                    requested_by    TEXT NOT NULL,
+                    approved_by     TEXT,
+                    created_at      TIMESTAMP DEFAULT NOW(),
+                    updated_at      TIMESTAMP DEFAULT NOW(),
+                    FOREIGN KEY (from_branch_id) REFERENCES branches(id),
+                    FOREIGN KEY (to_branch_id)   REFERENCES branches(id),
+                    FOREIGN KEY (form_type_id)   REFERENCES form_types(id)
+                );
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id                  SERIAL PRIMARY KEY,
+                    branch_id           INTEGER NOT NULL,
+                    message             TEXT NOT NULL,
+                    transfer_request_id INTEGER,
+                    is_read             INTEGER DEFAULT 0,
+                    created_at          TIMESTAMP DEFAULT NOW(),
                     FOREIGN KEY (branch_id) REFERENCES branches(id)
                 );
             ''')
@@ -695,64 +771,295 @@ def outbound():
                            today_ym=date.today().strftime('%Y-%m'))
 
 
+_TR_SELECT = '''
+    SELECT tr.id, tr.from_branch_id, tr.to_branch_id, tr.form_type_id,
+           tr.quantity, tr.notes, tr.status, tr.reject_reason,
+           tr.requested_by, tr.approved_by, tr.created_at, tr.updated_at,
+           fb.name from_branch_name, fb.code from_branch_code,
+           tb.name to_branch_name,  tb.code to_branch_code,
+           f.name form_name, f.unit,
+           COALESCE(inv.quantity, 0) stock_qty
+    FROM transfer_requests tr
+    JOIN branches  fb  ON tr.from_branch_id = fb.id
+    JOIN branches  tb  ON tr.to_branch_id   = tb.id
+    JOIN form_types f  ON tr.form_type_id   = f.id
+    LEFT JOIN inventory inv ON inv.branch_id = tr.from_branch_id
+                            AND inv.form_type_id = tr.form_type_id
+'''
+
+
 @app.route('/transfer', methods=['GET', 'POST'])
 @login_required
 def transfer():
     conn = get_db()
+    role = session.get('role')
+    bid  = session.get('branch_id')
+
     if request.method == 'POST':
-        if session.get('role') != 'admin':
-            if not session.get('branch_id'):
+        if role != 'admin':
+            if not bid:
                 flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
                 conn.close()
                 return redirect(url_for('dashboard'))
-            from_bid = str(session['branch_id'])
+            to_bid = str(bid)
         else:
-            from_bid = request.form['from_branch_id']
-        to_bid = request.form['to_branch_id']
-        fid    = request.form['form_type_id']
-        qty    = int(request.form['quantity'])
-        notes  = request.form.get('notes', '')
+            to_bid = request.form.get('to_branch_id', '')
 
+        from_bid = request.form.get('from_branch_id', '')
+        fid      = request.form.get('form_type_id', '')
+        notes    = request.form.get('notes', '')
+        try:
+            qty = int(request.form['quantity'])
+        except (ValueError, KeyError):
+            flash('수량을 올바르게 입력해주세요.', 'danger')
+            conn.close()
+            return redirect(url_for('transfer'))
+
+        if not from_bid or not fid or not to_bid:
+            flash('모든 필수 항목을 입력해주세요.', 'danger')
+            conn.close()
+            return redirect(url_for('transfer'))
         if from_bid == to_bid:
             flash('출발·도착 지점이 같습니다.', 'danger')
             conn.close()
             return redirect(url_for('transfer'))
+        if qty <= 0:
+            flash('수량은 1 이상이어야 합니다.', 'danger')
+            conn.close()
+            return redirect(url_for('transfer'))
 
-        cur = conn.execute(
-            'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s',
-            (from_bid, fid)
-        ).fetchone()
-        if not cur or cur['quantity'] < qty:
-            flash('출발 지점 재고가 부족합니다.', 'danger')
+        from_b = conn.execute('SELECT name FROM branches WHERE id=%s', (from_bid,)).fetchone()
+        to_b   = conn.execute('SELECT name FROM branches WHERE id=%s', (to_bid,)).fetchone()
+        ft     = conn.execute('SELECT name, unit FROM form_types WHERE id=%s', (fid,)).fetchone()
+        if not from_b or not to_b or not ft:
+            flash('잘못된 요청입니다.', 'danger')
             conn.close()
             return redirect(url_for('transfer'))
 
         conn.execute(
-            'UPDATE inventory SET quantity=quantity-%s, last_updated=NOW() WHERE branch_id=%s AND form_type_id=%s',
-            (qty, from_bid, fid)
+            "INSERT INTO transfer_requests "
+            "(from_branch_id, to_branch_id, form_type_id, quantity, notes, requested_by) "
+            "VALUES (%s,%s,%s,%s,%s,%s)",
+            (from_bid, to_bid, fid, qty, notes, session['username'])
         )
-        conn.execute('''
-            INSERT INTO inventory (branch_id, form_type_id, quantity, last_updated)
-            VALUES (%s,%s,%s,NOW())
-            ON CONFLICT(branch_id, form_type_id) DO UPDATE SET
-              quantity = inventory.quantity + EXCLUDED.quantity,
-              last_updated = NOW()
-        ''', (to_bid, fid, qty))
+        msg = (f"[이전 신청] {to_b['name']}에서 "
+               f"{ft['name']} {qty}{ft['unit']} 이전을 요청했습니다.")
         conn.execute(
-            "INSERT INTO transactions (type, form_type_id, from_branch_id, to_branch_id, quantity, notes, created_by) "
-            "VALUES ('TRANSFER',%s,%s,%s,%s,%s,%s)",
-            (fid, from_bid, to_bid, qty, notes, session['username'])
+            "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+            (from_bid, msg)
         )
         conn.commit()
-        flash('이전 처리 완료 ✔', 'success')
+        flash(f'{from_b["name"]}에 이전 신청 완료. 승인을 기다려 주세요.', 'success')
         conn.close()
-        return redirect(url_for('transfer'))
+        return redirect(url_for('transfer') + '?tab=outbox')
 
-    branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
+    # GET — mark notifications read for this branch
+    if bid:
+        try:
+            conn.execute(
+                'UPDATE notifications SET is_read=1 WHERE branch_id=%s AND is_read=0', (bid,)
+            )
+            conn.commit()
+        except Exception:
+            pass
+
+    branches   = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
     form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+
+    if role == 'admin':
+        inbox = conn.execute(
+            _TR_SELECT + ' WHERE tr.status=%s ORDER BY tr.created_at DESC', ('PENDING',)
+        ).fetchall()
+    elif bid:
+        inbox = conn.execute(
+            _TR_SELECT + ' WHERE tr.from_branch_id=%s AND tr.status=%s ORDER BY tr.created_at DESC',
+            (bid, 'PENDING')
+        ).fetchall()
+    else:
+        inbox = []
+
+    if role == 'admin':
+        outbox = conn.execute(
+            _TR_SELECT + ' ORDER BY tr.created_at DESC LIMIT 100'
+        ).fetchall()
+    elif bid:
+        outbox = conn.execute(
+            _TR_SELECT + ' WHERE tr.to_branch_id=%s ORDER BY tr.created_at DESC LIMIT 100',
+            (bid,)
+        ).fetchall()
+    else:
+        outbox = []
+
     conn.close()
-    return render_template('transfer.html', branches=branches, form_types=form_types,
-                           selected_branch=session.get('branch_id'))
+    active_tab = request.args.get('tab', 'request')
+    return render_template('transfer.html',
+                           branches=branches, form_types=form_types,
+                           inbox=inbox, outbox=outbox,
+                           selected_branch=bid,
+                           active_tab=active_tab,
+                           inbox_count=len(inbox))
+
+
+@app.route('/transfer/requests/<int:req_id>/approve', methods=['POST'])
+@login_required
+def approve_transfer(req_id):
+    conn = get_db()
+    req = conn.execute(
+        _TR_SELECT + ' WHERE tr.id=%s', (req_id,)
+    ).fetchone()
+    if not req:
+        flash('요청을 찾을 수 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    if role != 'admin' and bid != req['from_branch_id']:
+        flash('승인 권한이 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+    if req['status'] != 'PENDING':
+        flash('이미 처리된 요청입니다.', 'warning')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+
+    stock = conn.execute(
+        'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s',
+        (req['from_branch_id'], req['form_type_id'])
+    ).fetchone()
+    avail = stock['quantity'] if stock else 0
+    if avail < req['quantity']:
+        flash(f'재고가 부족하여 승인할 수 없습니다. (현재 재고: {avail})', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+
+    conn.execute(
+        "UPDATE transfer_requests SET status='APPROVED', approved_by=%s, updated_at=NOW() WHERE id=%s",
+        (session['username'], req_id)
+    )
+    msg = (f"[이전 승인] {req['from_branch_name']}에서 "
+           f"{req['form_name']} {req['quantity']}{req['unit']} 이전이 승인되었습니다. "
+           f"실물 수령 후 확인을 눌러주세요.")
+    conn.execute(
+        "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+        (req['to_branch_id'], msg)
+    )
+    conn.commit()
+    flash('승인 완료. 요청 지점에 알림을 보냈습니다.', 'success')
+    conn.close()
+    return redirect(url_for('transfer') + '?tab=inbox')
+
+
+@app.route('/transfer/requests/<int:req_id>/reject', methods=['POST'])
+@login_required
+def reject_transfer(req_id):
+    conn = get_db()
+    req = conn.execute(
+        _TR_SELECT + ' WHERE tr.id=%s', (req_id,)
+    ).fetchone()
+    if not req:
+        flash('요청을 찾을 수 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    if role != 'admin' and bid != req['from_branch_id']:
+        flash('반려 권한이 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+    if req['status'] != 'PENDING':
+        flash('이미 처리된 요청입니다.', 'warning')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+
+    reason = request.form.get('reject_reason', '').strip()
+    if not reason:
+        flash('반려 사유를 입력해주세요.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=inbox')
+
+    conn.execute(
+        "UPDATE transfer_requests SET status='REJECTED', reject_reason=%s, "
+        "approved_by=%s, updated_at=NOW() WHERE id=%s",
+        (reason, session['username'], req_id)
+    )
+    msg = (f"[이전 반려] {req['from_branch_name']}에서 "
+           f"{req['form_name']} {req['quantity']}{req['unit']} 이전이 반려되었습니다. "
+           f"사유: {reason}")
+    conn.execute(
+        "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+        (req['to_branch_id'], msg)
+    )
+    conn.commit()
+    flash('반려 처리 완료. 요청 지점에 알림을 보냈습니다.', 'success')
+    conn.close()
+    return redirect(url_for('transfer') + '?tab=inbox')
+
+
+@app.route('/transfer/requests/<int:req_id>/confirm', methods=['POST'])
+@login_required
+def confirm_transfer(req_id):
+    conn = get_db()
+    req = conn.execute(
+        _TR_SELECT + ' WHERE tr.id=%s', (req_id,)
+    ).fetchone()
+    if not req:
+        flash('요청을 찾을 수 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=outbox')
+
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    if role != 'admin' and bid != req['to_branch_id']:
+        flash('확인 권한이 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=outbox')
+    if req['status'] != 'APPROVED':
+        flash('승인된 요청만 확인할 수 있습니다.', 'warning')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=outbox')
+
+    qty      = req['quantity']
+    from_bid = req['from_branch_id']
+    to_bid   = req['to_branch_id']
+    fid      = req['form_type_id']
+
+    stock = conn.execute(
+        'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s',
+        (from_bid, fid)
+    ).fetchone()
+    if not stock or stock['quantity'] < qty:
+        flash('출발 지점 재고가 부족합니다. 관리자에게 문의하세요.', 'danger')
+        conn.close()
+        return redirect(url_for('transfer') + '?tab=outbox')
+
+    conn.execute(
+        'UPDATE inventory SET quantity=quantity-%s, last_updated=NOW() '
+        'WHERE branch_id=%s AND form_type_id=%s',
+        (qty, from_bid, fid)
+    )
+    conn.execute('''
+        INSERT INTO inventory (branch_id, form_type_id, quantity, last_updated)
+        VALUES (%s,%s,%s,NOW())
+        ON CONFLICT(branch_id, form_type_id) DO UPDATE SET
+          quantity     = inventory.quantity + EXCLUDED.quantity,
+          last_updated = NOW()
+    ''', (to_bid, fid, qty))
+    conn.execute(
+        "INSERT INTO transactions "
+        "(type, form_type_id, from_branch_id, to_branch_id, quantity, notes, created_by) "
+        "VALUES ('TRANSFER',%s,%s,%s,%s,%s,%s)",
+        (fid, from_bid, to_bid, qty, req['notes'] or '', session['username'])
+    )
+    conn.execute(
+        "UPDATE transfer_requests SET status='CONFIRMED', updated_at=NOW() WHERE id=%s",
+        (req_id,)
+    )
+    conn.commit()
+    flash(f'수령 확인 완료 ✔ {req["form_name"]} {qty}{req["unit"]} 재고가 반영되었습니다.', 'success')
+    conn.close()
+    return redirect(url_for('transfer') + '?tab=outbox')
 
 
 @app.route('/transactions')
@@ -1201,6 +1508,20 @@ def api_stock():
     ).fetchone()
     conn.close()
     return jsonify({'quantity': row['quantity'] if row else 0})
+
+
+@app.route('/api/notifications/read', methods=['POST'])
+@login_required
+def mark_notifications_read():
+    bid = session.get('branch_id')
+    if bid:
+        conn = get_db()
+        conn.execute(
+            'UPDATE notifications SET is_read=1 WHERE branch_id=%s AND is_read=0', (bid,)
+        )
+        conn.commit()
+        conn.close()
+    return jsonify({'ok': True})
 
 
 # ── 사용자 관리 (관리자 전용) ─────────────────────────────────────────────────
