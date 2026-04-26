@@ -7,13 +7,21 @@ import sqlite3
 import re
 from functools import wraps
 from io import BytesIO
+from datetime import datetime, timezone, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+_secret = os.environ.get('SECRET_KEY', '')
+if not _secret:
+    import warnings
+    warnings.warn('[SECURITY] SECRET_KEY 환경변수가 설정되지 않았습니다. 프로덕션에서는 반드시 설정하세요.')
+    _secret = 'dev-secret-key-change-in-production'
+app.secret_key = _secret
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 # 비밀번호 특수문자 URL 인코딩 + Supabase SSL 처리
@@ -102,7 +110,14 @@ def get_db():
 
 
 def hash_pw(pw):
-    return hashlib.sha256(pw.encode()).hexdigest()
+    return generate_password_hash(pw, method='pbkdf2:sha256:600000')
+
+
+def verify_pw(pw, stored):
+    if stored.startswith('pbkdf2:') or stored.startswith('scrypt:'):
+        return check_password_hash(stored, pw)
+    # 레거시 SHA256 (솔트 없음) — 검증 후 자동 재해시 처리됨
+    return hashlib.sha256(pw.encode()).hexdigest() == stored
 
 
 def login_required(f):
@@ -112,6 +127,25 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated
+
+
+def _client_ip():
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    return forwarded.split(',')[0].strip() if forwarded else (request.remote_addr or '')
+
+
+def log_action(action, target_info=''):
+    try:
+        conn = get_db()
+        conn.execute(
+            'INSERT INTO access_logs (user_id, username, action, target_info, ip_address, created_at) '
+            'VALUES (%s, %s, %s, %s, %s, NOW())',
+            (session.get('user_id'), session.get('username'), action, target_info, _client_ip())
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 # ── Jinja2 필터 ──────────────────────────────────────────────────────────────
@@ -153,15 +187,39 @@ def inject_globals():
     return {'notif_count': notif_count, 'endpoint': request.endpoint}
 
 
-# ── IP 화이트리스트 ───────────────────────────────────────────────────────────
+# ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
 
 @app.before_request
-def check_ip():
+def check_ip_and_session():
+    # IP 화이트리스트
     if ALLOWED_IPS:
-        forwarded = request.headers.get('X-Forwarded-For', '')
-        client_ip = forwarded.split(',')[0].strip() if forwarded else request.remote_addr
+        client_ip = _client_ip()
         if client_ip not in ALLOWED_IPS:
             return render_template('403.html'), 403
+
+    # 30분 유휴 세션 만료 (API 엔드포인트 제외)
+    if 'user_id' in session and not request.path.startswith('/api/'):
+        last = session.get('_last_activity', 0)
+        now_ts = datetime.now(timezone.utc).timestamp()
+        if now_ts - last > 1800:
+            uid = session.get('user_id')
+            uname = session.get('username')
+            session.clear()
+            try:
+                conn = get_db()
+                conn.execute(
+                    'INSERT INTO access_logs (user_id, username, action, ip_address, created_at) '
+                    'VALUES (%s, %s, %s, %s, NOW())',
+                    (uid, uname, '세션만료_자동로그아웃', _client_ip())
+                )
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
+            flash('30분간 활동이 없어 자동 로그아웃 되었습니다.', 'warning')
+            return redirect(url_for('login'))
+        session['_last_activity'] = now_ts
+        session.permanent = True
 
 
 # ── DB 초기화 ─────────────────────────────────────────────────────────────────
@@ -488,26 +546,90 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        ip = _client_ip()
         conn = get_db()
+
         user = conn.execute(
             'SELECT u.*, b.name branch_name FROM users u LEFT JOIN branches b ON u.branch_id=b.id '
-            'WHERE u.username=%s AND u.password=%s',
-            (username, hash_pw(password))
+            'WHERE u.username=%s',
+            (username,)
         ).fetchone()
-        conn.close()
-        if user:
-            session.update(user_id=user['id'], username=user['username'],
-                           role=user['role'], branch_id=user['branch_id'],
-                           branch_name=user['branch_name'])
+
+        # 잠금 확인
+        if user and user.get('locked_until'):
+            locked_until = user['locked_until']
+            if hasattr(locked_until, 'tzinfo') and locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) < locked_until:
+                remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+                flash(f'로그인 5회 실패로 계정이 잠겼습니다. {remaining}분 후 다시 시도하세요.', 'danger')
+                conn.close()
+                return render_template('login.html')
+
+        if user and verify_pw(password, user['password']):
+            # 레거시 SHA256 → PBKDF2 자동 재해시
+            if not user['password'].startswith('pbkdf2:') and not user['password'].startswith('scrypt:'):
+                conn.execute('UPDATE users SET password=%s WHERE id=%s', (hash_pw(password), user['id']))
+
+            conn.execute(
+                'UPDATE users SET failed_attempts=0, locked_until=NULL, last_login_at=NOW() WHERE id=%s',
+                (user['id'],)
+            )
+            conn.commit()
+
+            # 접속 로그
+            conn.execute(
+                'INSERT INTO access_logs (user_id, username, action, ip_address, created_at) '
+                'VALUES (%s, %s, %s, %s, NOW())',
+                (user['id'], user['username'], '로그인', ip)
+            )
+            conn.commit()
+            conn.close()
+
+            # 세션 고정 방어: 기존 세션 데이터 완전 초기화 후 재발급
+            session.clear()
+            session.permanent = True
+            session['_last_activity'] = datetime.now(timezone.utc).timestamp()
+            session.update(
+                user_id=user['id'], username=user['username'],
+                role=user['role'], branch_id=user['branch_id'],
+                branch_name=user['branch_name']
+            )
             return redirect(url_for('dashboard'))
-        flash('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger')
+
+        # 로그인 실패
+        if user:
+            new_attempts = (user.get('failed_attempts') or 0) + 1
+            if new_attempts >= 5:
+                conn.execute(
+                    "UPDATE users SET failed_attempts=%s, locked_until=NOW() + INTERVAL '10 minutes' WHERE id=%s",
+                    (new_attempts, user['id'])
+                )
+                flash('로그인 5회 실패로 계정이 10분간 잠겼습니다.', 'danger')
+            else:
+                conn.execute(
+                    'UPDATE users SET failed_attempts=%s WHERE id=%s',
+                    (new_attempts, user['id'])
+                )
+                flash(f'아이디 또는 비밀번호가 올바르지 않습니다. ({new_attempts}/5회)', 'danger')
+            conn.execute(
+                'INSERT INTO access_logs (user_id, username, action, ip_address, created_at) '
+                'VALUES (%s, %s, %s, %s, NOW())',
+                (user['id'], username, f'로그인실패({new_attempts}회)', ip)
+            )
+            conn.commit()
+        else:
+            flash('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger')
+
+        conn.close()
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
+    log_action('로그아웃')
     session.clear()
     return redirect(url_for('login'))
 
@@ -1776,7 +1898,7 @@ def change_password():
         conn = get_db()
         user = conn.execute('SELECT * FROM users WHERE id=%s', (session['user_id'],)).fetchone()
 
-        if user['password'] != hash_pw(cur_pw):
+        if not verify_pw(cur_pw, user['password']):
             flash('현재 비밀번호가 올바르지 않습니다.', 'danger')
             conn.close()
             return redirect(url_for('change_password'))
@@ -2287,6 +2409,37 @@ try:
     init_db()
 except Exception as _e:
     print(f"[init_db] {_e}")
+
+
+# ── 5년 경과 데이터 자동 파기 (관리자 전용) ──────────────────────────────────
+
+@app.route('/admin/purge-old-data', methods=['POST'])
+@login_required
+def purge_old_data():
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '관리자 권한 필요'}), 403
+
+    conn = get_db()
+    results = {}
+
+    # 5년(1826일) 이전 거래 이력 삭제
+    r = conn.execute(
+        "DELETE FROM transactions WHERE created_at < NOW() - INTERVAL '5 years' RETURNING id"
+    ).fetchall()
+    results['transactions'] = len(r)
+
+    # 5년 이전 접속 로그 삭제 (1년 보관 의무이므로 5년은 충분히 보관 후 파기)
+    r = conn.execute(
+        "DELETE FROM access_logs WHERE created_at < NOW() - INTERVAL '5 years' RETURNING id"
+    ).fetchall()
+    results['access_logs'] = len(r)
+
+    conn.commit()
+
+    log_action('5년경과데이터파기', f"transactions:{results['transactions']}건, logs:{results['access_logs']}건")
+    conn.close()
+
+    return jsonify({'ok': True, 'purged': results})
 
 if __name__ == '__main__':
     pass
