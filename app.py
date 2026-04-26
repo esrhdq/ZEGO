@@ -342,7 +342,7 @@ def init_db():
         if not already_seeded:
             branches = [
                 ('GMP', '김포', 'DOM'), ('CJU', '제주', 'DOM'), ('CJJ', '청주', 'DOM'),
-                ('PUS', '부산', 'DOM'), ('TSA', '송산', 'DOM'), ('KMJ', '구마모토', 'INTL'),
+                ('PUS', '부산', 'DOM'), ('TSA', '송산', 'INTL'), ('KMJ', '구마모토', 'INTL'),
                 ('서울역', '서울역', 'DOM'), ('광명역', '광명역', 'DOM'), ('이지드랍', '이지드랍', 'DOM'),
                 ('ICN', '인천', 'DOM'), ('TPE', '타이페이', 'INTL'), ('NRT', '나리타', 'INTL'),
                 ('KIX', '간사이', 'INTL'), ('FUK', '후쿠오카', 'INTL'), ('CTS', '삿포로', 'INTL'),
