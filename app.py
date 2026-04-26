@@ -39,6 +39,22 @@ if DATABASE_URL:
         elif 'sslmode' not in DATABASE_URL:
             DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
     except Exception:
+        # Python 3.12: urlparse가 [ 포함 비밀번호를 IPv6로 오파싱 → 수동 인코딩
+        try:
+            from urllib.parse import quote as _url_quote
+            _pi = DATABASE_URL.index('://')
+            _scheme = DATABASE_URL[:_pi]
+            _rest = DATABASE_URL[_pi + 3:]   # "user:pass@host:port/db" 부분
+            _at = _rest.rfind('@')
+            if _at > 0:
+                _userinfo = _rest[:_at]
+                _hostinfo = _rest[_at + 1:]
+                _ci = _userinfo.index(':')
+                _u  = _userinfo[:_ci]
+                _pw = _userinfo[_ci + 1:]
+                DATABASE_URL = f"{_scheme}://{_u}:{_url_quote(_pw, safe='')}@{_hostinfo}"
+        except Exception:
+            pass
         if 'sslmode' not in DATABASE_URL:
             DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
