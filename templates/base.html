@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="{{ cur_lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -351,34 +351,34 @@
     </div>
     <div class="brand-text">
       <div class="brand-name">ZEGO</div>
-      <div class="brand-sub">이스타항공 운송본부</div>
+      <div class="brand-sub">{{ T('nav.brand_sub') }}</div>
     </div>
   </div>
 
   <nav class="sidebar-nav">
-    <div class="section-label">메뉴</div>
+    <div class="section-label">{{ T('nav.menu') }}</div>
     <a href="{{ url_for('dashboard') }}"
        class="nav-link {% if endpoint=='dashboard' %}active{% endif %}">
-      <i class="fa-solid fa-gauge"></i>대시보드
+      <i class="fa-solid fa-gauge"></i>{{ T('nav.dashboard') }}
     </a>
     <a href="{{ url_for('inventory') }}"
        class="nav-link {% if endpoint=='inventory' %}active{% endif %}">
-      <i class="fa-solid fa-warehouse"></i>재고 현황
+      <i class="fa-solid fa-warehouse"></i>{{ T('nav.inventory') }}
     </a>
 
-    <div class="section-label">처리</div>
+    <div class="section-label">{{ T('nav.processing') }}</div>
     <a href="{{ url_for('inbound') }}"
        class="nav-link {% if endpoint=='inbound' %}active{% endif %}">
-      <i class="fa-solid fa-truck-ramp-box"></i>입고
+      <i class="fa-solid fa-truck-ramp-box"></i>{{ T('nav.inbound') }}
     </a>
     <a href="{{ url_for('outbound') }}"
        class="nav-link {% if endpoint=='outbound' %}active{% endif %}">
-      <i class="fa-solid fa-dolly"></i>출고
+      <i class="fa-solid fa-dolly"></i>{{ T('nav.outbound') }}
     </a>
     <a href="{{ url_for('transfer') }}"
        class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}"
        style="position:relative">
-      <i class="fa-solid fa-truck-moving"></i>지점 간 이전
+      <i class="fa-solid fa-truck-moving"></i>{{ T('nav.transfer') }}
       {% if notif_count > 0 %}
       <span class="position-absolute top-50 end-0 translate-middle-y me-2">
         <span class="badge rounded-pill bg-danger" style="font-size:.6rem">{{ notif_count }}</span>
@@ -389,27 +389,27 @@
     <div class="section-label">조회</div>
     <a href="{{ url_for('transactions') }}"
        class="nav-link {% if endpoint=='transactions' %}active{% endif %}">
-      <i class="fa-solid fa-receipt"></i>입출고 이력
+      <i class="fa-solid fa-receipt"></i>{{ T('nav.history') }}
     </a>
     <a href="{{ url_for('report') }}"
        class="nav-link {% if endpoint=='report' %}active{% endif %}">
-      <i class="fa-solid fa-chart-bar"></i>리포트
+      <i class="fa-solid fa-chart-bar"></i>{{ T('nav.report') }}
     </a>
     <a href="{{ url_for('forecast') }}"
        class="nav-link {% if endpoint=='forecast' %}active{% endif %}"
        style="position:relative">
-      <i class="fa-solid fa-calculator"></i>분기 신청 추정
+      <i class="fa-solid fa-calculator"></i>{{ T('nav.forecast') }}
     </a>
     <a href="{{ url_for('flight_schedule_view') }}"
        class="nav-link {% if endpoint=='flight_schedule_view' %}active{% endif %}">
-      <i class="fa-solid fa-plane"></i>운항편수 관리
+      <i class="fa-solid fa-plane"></i>{{ T('nav.flight_schedule') }}
     </a>
 
     {% if session.role == 'admin' %}
-    <div class="section-label">관리자</div>
+    <div class="section-label">{{ T('nav.admin') }}</div>
     <a href="{{ url_for('manage_users') }}"
        class="nav-link {% if endpoint=='manage_users' %}active{% endif %}">
-      <i class="fa-solid fa-users-gear"></i>사용자 관리
+      <i class="fa-solid fa-users-gear"></i>{{ T('nav.user_management') }}
     </a>
     {% endif %}
   </nav>
@@ -423,7 +423,7 @@
         <div class="user-name">
           {{ session.username }}
           {% if session.role=='admin' %}
-            <span class="badge ms-1" style="background:var(--red);font-size:.58rem;vertical-align:middle">관리자</span>
+            <span class="badge ms-1" style="background:var(--red);font-size:.58rem;vertical-align:middle">{{ T('nav.role_admin') }}</span>
           {% endif %}
         </div>
         {% if session.branch_name %}
@@ -432,10 +432,10 @@
       </div>
     </div>
     <a href="{{ url_for('change_password') }}" class="nav-link" style="color:var(--sidebar-muted);font-size:.82rem">
-      <i class="fa-solid fa-key"></i>비밀번호 변경
+      <i class="fa-solid fa-key"></i>{{ T('nav.change_password') }}
     </a>
     <a href="{{ url_for('logout') }}" class="nav-link" style="color:#EF4444;font-size:.82rem">
-      <i class="fa-solid fa-right-from-bracket"></i>로그아웃
+      <i class="fa-solid fa-right-from-bracket"></i>{{ T('nav.logout') }}
     </a>
   </div>
 
@@ -446,7 +446,7 @@
 
   <div class="topbar">
     <div class="topbar-left">
-      <button class="hamburger" id="hamburgerBtn" aria-label="메뉴 열기">
+      <button class="hamburger" id="hamburgerBtn" aria-label="{{ T('nav.open_menu') }}">
         <i class="fa-solid fa-bars"></i>
       </button>
       <h5 class="page-title">
@@ -472,6 +472,21 @@
       <div class="zego-chip">
         <i class="fa-solid fa-plane-departure"></i>
         ZEGO &nbsp;·&nbsp; 26년 2분기
+      </div>
+      <div class="dropdown me-2">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" style="font-size:.75rem;padding:3px 8px">
+          {{ LANG_LABELS[cur_lang] }}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" style="min-width:130px;font-size:.82rem">
+          {% for lc in SUPPORTED_LANGS %}
+          <li>
+            <a class="dropdown-item {% if lc == cur_lang %}active{% endif %}"
+               href="{{ url_for('set_lang', code=lc) }}">
+              {{ LANG_LABELS[lc] }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
   </div>

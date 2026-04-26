@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}지점 간 이전{% endblock %}
+{% block title %}{{ T('xfer.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-truck-moving"></i>{% endblock %}
-{% block page_title %}지점 간 이전{% endblock %}
+{% block page_title %}{{ T('xfer.title') }}{% endblock %}
 
 {% block content %}
 <!-- 탭 네비게이션 -->
@@ -9,13 +9,13 @@
   <li class="nav-item">
     <button class="nav-link {% if active_tab=='request' %}active{% endif %}"
             data-tab="request" type="button">
-      <i class="fa-solid fa-paper-plane me-1"></i>이전 신청
+      <i class="fa-solid fa-paper-plane me-1"></i>{{ T('xfer.request_tab') }}
     </button>
   </li>
   <li class="nav-item">
     <button class="nav-link {% if active_tab=='inbox' %}active{% endif %} position-relative"
             data-tab="inbox" type="button">
-      <i class="fa-solid fa-inbox me-1"></i>받은 신청
+      <i class="fa-solid fa-inbox me-1"></i>{{ T('xfer.inbox_tab') }}
       {% if inbox_count > 0 %}
       <span class="badge rounded-pill bg-danger ms-1" style="font-size:.65rem">{{ inbox_count }}</span>
       {% endif %}
@@ -24,7 +24,7 @@
   <li class="nav-item">
     <button class="nav-link {% if active_tab=='outbox' %}active{% endif %}"
             data-tab="outbox" type="button">
-      <i class="fa-solid fa-clock-rotate-left me-1"></i>보낸 신청
+      <i class="fa-solid fa-clock-rotate-left me-1"></i>{{ T('xfer.outbox_tab') }}
     </button>
   </li>
 </ul>
@@ -35,8 +35,8 @@
     <div class="col-lg-7">
       <div class="card">
         <div class="card-header bg-white py-3">
-          <strong>이전 신청</strong>
-          <small class="text-muted ms-2">여유 지점에 양식 이전을 요청합니다.</small>
+          <strong>{{ T('xfer.request_tab') }}</strong>
+          <small class="text-muted ms-2">{{ T('xfer.form_subtitle') }}</small>
         </div>
         <div class="card-body p-4">
           <form method="post">
@@ -44,10 +44,10 @@
 
               <!-- 요청 대상 지점 (발신/여유지점) -->
               <div class="col-md-6">
-                <label class="form-label fw-semibold">요청 지점 (여유 지점) <span class="text-danger">*</span></label>
+                <label class="form-label fw-semibold">{{ T('xfer.from_branch') }} <span class="text-danger">*</span></label>
                 <select name="from_branch_id" id="fromBranch" class="form-select" required onchange="fetchFromStock()">
-                  <option value="">-- 요청할 지점 선택 --</option>
-                  <optgroup label="국내">
+                  <option value="">{{ T('xfer.select_from') }}</option>
+                  <optgroup label="{{ T('common.domestic') }}">
                     {% for b in branches %}{% if b.type=='DOM' %}
                       <option value="{{ b.id }}"
                         {% if session.branch_id and session.branch_id==b.id %}disabled{% endif %}>
@@ -55,7 +55,7 @@
                       </option>
                     {% endif %}{% endfor %}
                   </optgroup>
-                  <optgroup label="국제">
+                  <optgroup label="{{ T('common.international') }}">
                     {% for b in branches %}{% if b.type=='INTL' %}
                       <option value="{{ b.id }}"
                         {% if session.branch_id and session.branch_id==b.id %}disabled{% endif %}>
@@ -63,7 +63,7 @@
                       </option>
                     {% endif %}{% endfor %}
                   </optgroup>
-                  <optgroup label="화물">
+                  <optgroup label="{{ T('common.cargo') }}">
                     {% for b in branches %}{% if b.type=='CARGO' %}
                       <option value="{{ b.id }}"
                         {% if session.branch_id and session.branch_id==b.id %}disabled{% endif %}>
@@ -76,21 +76,21 @@
 
               <!-- 내 지점 (수신) -->
               <div class="col-md-6">
-                <label class="form-label fw-semibold">내 지점 (수신)</label>
+                <label class="form-label fw-semibold">{{ T('xfer.to_branch') }}</label>
                 {% if session.role == 'admin' %}
                   <select name="to_branch_id" class="form-select" required>
-                    <option value="">-- 수신 지점 선택 --</option>
-                    <optgroup label="국내">
+                    <option value="">{{ T('xfer.select_to') }}</option>
+                    <optgroup label="{{ T('common.domestic') }}">
                       {% for b in branches %}{% if b.type=='DOM' %}
                         <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
                       {% endif %}{% endfor %}
                     </optgroup>
-                    <optgroup label="국제">
+                    <optgroup label="{{ T('common.international') }}">
                       {% for b in branches %}{% if b.type=='INTL' %}
                         <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
                       {% endif %}{% endfor %}
                     </optgroup>
-                    <optgroup label="화물">
+                    <optgroup label="{{ T('common.cargo') }}">
                       {% for b in branches %}{% if b.type=='CARGO' %}
                         <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
                       {% endif %}{% endfor %}
@@ -101,16 +101,16 @@
                   <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
                     <i class="fa-solid fa-location-dot text-primary"></i>
                     <strong>{{ session.branch_name }}</strong>
-                    <span class="badge bg-secondary ms-1">내 지점</span>
+                    <span class="badge bg-secondary ms-1">{{ T('common.my_branch') }}</span>
                   </div>
                 {% endif %}
               </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+              <label class="form-label fw-semibold">{{ T('common.form_name') }} <span class="text-danger">*</span></label>
               <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchFromStock()">
-                <option value="">-- 양식 선택 --</option>
+                <option value="">{{ T('common.select_form') }}</option>
                 {% for f in form_types %}
                   <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
                     {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
@@ -122,29 +122,29 @@
             <!-- 요청 지점 현재 재고 -->
             <div id="stockInfo" class="d-none mb-3">
               <div class="p-3 rounded" id="stockBox" style="background:#f0fdf4;border:1px solid #86efac;">
-                <div class="small text-muted mb-1">요청 지점 현재 재고</div>
+                <div class="small text-muted mb-1">{{ T('xfer.from_stock') }}</div>
                 <div class="fs-5 fw-bold status-ok" id="stockQty">—</div>
               </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label fw-semibold">신청 수량 <span class="text-danger">*</span></label>
+              <label class="form-label fw-semibold">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
               <div class="input-group">
-                <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="수량 입력">
+                <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="{{ T('common.qty_placeholder') }}">
                 <span class="input-group-text" id="unitLabel">단위</span>
               </div>
             </div>
 
             <div class="mb-4">
-              <label class="form-label fw-semibold">비고</label>
-              <input type="text" name="notes" class="form-control" placeholder="선택 입력">
+              <label class="form-label fw-semibold">{{ T('common.notes') }}</label>
+              <input type="text" name="notes" class="form-control" placeholder="{{ T('common.notes_optional') }}">
             </div>
 
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-primary px-4">
-                <i class="fa-solid fa-paper-plane me-1"></i>이전 신청
+                <i class="fa-solid fa-paper-plane me-1"></i>{{ T('xfer.submit') }}
               </button>
-              <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+              <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">{{ T('common.cancel') }}</a>
             </div>
           </form>
         </div>
@@ -158,9 +158,9 @@
   <div class="card">
     <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
       <i class="fa-solid fa-inbox text-primary"></i>
-      <strong>받은 이전 신청</strong>
+      <strong>{{ T('xfer.inbox_title') }}</strong>
       <span class="badge bg-primary ms-1">{{ inbox|length }}</span>
-      <small class="text-muted ms-2">내 지점에 요청된 이전 신청 목록입니다. 재고를 확인 후 승인 또는 반려해 주세요.</small>
+      <small class="text-muted ms-2">{{ T('xfer.inbox_desc') }}</small>
     </div>
     <div class="card-body p-0">
       {% if inbox %}
@@ -168,13 +168,13 @@
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>요청일시</th>
-              <th>요청 지점</th>
-              <th>양식명</th>
-              <th class="text-center">신청 수량</th>
-              <th class="text-center">현재 재고</th>
-              <th>요청자</th>
-              <th class="text-center">처리</th>
+              <th>{{ T('xfer.col_request_date') }}</th>
+              <th>{{ T('common.branch') }}</th>
+              <th>{{ T('common.form_name') }}</th>
+              <th class="text-center">{{ T('common.quantity') }}</th>
+              <th class="text-center">{{ T('common.current_stock') }}</th>
+              <th>{{ T('xfer.col_requester') }}</th>
+              <th class="text-center">{{ T('xfer.col_action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -200,14 +200,14 @@
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center">
                   <form method="post" action="{{ url_for('approve_transfer', req_id=r.id) }}"
-                        onsubmit="return confirm('승인하시겠습니까?')">
+                        onsubmit="return confirm('{{ T('xfer.confirm_approve') }}')">
                     <button type="submit" class="btn btn-sm btn-success">
-                      <i class="fa-solid fa-check me-1"></i>승인
+                      <i class="fa-solid fa-check me-1"></i>{{ T('xfer.approve') }}
                     </button>
                   </form>
                   <button type="button" class="btn btn-sm btn-danger"
                           onclick="openRejectModal({{ r.id }}, '{{ r.form_name|e }}', {{ r.quantity }})">
-                    <i class="fa-solid fa-xmark me-1"></i>반려
+                    <i class="fa-solid fa-xmark me-1"></i>{{ T('xfer.reject') }}
                   </button>
                 </div>
               </td>
@@ -219,7 +219,7 @@
       {% else %}
       <div class="text-center text-muted py-5">
         <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
-        받은 이전 신청이 없습니다.
+        {{ T('xfer.no_inbox') }}
       </div>
       {% endif %}
     </div>
@@ -231,7 +231,7 @@
   <div class="card">
     <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
       <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
-      <strong>보낸 이전 신청</strong>
+      <strong>{{ T('xfer.outbox_title') }}</strong>
     </div>
     <div class="card-body p-0">
       {% if outbox %}
@@ -239,13 +239,13 @@
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>신청일시</th>
-              <th>요청 지점</th>
-              <th>양식명</th>
-              <th class="text-center">수량</th>
-              <th class="text-center">상태</th>
-              <th>처리자</th>
-              <th class="text-center">비고/액션</th>
+              <th>{{ T('xfer.col_sent_date') }}</th>
+              <th>{{ T('common.branch') }}</th>
+              <th>{{ T('common.form_name') }}</th>
+              <th class="text-center">{{ T('common.quantity') }}</th>
+              <th class="text-center">{{ T('common.status') }}</th>
+              <th>{{ T('common.processor') }}</th>
+              <th class="text-center">{{ T('common.notes') }}/액션</th>
             </tr>
           </thead>
           <tbody>
@@ -260,22 +260,22 @@
               <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
               <td class="text-center">
                 {% if r.status == 'PENDING' %}
-                  <span class="badge" style="background:#fef3c7;color:#92400e">대기중</span>
+                  <span class="badge" style="background:#fef3c7;color:#92400e">{{ T('xfer.pending') }}</span>
                 {% elif r.status == 'APPROVED' %}
-                  <span class="badge" style="background:#d1fae5;color:#065f46">승인</span>
+                  <span class="badge" style="background:#d1fae5;color:#065f46">{{ T('xfer.approved') }}</span>
                 {% elif r.status == 'REJECTED' %}
-                  <span class="badge" style="background:#fee2e2;color:#991b1b">반려</span>
+                  <span class="badge" style="background:#fee2e2;color:#991b1b">{{ T('xfer.rejected') }}</span>
                 {% elif r.status == 'CONFIRMED' %}
-                  <span class="badge" style="background:#dbeafe;color:#1e40af">완료</span>
+                  <span class="badge" style="background:#dbeafe;color:#1e40af">{{ T('xfer.confirmed') }}</span>
                 {% endif %}
               </td>
               <td class="small text-muted">{{ r.approved_by or '—' }}</td>
               <td class="text-center">
                 {% if r.status == 'APPROVED' %}
                   <form method="post" action="{{ url_for('confirm_transfer', req_id=r.id) }}"
-                        onsubmit="return confirm('실제 양식을 수령하셨습니까? 확인하면 재고가 자동 반영됩니다.')">
+                        onsubmit="return confirm('{{ T('xfer.confirm_receipt_msg') }}')">
                     <button type="submit" class="btn btn-sm btn-primary">
-                      <i class="fa-solid fa-circle-check me-1"></i>수령 확인
+                      <i class="fa-solid fa-circle-check me-1"></i>{{ T('xfer.confirm_receipt') }}
                     </button>
                   </form>
                 {% elif r.status == 'REJECTED' %}
@@ -294,7 +294,7 @@
       {% else %}
       <div class="text-center text-muted py-5">
         <i class="fa-solid fa-paper-plane fs-2 d-block mb-2"></i>
-        보낸 이전 신청이 없습니다.
+        {{ T('xfer.no_outbox') }}
       </div>
       {% endif %}
     </div>
@@ -306,20 +306,20 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>이전 신청 반려</h6>
+        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>{{ T('xfer.modal_reject') }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="rejectForm" method="post">
         <div class="modal-body">
           <p class="text-muted small mb-3" id="rejectDesc"></p>
-          <label class="form-label fw-semibold">반려 사유 <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold">{{ T('xfer.reject_reason') }} <span class="text-danger">*</span></label>
           <textarea name="reject_reason" class="form-control" rows="3" required
-                    placeholder="반려 사유를 입력해주세요."></textarea>
+                    placeholder="{{ T('xfer.reject_placeholder') }}"></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
           <button type="submit" class="btn btn-danger">
-            <i class="fa-solid fa-xmark me-1"></i>반려 처리
+            <i class="fa-solid fa-xmark me-1"></i>{{ T('xfer.reject_submit') }}
           </button>
         </div>
       </form>

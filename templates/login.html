@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="{{ cur_lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -273,7 +273,7 @@
       <div class="card-hd-inner">
         <div class="hd-icon"><i class="fa-solid fa-warehouse"></i></div>
         <div class="hd-text">
-          <h2>운송본부 재고관리 시스템</h2>
+          <h2>{{ T('login.system_name') }}</h2>
           <p>Ground Services Inventory System</p>
         </div>
       </div>
@@ -290,24 +290,24 @@
 
       <form id="loginForm" method="post">
         <div class="mb-3">
-          <label class="form-label">아이디</label>
+          <label class="form-label">{{ T('login.username') }}</label>
           <div class="input-group">
             <div class="ig-icon"><i class="fa-solid fa-user"></i></div>
             <input type="text" name="username" class="form-control"
-                   placeholder="아이디 입력" required autofocus autocomplete="username">
+                   placeholder="{{ T('login.username_placeholder') }}" required autofocus autocomplete="username">
           </div>
         </div>
         <div class="mb-4">
-          <label class="form-label">비밀번호</label>
+          <label class="form-label">{{ T('login.password') }}</label>
           <div class="input-group">
             <div class="ig-icon"><i class="fa-solid fa-lock"></i></div>
             <input type="password" name="password" class="form-control"
-                   placeholder="비밀번호 입력" required autocomplete="current-password">
+                   placeholder="{{ T('login.password_placeholder') }}" required autocomplete="current-password">
           </div>
         </div>
-        <button type="submit" class="btn-login" id="loginBtn">
+        <button type="submit" class="btn-login" id="loginBtn" data-submitting="{{ T('login.submitting') }}">
           <i class="fa-solid fa-right-to-bracket" id="btnIcon"></i>
-          <span id="btnText">로그인</span>
+          <span id="btnText">{{ T('login.submit') }}</span>
           <div class="btn-spin" id="btnSpin"></div>
         </button>
       </form>
@@ -317,7 +317,15 @@
 
   <div class="login-foot">
     © 2026 이스타항공 운송본부 &nbsp;·&nbsp; All rights reserved<br>
-    문의: 운송본부 IT 담당자
+    {{ T('login.contact') }}
+  </div>
+  <div class="login-foot" style="margin-top:12px">
+    {% for lc in SUPPORTED_LANGS %}
+    <a href="{{ url_for('set_lang', code=lc) }}"
+       style="color:rgba(255,255,255,{% if lc==cur_lang %}.7{% else %}.3{% endif %});font-size:.68rem;text-decoration:none;margin:0 4px">
+      {{ LANG_LABELS[lc] }}
+    </a>
+    {% endfor %}
   </div>
 
 </div>
@@ -331,7 +339,7 @@
     const txt  = document.getElementById('btnText');
     const spin = document.getElementById('btnSpin');
     icon.style.display = 'none';
-    txt.textContent    = '로그인 중...';
+    txt.textContent    = btn.dataset.submitting || '...';
     spin.style.display = 'block';
     btn.disabled = true;
   });

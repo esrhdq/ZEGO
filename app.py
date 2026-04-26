@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
+from i18n import make_T, SUPPORTED, LANG_LABELS
 import psycopg2
 import psycopg2.extras
 import os
@@ -625,6 +626,20 @@ def init_db():
         raise
     finally:
         conn.close()
+
+
+# ── i18n ──────────────────────────────────────────────────────────────────────
+
+@app.context_processor
+def inject_i18n():
+    lang = session.get('lang', 'ko')
+    return {'T': make_T(lang), 'cur_lang': lang, 'LANG_LABELS': LANG_LABELS, 'SUPPORTED_LANGS': SUPPORTED}
+
+@app.route('/lang/<code>')
+def set_lang(code):
+    if code in SUPPORTED:
+        session['lang'] = code
+    return redirect(request.referrer or url_for('dashboard'))
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────

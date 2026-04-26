@@ -1,40 +1,40 @@
-﻿{% extends 'base.html' %}
-{% block title %}출고 처리{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ T('out.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-dolly"></i>{% endblock %}
-{% block page_title %}출고 처리{% endblock %}
+{% block page_title %}{{ T('out.title') }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header bg-white py-3">
-        <strong>양식 출고 등록</strong>
-        <small class="text-muted ms-2">실제 사용 수량을 차감합니다.</small>
+        <strong>{{ T('out.form_title') }}</strong>
+        <small class="text-muted ms-2">{{ T('out.subtitle') }}</small>
       </div>
       <div class="card-body p-4">
         <form method="post">
 
           <!-- 지점 선택 -->
           <div class="mb-3">
-            <label class="form-label fw-semibold">지점</label>
+            <label class="form-label fw-semibold">{{ T('common.branch') }}</label>
             {% if session.role == 'admin' %}
               <select name="branch_id" id="branchSelect" class="form-select" required onchange="fetchStock()">
-                <option value="">-- 지점 선택 --</option>
-                <optgroup label="국내">
+                <option value="">{{ T('common.select_branch') }}</option>
+                <optgroup label="{{ T('common.domestic') }}">
                   {% for b in branches %}{% if b.type=='DOM' %}
                     <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
                       {{ b.code }} — {{ b.name }}
                     </option>
                   {% endif %}{% endfor %}
                 </optgroup>
-                <optgroup label="국제">
+                <optgroup label="{{ T('common.international') }}">
                   {% for b in branches %}{% if b.type=='INTL' %}
                     <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
                       {{ b.code }} — {{ b.name }}
                     </option>
                   {% endif %}{% endfor %}
                 </optgroup>
-                <optgroup label="화물">
+                <optgroup label="{{ T('common.cargo') }}">
                   {% for b in branches %}{% if b.type=='CARGO' %}
                     <option value="{{ b.id }}" {% if selected_branch==b.id %}selected{% endif %}>
                       {{ b.code }} — {{ b.name }}
@@ -48,15 +48,15 @@
               <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
                 <i class="fa-solid fa-location-dot text-primary"></i>
                 <strong>{{ session.branch_name }}</strong>
-                <span class="badge bg-secondary ms-1">내 지점</span>
+                <span class="badge bg-secondary ms-1">{{ T('common.my_branch') }}</span>
               </div>
             {% endif %}
           </div>
 
           <div class="mb-3">
-            <label class="form-label fw-semibold">양식 종류 <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">{{ T('common.form_name') }} <span class="text-danger">*</span></label>
             <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchStock()">
-              <option value="">-- 양식 선택 --</option>
+              <option value="">{{ T('common.select_form') }}</option>
               {% for f in form_types %}
                 <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
                   {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
@@ -67,36 +67,36 @@
 
           <div id="stockInfo" class="d-none mb-3">
             <div class="p-3 rounded" id="stockBox" style="background:#f8fafc;border:1px solid #e2e8f0">
-              <div class="small text-muted mb-1">현재 재고</div>
+              <div class="small text-muted mb-1">{{ T('common.current_stock') }}</div>
               <div class="fs-5 fw-bold" id="stockQty">—</div>
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label fw-semibold">출고 일자 <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">{{ T('out.outbound_date') }} <span class="text-danger">*</span></label>
             <input type="date" name="transaction_date" id="txDate" class="form-control"
                    value="{{ today }}" max="{{ today }}" required>
-            <div class="form-text text-muted">실제 양식이 사용된 날짜를 선택하세요.</div>
+            <div class="form-text text-muted">{{ T('out.date_helper') }}</div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label fw-semibold">출고 수량 <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
             <div class="input-group">
-              <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="수량 입력">
+              <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="{{ T('common.qty_placeholder') }}">
               <span class="input-group-text" id="unitLabel">단위</span>
             </div>
           </div>
 
           <div class="mb-4">
-            <label class="form-label fw-semibold">비고</label>
-            <input type="text" name="notes" class="form-control" placeholder="선택 입력">
+            <label class="form-label fw-semibold">{{ T('common.notes') }}</label>
+            <input type="text" name="notes" class="form-control" placeholder="{{ T('common.notes_optional') }}">
           </div>
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-danger px-4">
-              <i class="fa-solid fa-circle-minus me-1"></i>출고 등록
+              <i class="fa-solid fa-circle-minus me-1"></i>{{ T('out.register') }}
             </button>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">{{ T('common.cancel') }}</a>
           </div>
         </form>
       </div>

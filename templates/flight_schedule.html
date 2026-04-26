@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}운항편수 관리{% endblock %}
+{% block title %}{{ T('flt.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-plane"></i>{% endblock %}
-{% block page_title %}운항편수 관리{% endblock %}
+{% block page_title %}{{ T('flt.title') }}{% endblock %}
 
 {% block content %}
 
 <div class="alert alert-info py-2 small mb-3">
   <i class="fa-solid fa-circle-info me-1"></i>
-  월별 운항편수를 입력하면 <strong>분기 신청 추정</strong>에 자동 반영됩니다.
-  과거 6개월 평균 대비 다음 분기 평균 편수 비율로 보정됩니다.
+  {{ T('flt.info') }}
+  {{ T('flt.info2') }}
 </div>
 
 <div class="card">
   <div class="card-header py-3" style="background:#1a2340;color:#fff">
     <div class="d-flex align-items-center gap-2">
       <i class="fa-solid fa-calendar-days" style="color:#60a5fa"></i>
-      <strong>월별 운항편수 입력</strong>
+      <strong>{{ T('flt.section') }}</strong>
     </div>
   </div>
   <div class="card-body">
@@ -24,7 +24,7 @@
       {% if session.role == 'admin' %}
       <div class="row g-2 align-items-end mb-3">
         <div class="col-md-4">
-          <label class="form-label small fw-semibold mb-1">지점 선택</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('flt.select_branch') }}</label>
           <select name="branch_id" class="form-select form-select-sm"
                   onchange="this.form.method='get'; this.form.action='{{ url_for('flight_schedule_view') }}'; this.form.submit()">
             {% for b in branches %}
@@ -46,7 +46,7 @@
           <thead class="table-light">
             <tr>
               <th class="text-center" style="width:140px">연월</th>
-              <th class="text-center">운항편수</th>
+              <th class="text-center">{{ T('flt.flights') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -55,8 +55,8 @@
             <tr {% if is_cur %}class="table-primary"{% endif %}>
               <td class="text-center fw-semibold">
                 {{ mo }}
-                {% if is_cur %}<span class="badge bg-primary ms-1" style="font-size:.62rem">이번달</span>{% endif %}
-                {% if mo > today_str %}<span class="badge bg-warning text-dark ms-1" style="font-size:.62rem">예정</span>{% endif %}
+                {% if is_cur %}<span class="badge bg-primary ms-1" style="font-size:.62rem">{{ T('flt.this_month') }}</span>{% endif %}
+                {% if mo > today_str %}<span class="badge bg-warning text-dark ms-1" style="font-size:.62rem">{{ T('flt.scheduled') }}</span>{% endif %}
               </td>
               <td class="text-center p-1">
                 <input type="hidden" name="month" value="{{ mo }}">
@@ -73,10 +73,10 @@
       </div>
 
       <button type="submit" class="btn btn-primary btn-sm">
-        <i class="fa-solid fa-floppy-disk me-1"></i>저장
+        <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('flt.save') }}
       </button>
       <a href="{{ url_for('forecast') }}" class="btn btn-outline-secondary btn-sm ms-2">
-        <i class="fa-solid fa-calculator me-1"></i>분기 신청 추정 보기
+        <i class="fa-solid fa-calculator me-1"></i>{{ T('flt.view_forecast') }}
       </a>
     </form>
 

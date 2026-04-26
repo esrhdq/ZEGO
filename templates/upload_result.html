@@ -1,7 +1,7 @@
-﻿{% extends 'base.html' %}
-{% block title %}엑셀 업로드 결과{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ T('upl.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-file-excel"></i>{% endblock %}
-{% block page_title %}엑셀 업로드 결과{% endblock %}
+{% block page_title %}{{ T('upl.title') }}{% endblock %}
 
 {% block content %}
 
@@ -15,7 +15,7 @@
         </div>
         <div>
           <div class="stat-num text-success">{{ ok_cnt }}</div>
-          <div class="stat-label">처리 성공</div>
+          <div class="stat-label">{{ T('upl.success') }}</div>
         </div>
       </div>
     </div>
@@ -28,7 +28,7 @@
         </div>
         <div>
           <div class="stat-num text-danger">{{ err_cnt }}</div>
-          <div class="stat-label">오류</div>
+          <div class="stat-label">{{ T('upl.error') }}</div>
         </div>
       </div>
     </div>
@@ -41,7 +41,7 @@
         </div>
         <div>
           <div class="stat-num text-warning">{{ skip_cnt }}</div>
-          <div class="stat-label">건너뜀</div>
+          <div class="stat-label">{{ T('upl.skip') }}</div>
         </div>
       </div>
     </div>
@@ -51,14 +51,14 @@
 <!-- 결과 테이블 -->
 <div class="card">
   <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
-    <strong>행별 처리 결과</strong>
+    <strong>{{ T('upl.table_title') }}</strong>
     <span class="badge bg-secondary ms-1">총 {{ results|length }}행</span>
     <div class="ms-auto d-flex gap-2">
       <a href="{{ url_for('inbound') }}" class="btn btn-sm btn-outline-primary">
-        <i class="bi bi-arrow-left me-1"></i>입고 페이지로
+        <i class="bi bi-arrow-left me-1"></i>{{ T('upl.to_inbound') }}
       </a>
       <a href="{{ url_for('inventory') }}" class="btn btn-sm btn-success">
-        <i class="fa-solid fa-boxes-stacked me-1"></i>재고 현황 확인
+        <i class="fa-solid fa-boxes-stacked me-1"></i>{{ T('upl.check_inv') }}
       </a>
     </div>
   </div>
@@ -68,12 +68,12 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th class="text-center" style="width:60px">행</th>
-            <th class="text-center" style="width:80px">결과</th>
-            <th style="width:100px">지점코드</th>
-            <th>양식명</th>
-            <th class="text-center" style="width:80px">수량</th>
-            <th>내용</th>
+            <th class="text-center" style="width:60px">{{ T('upl.col_row') }}</th>
+            <th class="text-center" style="width:80px">{{ T('upl.col_result') }}</th>
+            <th style="width:100px">{{ T('upl.col_branch') }}</th>
+            <th>{{ T('upl.col_form') }}</th>
+            <th class="text-center" style="width:80px">{{ T('upl.col_qty') }}</th>
+            <th>{{ T('upl.col_msg') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -82,11 +82,11 @@
             <td class="text-center text-muted small">{{ r.row }}</td>
             <td class="text-center">
               {% if r.status == 'ok' %}
-                <span class="badge bg-success">성공</span>
+                <span class="badge bg-success">{{ T('upl.badge_success') }}</span>
               {% elif r.status == 'error' %}
-                <span class="badge bg-danger">오류</span>
+                <span class="badge bg-danger">{{ T('upl.badge_error') }}</span>
               {% else %}
-                <span class="badge bg-warning text-dark">건너뜀</span>
+                <span class="badge bg-warning text-dark">{{ T('upl.badge_skip') }}</span>
               {% endif %}
             </td>
             <td>
@@ -115,7 +115,7 @@
     {% else %}
     <div class="text-center text-muted py-5">
       <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
-      처리할 데이터가 없습니다.
+      {{ T('upl.no_data') }}
     </div>
     {% endif %}
   </div>
@@ -124,7 +124,7 @@
 {% if err_cnt > 0 %}
 <div class="alert alert-warning mt-3 small">
   <i class="bi bi-lightbulb me-1"></i>
-  <strong>오류 해결 방법:</strong>
+  <strong>{{ T('upl.error_hint') }}</strong>
   양식명은 <strong>참고 시트의 목록과 정확히 일치</strong>해야 합니다. 드롭다운을 사용하거나 복사·붙여넣기하세요.
   지점코드도 영문 대문자로 정확히 입력해야 합니다.
 </div>

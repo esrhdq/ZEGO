@@ -1,7 +1,7 @@
 ﻿{% extends 'base.html' %}
-{% block title %}재고 현황{% endblock %}
+{% block title %}{{ T('inv.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-warehouse"></i>{% endblock %}
-{% block page_title %}재고 현황{% endblock %}
+{% block page_title %}{{ T('inv.title') }}{% endblock %}
 
 {% block content %}
 <!-- 필터 + 다운로드 -->
@@ -10,20 +10,20 @@
     <form method="get" id="filterForm" class="row g-2 align-items-end">
       {% if session.role == 'admin' %}
       <div class="col-md-4">
-        <label class="form-label small fw-semibold mb-1">지점</label>
+        <label class="form-label small fw-semibold mb-1">{{ T('common.branch') }}</label>
         <select name="branch_id" class="form-select form-select-sm">
-          <option value="">전체 지점</option>
-          <optgroup label="국내">
+          <option value="">{{ T('common.branch_all') }}</option>
+          <optgroup label="{{ T('common.domestic') }}">
             {% for b in branches %}{% if b.type=='DOM' %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endif %}{% endfor %}
           </optgroup>
-          <optgroup label="국제">
+          <optgroup label="{{ T('common.international') }}">
             {% for b in branches %}{% if b.type=='INTL' %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endif %}{% endfor %}
           </optgroup>
-          <optgroup label="화물">
+          <optgroup label="{{ T('common.cargo') }}">
             {% for b in branches %}{% if b.type=='CARGO' %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endif %}{% endfor %}
@@ -32,9 +32,9 @@
       </div>
       {% endif %}
       <div class="col-md-4">
-        <label class="form-label small fw-semibold mb-1">양식</label>
+        <label class="form-label small fw-semibold mb-1">{{ T('common.form_name') }}</label>
         <select name="form_type_id" class="form-select form-select-sm">
-          <option value="">전체 양식</option>
+          <option value="">{{ T('common.form_all') }}</option>
           {% for f in form_types %}
             <option value="{{ f.id }}" {% if ff==f.id|string %}selected{% endif %}>{{ f.name }}</option>
           {% endfor %}
@@ -42,13 +42,13 @@
       </div>
       <div class="col-auto d-flex gap-2 align-items-end">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="fa-solid fa-magnifying-glass me-1"></i>조회
+          <i class="fa-solid fa-magnifying-glass me-1"></i>{{ T('common.search') }}
         </button>
-        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary btn-sm">초기화</a>
+        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary btn-sm">{{ T('common.reset') }}</a>
         <a id="downloadBtn"
            href="{{ url_for('inventory_download') }}{% if bf or ff %}?{% if bf %}branch_id={{ bf }}{% endif %}{% if bf and ff %}&{% endif %}{% if ff %}form_type_id={{ ff }}{% endif %}{% endif %}"
            class="btn btn-success btn-sm">
-          <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드
+          <i class="fa-solid fa-file-excel me-1"></i>{{ T('common.excel_download') }}
         </a>
       </div>
     </form>
@@ -57,30 +57,30 @@
 
 <!-- 범례 -->
 <div class="d-flex gap-3 mb-3 small align-items-center">
-  <span><i class="fa-solid fa-circle text-success"></i> 정상</span>
-  <span><i class="fa-solid fa-circle text-warning"></i> 부족 (최소기준 이하)</span>
-  <span><i class="fa-solid fa-circle text-danger"></i> 소진</span>
-  <span class="ms-2 text-muted"><i class="fa-solid fa-pencil"></i> 최소기준 셀 직접 수정 후 <kbd>Enter</kbd> 저장</span>
+  <span><i class="fa-solid fa-circle text-success"></i> {{ T('common.normal') }}</span>
+  <span><i class="fa-solid fa-circle text-warning"></i> {{ T('inv.legend_low') }}</span>
+  <span><i class="fa-solid fa-circle text-danger"></i> {{ T('common.exhausted') }}</span>
+  <span class="ms-2 text-muted"><i class="fa-solid fa-pencil"></i> {{ T('inv.legend_note') }} <kbd>Enter</kbd></span>
 </div>
 
 <!-- 탭 -->
 <ul class="nav nav-tabs mb-0" id="inventoryTab">
   <li class="nav-item">
     <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tabDetail">
-      <i class="fa-solid fa-bars-ul me-1"></i>지점별 상세
+      <i class="fa-solid fa-bars-ul me-1"></i>{{ T('inv.tab_detail') }}
       <span class="badge bg-secondary ms-1">{{ rows|length }}</span>
     </button>
   </li>
   <li class="nav-item">
     <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tabSummary">
-      <i class="fa-solid fa-chart-bar me-1"></i>양식별 누적 합계
+      <i class="fa-solid fa-chart-bar me-1"></i>{{ T('inv.tab_summary') }}
       <span class="badge bg-primary ms-1">{{ summary_rows|length }}</span>
     </button>
   </li>
   <li class="nav-item">
     <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tabMonthly">
-      <i class="fa-solid fa-calendar me-1"></i>월별 소비 현황
-      <span class="badge bg-success ms-1">최근 6개월</span>
+      <i class="fa-solid fa-calendar me-1"></i>{{ T('inv.tab_monthly') }}
+      <span class="badge bg-success ms-1">{{ T('inv.recent_6mo') }}</span>
     </button>
   </li>
 </ul>
@@ -96,26 +96,26 @@
           <table class="table table-hover mb-0">
             <thead class="table-light">
               <tr>
-                <th>구분</th>
-                <th>지점</th>
-                <th>양식명</th>
-                <th>단위</th>
-                <th class="text-center">현재 수량</th>
+                <th>{{ T('common.col_type') }}</th>
+                <th>{{ T('common.branch') }}</th>
+                <th>{{ T('common.form_name') }}</th>
+                <th>{{ T('common.unit') }}</th>
+                <th class="text-center">{{ T('inv.current_qty') }}</th>
                 <th class="text-center" style="min-width:120px">
-                  최소기준
+                  {{ T('inv.min_threshold') }}
                   <i class="fa-solid fa-pencil text-muted ms-1" style="font-size:.75rem"></i>
                 </th>
-                <th class="text-center">상태</th>
-                <th>최종 업데이트</th>
+                <th class="text-center">{{ T('common.status') }}</th>
+                <th>{{ T('common.updated_at') }}</th>
               </tr>
             </thead>
             <tbody>
               {% for r in rows %}
               <tr>
                 <td>
-                  {% if r.branch_type=='DOM' %}<span class="badge badge-dom">국내</span>
-                  {% elif r.branch_type=='INTL' %}<span class="badge badge-intl">국제</span>
-                  {% else %}<span class="badge badge-cargo">화물</span>{% endif %}
+                  {% if r.branch_type=='DOM' %}<span class="badge badge-dom">{{ T('common.domestic') }}</span>
+                  {% elif r.branch_type=='INTL' %}<span class="badge badge-intl">{{ T('common.international') }}</span>
+                  {% else %}<span class="badge badge-cargo">{{ T('common.cargo') }}</span>{% endif %}
                 </td>
                 <td><strong>{{ r.branch_code }}</strong> <span class="text-muted small">{{ r.branch_name }}</span></td>
                 <td class="small">{{ r.form_name }}</td>
@@ -135,16 +135,16 @@
                            min="0"
                            data-form-type-id="{{ r.form_type_id }}"
                            data-original="{{ r.min_threshold }}"
-                           title="Enter 또는 포커스 이동 시 저장">
+                           title="{{ T('inv.enter_to_save') }}">
                     <span class="save-indicator text-success d-none" style="font-size:.8rem">
                       <i class="fa-regular fa-circle-check-fill"></i>
                     </span>
                   </div>
                 </td>
                 <td class="text-center">
-                  {% if r.quantity == 0 %}<span class="badge bg-danger">소진</span>
-                  {% elif r.quantity <= r.min_threshold %}<span class="badge bg-warning text-dark">부족</span>
-                  {% else %}<span class="badge bg-success">정상</span>{% endif %}
+                  {% if r.quantity == 0 %}<span class="badge bg-danger">{{ T('common.exhausted') }}</span>
+                  {% elif r.quantity <= r.min_threshold %}<span class="badge bg-warning text-dark">{{ T('common.low') }}</span>
+                  {% else %}<span class="badge bg-success">{{ T('common.normal') }}</span>{% endif %}
                 </td>
                 <td class="small text-muted">{{ r.last_updated | dt if r.last_updated else '—' }}</td>
               </tr>
@@ -155,7 +155,7 @@
         <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}건</div>
         {% else %}
         <div class="text-center text-muted py-5">
-          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>재고 데이터가 없습니다.
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T('inv.no_data') }}
         </div>
         {% endif %}
       </div>
@@ -171,18 +171,18 @@
           <table class="table table-hover mb-0">
             <thead class="table-light">
               <tr>
-                <th>양식명</th>
-                <th>단위</th>
-                <th class="text-center">누적 합계 수량</th>
-                <th class="text-center">보유 지점 수</th>
+                <th>{{ T('common.form_name') }}</th>
+                <th>{{ T('common.unit') }}</th>
+                <th class="text-center">{{ T('inv.total_qty') }}</th>
+                <th class="text-center">{{ T('inv.holding_branches') }}</th>
                 <th class="text-center">
-                  최소기준
+                  {{ T('inv.min_threshold') }}
                   <i class="fa-solid fa-pencil text-muted ms-1" style="font-size:.75rem"></i>
                 </th>
-                <th class="text-center">부족 지점</th>
-                <th class="text-center">소진 지점</th>
+                <th class="text-center">{{ T('inv.low_branches') }}</th>
+                <th class="text-center">{{ T('inv.exhausted_branches') }}</th>
                 {% if session.role == 'admin' %}
-                <th class="text-end">재고 금액(추정)</th>
+                <th class="text-end">{{ T('inv.est_value') }}</th>
                 {% endif %}
               </tr>
             </thead>
@@ -206,7 +206,7 @@
                           data-form-type-id="{{ r.form_type_id }}"
                           data-form-name="{{ r.form_name }}"
                           data-bf="{{ bf }}">
-                    <i class="bi bi-geo-alt me-1"></i>{{ r.branch_cnt }}곳
+                    <i class="bi bi-geo-alt me-1"></i>{{ r.branch_cnt }}{{ T('inv.branch_detail') }}
                   </button>
                 </td>
                 <td class="text-center">
@@ -218,18 +218,18 @@
                            min="0"
                            data-form-type-id="{{ r.form_type_id }}"
                            data-original="{{ r.min_threshold }}"
-                           title="Enter 또는 포커스 이동 시 저장">
+                           title="{{ T('inv.enter_to_save') }}">
                     <span class="save-indicator text-success d-none" style="font-size:.8rem">
                       <i class="fa-regular fa-circle-check-fill"></i>
                     </span>
                   </div>
                 </td>
                 <td class="text-center">
-                  {% if r.low_cnt %}<span class="badge bg-warning text-dark">{{ r.low_cnt }}곳</span>
+                  {% if r.low_cnt %}<span class="badge bg-warning text-dark">{{ r.low_cnt }}{{ T('inv.branch_detail') }}</span>
                   {% else %}<span class="text-muted small">—</span>{% endif %}
                 </td>
                 <td class="text-center">
-                  {% if r.empty_cnt %}<span class="badge bg-danger">{{ r.empty_cnt }}곳</span>
+                  {% if r.empty_cnt %}<span class="badge bg-danger">{{ r.empty_cnt }}{{ T('inv.branch_detail') }}</span>
                   {% else %}<span class="text-muted small">—</span>{% endif %}
                 </td>
                 {% if session.role == 'admin' %}
@@ -242,7 +242,7 @@
             </tbody>
             <tfoot class="table-secondary fw-bold">
               <tr>
-                <td colspan="2">합계</td>
+                <td colspan="2">{{ T('common.total') }}</td>
                 <td class="text-center">{{ grand_total_qty }}</td>
                 <td colspan="4"></td>
                 {% if session.role == 'admin' %}
@@ -255,7 +255,7 @@
         <div class="px-3 py-2 text-muted small border-top">총 {{ summary_rows|length }}개 양식</div>
         {% else %}
         <div class="text-center text-muted py-5">
-          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>재고 데이터가 없습니다.
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T('inv.no_data') }}
         </div>
         {% endif %}
       </div>
@@ -271,15 +271,15 @@
           <table class="table table-hover table-sm mb-0">
             <thead class="table-light">
               <tr>
-                <th style="min-width:200px">양식명</th>
-                <th>단위</th>
+                <th style="min-width:200px">{{ T('common.form_name') }}</th>
+                <th>{{ T('common.unit') }}</th>
                 {% for mo in month_labels %}
                 <th class="text-center" style="min-width:72px">
                   <div class="small fw-semibold">{{ mo[5:] }}월</div>
                   <div class="text-muted" style="font-size:.68rem">{{ mo[:4] }}</div>
                 </th>
                 {% endfor %}
-                <th class="text-center fw-bold" style="min-width:72px">합계</th>
+                <th class="text-center fw-bold" style="min-width:72px">{{ T('common.total') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -299,7 +299,7 @@
             </tbody>
             <tfoot class="table-secondary fw-bold">
               <tr>
-                <td colspan="2">월 합계</td>
+                <td colspan="2">{{ T('inv.monthly_total') }}</td>
                 {% for t in monthly_totals %}
                 <td class="text-center">{{ t }}</td>
                 {% endfor %}
@@ -314,7 +314,7 @@
         {% else %}
         <div class="text-center text-muted py-5">
           <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
-          최근 6개월 출고 데이터가 없습니다.
+          {{ T('inv.no_data') }}
         </div>
         {% endif %}
       </div>
@@ -330,32 +330,32 @@
       <div class="modal-header" style="background:#1a2340;color:#fff">
         <h6 class="modal-title">
           <i class="fa-solid fa-location-dot me-2" style="color:#60a5fa"></i>
-          <span id="modalFormName"></span> — 보유 지점 현황
+          <span id="modalFormName"></span> — {{ T('inv.modal_title') }}
         </h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-0">
         <div id="modalLoading" class="text-center py-5 text-muted">
-          <div class="spinner-border spinner-border-sm me-2"></div>불러오는 중...
+          <div class="spinner-border spinner-border-sm me-2"></div>{{ T('inv.loading') }}
         </div>
         <div id="modalContent" class="d-none">
           <div class="table-responsive">
             <table class="table table-hover mb-0">
               <thead class="table-light">
                 <tr>
-                  <th>구분</th>
-                  <th>지점코드</th>
-                  <th>지점명</th>
-                  <th class="text-center">현재 수량</th>
-                  <th class="text-center">최소기준</th>
-                  <th class="text-center">상태</th>
-                  <th>최종 업데이트</th>
+                  <th>{{ T('common.col_type') }}</th>
+                  <th>{{ T('common.branch_code') }}</th>
+                  <th>{{ T('common.branch_name') }}</th>
+                  <th class="text-center">{{ T('inv.current_qty') }}</th>
+                  <th class="text-center">{{ T('inv.min_threshold') }}</th>
+                  <th class="text-center">{{ T('common.status') }}</th>
+                  <th>{{ T('common.updated_at') }}</th>
                 </tr>
               </thead>
               <tbody id="modalTableBody"></tbody>
               <tfoot class="table-secondary fw-bold" id="modalTfoot">
                 <tr>
-                  <td colspan="3">합계</td>
+                  <td colspan="3">{{ T('common.total') }}</td>
                   <td class="text-center" id="modalTotal"></td>
                   <td colspan="3"></td>
                 </tr>
@@ -364,11 +364,11 @@
           </div>
         </div>
         <div id="modalEmpty" class="text-center py-5 text-muted d-none">
-          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>보유 지점 없음
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T('inv.no_branches') }}
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">닫기</button>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{{ T('common.close') }}</button>
       </div>
     </div>
   </div>
@@ -378,13 +378,13 @@
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
   <div id="saveToast" class="toast align-items-center text-bg-success border-0" role="alert">
     <div class="d-flex">
-      <div class="toast-body"><i class="fa-regular fa-circle-check me-1"></i> 최소기준이 저장되었습니다.</div>
+      <div class="toast-body"><i class="fa-regular fa-circle-check me-1"></i> {{ T('inv.saved') }}</div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   </div>
   <div id="errToast" class="toast align-items-center text-bg-danger border-0" role="alert">
     <div class="d-flex">
-      <div class="toast-body" id="errMsg"><i class="fa-regular fa-circle-xmark me-1"></i> 저장 실패</div>
+      <div class="toast-body" id="errMsg"><i class="fa-regular fa-circle-xmark me-1"></i> {{ T('inv.save_failed') }}</div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   </div>
@@ -402,7 +402,7 @@ document.getElementById('filterForm')?.addEventListener('change', () => {
 
 // ── 보유 지점 상세 모달 ──
 const branchModal = new bootstrap.Modal(document.getElementById('branchDetailModal'));
-const typeKr = { DOM: '국내', INTL: '국제', CARGO: '화물' };
+const typeKr = { DOM: '{{ T("common.domestic") }}', INTL: '{{ T("common.international") }}', CARGO: '{{ T("common.cargo") }}' };
 const typeBadge = { DOM: 'badge-dom', INTL: 'badge-intl', CARGO: 'badge-cargo' };
 
 document.querySelectorAll('.branch-detail-btn').forEach(btn => {
@@ -435,7 +435,7 @@ document.querySelectorAll('.branch-detail-btn').forEach(btn => {
     data.forEach(r => {
       const qty    = r.quantity;
       const thr    = r.min_threshold;
-      const status = qty === 0 ? ['소진','bg-danger'] : (qty <= thr ? ['부족','bg-warning text-dark'] : ['정상','bg-success']);
+      const status = qty === 0 ? ['{{ T("common.exhausted") }}','bg-danger'] : (qty <= thr ? ['{{ T("common.low") }}','bg-warning text-dark'] : ['{{ T("common.normal") }}','bg-success']);
       const qtyClass = qty === 0 ? 'status-empty' : (qty <= thr ? 'status-low' : 'status-ok');
       totalQty += qty;
 
@@ -497,7 +497,7 @@ document.querySelectorAll('.threshold-input').forEach(input => {
       saveToast.show();
     } else {
       input.value = orig;
-      document.getElementById('errMsg').textContent = data.error || '저장 실패';
+      document.getElementById('errMsg').textContent = data.error || '{{ T("inv.save_failed") }}';
       errToast.show();
     }
   }

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}입출고 이력{% endblock %}
+{% block title %}{{ T('hist.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-receipt"></i>{% endblock %}
-{% block page_title %}입출고 이력{% endblock %}
+{% block page_title %}{{ T('hist.title') }}{% endblock %}
 
 {% block content %}
 <!-- 필터 -->
@@ -12,9 +12,9 @@
 
         {% if session.role == 'admin' %}
         <div class="col-md-2">
-          <label class="form-label small fw-semibold mb-1">지점</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('common.branch') }}</label>
           <select name="branch_id" class="form-select form-select-sm">
-            <option value="">전체 지점</option>
+            <option value="">{{ T('common.branch_all') }}</option>
             {% for b in branches %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endfor %}
@@ -23,9 +23,9 @@
         {% endif %}
 
         <div class="col-md-2">
-          <label class="form-label small fw-semibold mb-1">양식</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('common.form_name') }}</label>
           <select name="form_type_id" class="form-select form-select-sm">
-            <option value="">전체 양식</option>
+            <option value="">{{ T('common.form_all') }}</option>
             {% for f in form_types %}
               <option value="{{ f.id }}" {% if ff==f.id|string %}selected{% endif %}>{{ f.name }}</option>
             {% endfor %}
@@ -33,19 +33,19 @@
         </div>
 
         <div class="col-md-1">
-          <label class="form-label small fw-semibold mb-1">구분</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('common.col_type') }}</label>
           <select name="type" class="form-select form-select-sm">
-            <option value="">전체</option>
-            <option value="IN"       {% if tf=='IN'       %}selected{% endif %}>입고</option>
-            <option value="OUT"      {% if tf=='OUT'      %}selected{% endif %}>출고</option>
-            <option value="TRANSFER" {% if tf=='TRANSFER' %}selected{% endif %}>이전</option>
+            <option value="">{{ T('hist.type_all') }}</option>
+            <option value="IN"       {% if tf=='IN'       %}selected{% endif %}>{{ T('common.inbound') }}</option>
+            <option value="OUT"      {% if tf=='OUT'      %}selected{% endif %}>{{ T('common.outbound') }}</option>
+            <option value="TRANSFER" {% if tf=='TRANSFER' %}selected{% endif %}>{{ T('common.transfer') }}</option>
           </select>
         </div>
 
         <!-- 월 선택 -->
         <div class="col-md-2">
           <label class="form-label small fw-semibold mb-1">
-            <i class="fa-solid fa-calendar-days me-1 text-primary"></i>월 선택
+            <i class="fa-solid fa-calendar-days me-1 text-primary"></i>{{ T('hist.month') }}
           </label>
           <input type="month" name="month_f" id="monthFilter"
                  class="form-control form-control-sm" value="{{ month_f }}">
@@ -53,25 +53,25 @@
 
         <!-- 날짜 범위 -->
         <div class="col-md-2">
-          <label class="form-label small fw-semibold mb-1">시작일</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('hist.start_date') }}</label>
           <input type="date" name="date_from" id="dateFrom"
                  class="form-control form-control-sm" value="{{ date_from }}">
         </div>
         <div class="col-md-2">
-          <label class="form-label small fw-semibold mb-1">종료일</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('hist.end_date') }}</label>
           <input type="date" name="date_to" id="dateTo"
                  class="form-control form-control-sm" value="{{ date_to }}">
         </div>
 
         <div class="col-auto d-flex gap-2 align-items-end">
           <button type="submit" class="btn btn-primary btn-sm">
-            <i class="fa-solid fa-magnifying-glass me-1"></i>조회
+            <i class="fa-solid fa-magnifying-glass me-1"></i>{{ T('common.search') }}
           </button>
-          <a href="{{ url_for('transactions') }}" class="btn btn-outline-secondary btn-sm">초기화</a>
+          <a href="{{ url_for('transactions') }}" class="btn btn-outline-secondary btn-sm">{{ T('common.reset') }}</a>
           <a id="downloadBtn"
              href="{{ url_for('transactions_download') }}?branch_id={{ bf }}&form_type_id={{ ff }}&type={{ tf }}&month_f={{ month_f }}&date_from={{ date_from }}&date_to={{ date_to }}"
              class="btn btn-success btn-sm">
-            <i class="fa-solid fa-file-excel me-1"></i>엑셀
+            <i class="fa-solid fa-file-excel me-1"></i>{{ T('common.excel_download') }}
           </a>
         </div>
       </div>
@@ -87,14 +87,14 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th>거래일자</th>
-            <th class="text-center">구분</th>
-            <th>양식명</th>
-            <th>출발 지점</th>
-            <th>도착 지점</th>
-            <th class="text-center">수량</th>
-            <th>비고</th>
-            <th>처리자</th>
+            <th>{{ T('hist.col_date') }}</th>
+            <th class="text-center">{{ T('common.col_type') }}</th>
+            <th>{{ T('common.form_name') }}</th>
+            <th>{{ T('hist.col_from') }}</th>
+            <th>{{ T('hist.col_to') }}</th>
+            <th class="text-center">{{ T('common.quantity') }}</th>
+            <th>{{ T('common.notes') }}</th>
+            <th>{{ T('common.processor') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -106,11 +106,11 @@
             </td>
             <td class="text-center">
               {% if t.type=='IN' %}
-                <span class="badge" style="background:#d1fae5;color:#065f46">입고</span>
+                <span class="badge" style="background:#d1fae5;color:#065f46">{{ T('common.inbound') }}</span>
               {% elif t.type=='OUT' %}
-                <span class="badge" style="background:#fee2e2;color:#991b1b">출고</span>
+                <span class="badge" style="background:#fee2e2;color:#991b1b">{{ T('common.outbound') }}</span>
               {% else %}
-                <span class="badge" style="background:#dbeafe;color:#1e40af">이전</span>
+                <span class="badge" style="background:#dbeafe;color:#1e40af">{{ T('common.transfer') }}</span>
               {% endif %}
             </td>
             <td class="small">{{ t.form_name }}</td>
@@ -132,11 +132,11 @@
         </tbody>
       </table>
     </div>
-    <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}건 (최대 300건)</div>
+    <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}{{ T('hist.max_rows') }}</div>
     {% else %}
     <div class="text-center text-muted py-5">
       <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
-      조건에 맞는 이력이 없습니다.
+      {{ T('hist.no_data') }}
     </div>
     {% endif %}
   </div>

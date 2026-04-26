@@ -1,7 +1,7 @@
-﻿{% extends 'base.html' %}
-{% block title %}분기 신청 추정{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ T('fcast.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-calculator"></i>{% endblock %}
-{% block page_title %}분기 신청 추정{% endblock %}
+{% block page_title %}{{ T('fcast.title') }}{% endblock %}
 
 {% block content %}
 
@@ -10,9 +10,9 @@
 <div class="alert alert-warning d-flex align-items-center gap-3 mb-3" style="border-left:4px solid #f59e0b">
   <i class="fa-solid fa-bell fs-4 text-warning"></i>
   <div>
-    <strong>분기 마감 월입니다!</strong>
+    <strong>{{ T('fcast.qend_title') }}</strong>
     현재 <strong>{{ today.year }}년 Q{{ cur_q }}</strong> ({{ today.month }}월) — 다음 분기 신청 시즌입니다.
-    아래 권장 신청수량을 참고하여 발주하세요.
+    {{ T('fcast.qend_desc') }}
   </div>
 </div>
 {% endif %}
@@ -27,7 +27,7 @@
         </div>
         <div>
           <div class="fw-bold" style="font-size:1.1rem">Q{{ cur_q }}</div>
-          <div class="stat-label">현재 분기</div>
+          <div class="stat-label">{{ T('fcast.cur_quarter') }}</div>
         </div>
       </div>
     </div>
@@ -42,7 +42,7 @@
           <div class="fw-bold text-warning" style="font-size:1.1rem">
             {{ nq_y }}년 Q{{ next_q }}
           </div>
-          <div class="stat-label">다음 분기 ({{ nq_start_m }}~{{ nq_end_m }}월)</div>
+          <div class="stat-label">{{ T('fcast.next_quarter') }} ({{ nq_start_m }}~{{ nq_end_m }}월)</div>
         </div>
       </div>
     </div>
@@ -57,7 +57,7 @@
           <div class="fw-bold text-danger" style="font-size:1.1rem">
             {{ forecast_sections | map(attribute='form_items') | sum(start=[]) | selectattr('recommended','gt',0) | list | length }}
           </div>
-          <div class="stat-label">신청 필요 품목</div>
+          <div class="stat-label">{{ T('fcast.items_needed') }}</div>
         </div>
       </div>
     </div>
@@ -69,8 +69,8 @@
           <i class="fa-solid fa-chart-line-arrow fs-4" style="color:#7c3aed"></i>
         </div>
         <div>
-          <div class="fw-bold" style="font-size:1.1rem;color:#7c3aed">6개월</div>
-          <div class="stat-label">분석 기준 기간</div>
+          <div class="fw-bold" style="font-size:1.1rem;color:#7c3aed">{{ T('fcast.6months') }}</div>
+          <div class="stat-label">{{ T('fcast.analysis_period') }}</div>
         </div>
       </div>
     </div>
@@ -85,18 +85,18 @@
       <div class="col-md-4">
         <label class="form-label small fw-semibold mb-1">지점</label>
         <select name="branch_id" class="form-select form-select-sm">
-          <option value="">전체 지점</option>
-          <optgroup label="국내">
+          <option value="">{{ T('common.branch_all') }}</option>
+          <optgroup label="{{ T('common.domestic') }}">
             {% for b in branches %}{% if b.type=='DOM' %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endif %}{% endfor %}
           </optgroup>
-          <optgroup label="국제">
+          <optgroup label="{{ T('common.international') }}">
             {% for b in branches %}{% if b.type=='INTL' %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endif %}{% endfor %}
           </optgroup>
-          <optgroup label="화물">
+          <optgroup label="{{ T('common.cargo') }}">
             {% for b in branches %}{% if b.type=='CARGO' %}
               <option value="{{ b.id }}" {% if bf==b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
             {% endif %}{% endfor %}
@@ -106,11 +106,11 @@
       {% endif %}
       <div class="col-auto d-flex gap-2">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="fa-solid fa-magnifying-glass me-1"></i>조회
+          <i class="fa-solid fa-magnifying-glass me-1"></i>{{ T('fcast.search') }}
         </button>
         <a href="{{ url_for('forecast_download') }}{% if bf %}?branch_id={{ bf }}{% endif %}"
            class="btn btn-success btn-sm">
-          <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드
+          <i class="fa-solid fa-file-excel me-1"></i>{{ T('fcast.excel_dl') }}
         </a>
       </div>
     </form>
@@ -119,18 +119,18 @@
 
 {# ── 범례 ── #}
 <div class="d-flex gap-3 mb-3 small align-items-center">
-  <span><span class="badge bg-danger">5+ 필요</span> 즉시 신청</span>
-  <span><span class="badge bg-warning text-dark">1~5 필요</span> 신청 권장</span>
-  <span><span class="badge bg-success">0</span> 재고 충분</span>
-  <span class="ms-2 text-muted">추세 — <strong>↑ 증가</strong> / <strong>→ 안정</strong> / <strong>↓ 감소</strong></span>
+  <span><span class="badge bg-danger">5+</span> {{ T('fcast.instant') }}</span>
+  <span><span class="badge bg-warning text-dark">1~5</span> {{ T('fcast.recommend') }}</span>
+  <span><span class="badge bg-success">0</span> {{ T('fcast.sufficient_badge') }}</span>
+  <span class="ms-2 text-muted">{{ T('fcast.trend_legend') }}</span>
 </div>
 
 {# ── 알고리즘 안내 ── #}
 <div class="alert alert-info py-2 small mb-3">
   <i class="fa-solid fa-circle-info me-1"></i>
-  <strong>추정 방식:</strong> 월평균 출고 × 3개월 × 추세보정(±15%) × 운항편수보정 — 현재재고 = 권장 신청수량
+  {{ T('fcast.algorithm') }}
   <a href="{{ url_for('flight_schedule_view') }}" class="ms-2 text-decoration-none">
-    <i class="fa-solid fa-plane me-1"></i>운항편수 입력
+    <i class="fa-solid fa-plane me-1"></i>{{ T('fcast.flight_link') }}
   </a>
 </div>
 
@@ -151,19 +151,19 @@
       </span>
       {% set need_cnt = section.form_items | selectattr('recommended','gt',0) | list | length %}
       {% if need_cnt %}
-        <span class="badge bg-danger ms-1">신청 필요 {{ need_cnt }}개</span>
+        <span class="badge bg-danger ms-1">{{ T('fcast.items_needed') }} {{ need_cnt }}개</span>
       {% else %}
-        <span class="badge bg-success ms-1">전 품목 충분</span>
+        <span class="badge bg-success ms-1">{{ T('fcast.all_sufficient') }}</span>
       {% endif %}
       {% set finfo = flight_info_map.get(section.branch_id) %}
       {% if finfo %}
         <span class="badge ms-1" style="background:#0ea5e9;font-size:.68rem">
-          <i class="fa-solid fa-plane me-1"></i>운항편수 보정 ×{{ finfo.factor }}
+          <i class="fa-solid fa-plane me-1"></i>{{ T('fcast.flight_correction') }} ×{{ finfo.factor }}
           ({{ finfo.avg_hist }}편→{{ finfo.avg_next }}편)
         </span>
       {% else %}
         <span class="badge bg-secondary ms-1" style="font-size:.68rem;opacity:.7">
-          <i class="fa-solid fa-plane me-1"></i>편수 미입력
+          <i class="fa-solid fa-plane me-1"></i>{{ T('fcast.no_flight') }}
         </span>
       {% endif %}
       <span class="ms-auto small opacity-75">총 {{ section.form_items|length }}개 품목 분석</span>
@@ -173,16 +173,16 @@
         <table class="table table-hover table-sm mb-0">
           <thead class="table-light">
             <tr>
-              <th style="min-width:220px">양식명</th>
-              <th class="text-center">단위</th>
+              <th style="min-width:220px">{{ T('common.form_name') }}</th>
+              <th class="text-center">{{ T('common.unit') }}</th>
               {% for mo in month_labels %}
               <th class="text-center small text-muted" style="min-width:52px">{{ mo[5:] }}월</th>
               {% endfor %}
-              <th class="text-center">월평균</th>
-              <th class="text-center">추세</th>
-              <th class="text-center">현재<br>재고</th>
-              <th class="text-center">다음분기<br>예상소비</th>
-              <th class="text-center fw-bold" style="min-width:90px">권장<br>신청수량</th>
+              <th class="text-center">{{ T('fcast.avg_monthly') }}</th>
+              <th class="text-center">{{ T('fcast.trend') }}</th>
+              <th class="text-center">{{ T('fcast.cur_stock') }}</th>
+              <th class="text-center">{{ T('fcast.next_q_est') }}</th>
+              <th class="text-center fw-bold" style="min-width:90px">{{ T('fcast.recommended') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -212,13 +212,13 @@
               <td class="text-center fw-semibold">{{ item.avg_monthly }}</td>
               <td class="text-center">
                 {% if item.trend_label == '증가' %}
-                  <span class="text-danger fw-bold">↑ 증가</span>
+                  <span class="text-danger fw-bold">{{ T('fcast.trend_up') }}</span>
                   <div class="small text-muted">+{{ item.trend_pct }}%</div>
                 {% elif item.trend_label == '감소' %}
-                  <span class="text-primary fw-bold">↓ 감소</span>
+                  <span class="text-primary fw-bold">{{ T('fcast.trend_down') }}</span>
                   <div class="small text-muted">{{ item.trend_pct }}%</div>
                 {% else %}
-                  <span class="text-success fw-bold">→ 안정</span>
+                  <span class="text-success fw-bold">{{ T('fcast.trend_stable') }}</span>
                 {% endif %}
               </td>
               <td class="text-center fw-semibold
@@ -233,7 +233,7 @@
                 {% elif rec > 0 %}
                   <span class="badge bg-warning text-dark fs-6 px-3">{{ rec }}</span>
                 {% else %}
-                  <span class="badge bg-success fs-6 px-3">충분</span>
+                  <span class="badge bg-success fs-6 px-3">{{ T('fcast.sufficient') }}</span>
                 {% endif %}
               </td>
             </tr>
@@ -241,7 +241,7 @@
           </tbody>
           <tfoot class="table-secondary fw-semibold">
             <tr>
-              <td>합계</td>
+              <td>{{ T('common.total') }}</td>
               <td></td>
               {% for i in range(6) %}
               <td class="text-center">{{ section.col_sums[i] }}</td>
@@ -264,7 +264,7 @@
 <div class="card">
   <div class="card-body text-center text-muted py-5">
     <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
-    최근 6개월 출고 이력이 없습니다. 출고 데이터가 쌓인 후 이용하세요.
+    {{ T('fcast.no_data') }}
   </div>
 </div>
 {% endif %}
