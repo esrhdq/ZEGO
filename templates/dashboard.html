@@ -1,6 +1,6 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}대시보드{% endblock %}
-{% block page_title %}<i class="bi bi-speedometer2 me-2"></i>대시보드{% endblock %}
+{% block page_title %}<i class="fa-solid fa-gauge me-2"></i>대시보드{% endblock %}
 
 {% block content %}
 <!-- 통계 카드 -->
@@ -9,7 +9,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#eff6ff;border-radius:10px;padding:14px;">
-          <i class="bi bi-geo-alt-fill fs-4 text-primary"></i>
+          <i class="fa-solid fa-location-dot fs-4 text-primary"></i>
         </div>
         <div>
           <div class="stat-num text-primary">{{ stats.branches }}</div>
@@ -22,7 +22,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#f5f3ff;border-radius:10px;padding:14px;">
-          <i class="bi bi-files fs-4 text-purple" style="color:#7c3aed"></i>
+          <i class="fa-solid fa-copy fs-4 text-purple" style="color:#7c3aed"></i>
         </div>
         <div>
           <div class="stat-num" style="color:#7c3aed">{{ stats.forms }}</div>
@@ -35,7 +35,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#f0fdf4;border-radius:10px;padding:14px;">
-          <i class="bi bi-arrow-repeat fs-4 text-success"></i>
+          <i class="fa-solid fa-arrows-rotate fs-4 text-success"></i>
         </div>
         <div>
           <div class="stat-num text-success">{{ stats.today_tx }}</div>
@@ -48,7 +48,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#fff7ed;border-radius:10px;padding:14px;">
-          <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+          <i class="fa-solid fa-triangle-exclamation fs-4 text-warning"></i>
         </div>
         <div>
           <div class="stat-num text-warning">{{ stats.alerts }}</div>
@@ -65,7 +65,7 @@
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 py-3">
-        <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+        <i class="fa-solid fa-triangle-exclamation text-warning"></i>
         <strong>재고 부족 경고</strong>
         <span class="badge bg-warning text-dark ms-auto">{{ low_stock|length }}</span>
       </div>
@@ -96,7 +96,7 @@
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 py-3">
-        <i class="bi bi-x-circle-fill text-danger"></i>
+        <i class="fa-solid fa-circle-xmark text-danger"></i>
         <strong>재고 소진</strong>
         <span class="badge bg-danger ms-auto">{{ empty_stock|length }}</span>
       </div>
@@ -124,7 +124,7 @@
   {% else %}
   <div class="col-12">
     <div class="alert alert-success d-flex align-items-center gap-2">
-      <i class="bi bi-check-circle-fill"></i>
+      <i class="fa-solid fa-circle-check"></i>
       <span>모든 지점의 재고가 정상입니다.</span>
     </div>
   </div>
@@ -134,7 +134,7 @@
 <!-- 최근 입출고 이력 -->
 <div class="card">
   <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
-    <i class="bi bi-clock-history me-2"></i>
+    <i class="fa-solid fa-clock-rotate-left me-2"></i>
     <strong>최근 입출고 이력</strong>
     <a href="{{ url_for('transactions') }}" class="btn btn-sm btn-outline-secondary ms-auto">전체 보기</a>
   </div>
@@ -173,7 +173,7 @@
     </div>
     {% else %}
     <div class="text-center text-muted py-5">
-      <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+      <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
       아직 입출고 내역이 없습니다.
     </div>
     {% endif %}
@@ -183,13 +183,13 @@
 <!-- 바로가기 버튼 -->
 <div class="row g-2 mt-3 shortcut-row">
   <div class="col-auto">
-    <a href="{{ url_for('inbound') }}" class="btn btn-success"><i class="bi bi-box-arrow-in-down me-1"></i>입고 처리</a>
+    <a href="{{ url_for('inbound') }}" class="btn btn-success"><i class="fa-solid fa-arrow-down-to-bracket me-1"></i>입고 처리</a>
   </div>
   <div class="col-auto">
-    <a href="{{ url_for('outbound') }}" class="btn btn-danger"><i class="bi bi-box-arrow-up me-1"></i>출고 처리</a>
+    <a href="{{ url_for('outbound') }}" class="btn btn-danger"><i class="fa-solid fa-arrow-up-from-bracket me-1"></i>출고 처리</a>
   </div>
   <div class="col-auto">
-    <a href="{{ url_for('transfer') }}" class="btn btn-primary"><i class="bi bi-arrow-left-right me-1"></i>지점 간 이전</a>
+    <a href="{{ url_for('transfer') }}" class="btn btn-primary"><i class="fa-solid fa-right-left me-1"></i>지점 간 이전</a>
   </div>
 </div>
 {% endblock %}

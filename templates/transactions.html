@@ -1,6 +1,6 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}입출고 이력{% endblock %}
-{% block page_title %}<i class="bi bi-clock-history me-2"></i>입출고 이력{% endblock %}
+{% block page_title %}<i class="fa-solid fa-clock-rotate-left me-2"></i>입출고 이력{% endblock %}
 
 {% block content %}
 <!-- 필터 -->
@@ -46,13 +46,13 @@
       </div>
       <div class="col-auto d-flex gap-2 align-items-end">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="bi bi-search me-1"></i>조회
+          <i class="fa-solid fa-magnifying-glass me-1"></i>조회
         </button>
         <a href="{{ url_for('transactions') }}" class="btn btn-outline-secondary btn-sm">초기화</a>
         <a id="downloadBtn"
            href="{{ url_for('transactions_download') }}?branch_id={{ bf }}&form_type_id={{ ff }}&type={{ tf }}&date_from={{ date_from }}&date_to={{ date_to }}"
            class="btn btn-success btn-sm">
-          <i class="bi bi-file-earmark-excel me-1"></i>엑셀 다운로드
+          <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드
         </a>
       </div>
     </form>
@@ -112,7 +112,7 @@
     <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}건 (최대 300건)</div>
     {% else %}
     <div class="text-center text-muted py-5">
-      <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+      <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
       조건에 맞는 이력이 없습니다.
     </div>
     {% endif %}

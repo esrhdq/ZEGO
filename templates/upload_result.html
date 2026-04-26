@@ -1,6 +1,6 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}엑셀 업로드 결과{% endblock %}
-{% block page_title %}<i class="bi bi-file-earmark-excel me-2"></i>엑셀 업로드 결과{% endblock %}
+{% block page_title %}<i class="fa-solid fa-file-excel me-2"></i>엑셀 업로드 결과{% endblock %}
 
 {% block content %}
 
@@ -10,7 +10,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#d1fae5;border-radius:10px;padding:14px;">
-          <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+          <i class="fa-regular fa-circle-check-fill fs-4 text-success"></i>
         </div>
         <div>
           <div class="stat-num text-success">{{ ok_cnt }}</div>
@@ -23,7 +23,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#fee2e2;border-radius:10px;padding:14px;">
-          <i class="bi bi-x-circle-fill fs-4 text-danger"></i>
+          <i class="fa-regular fa-circle-xmark-fill fs-4 text-danger"></i>
         </div>
         <div>
           <div class="stat-num text-danger">{{ err_cnt }}</div>
@@ -36,7 +36,7 @@
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
         <div style="background:#fef9c3;border-radius:10px;padding:14px;">
-          <i class="bi bi-dash-circle-fill fs-4 text-warning"></i>
+          <i class="fa-solid fa-circle-minus-fill fs-4 text-warning"></i>
         </div>
         <div>
           <div class="stat-num text-warning">{{ skip_cnt }}</div>
@@ -57,7 +57,7 @@
         <i class="bi bi-arrow-left me-1"></i>입고 페이지로
       </a>
       <a href="{{ url_for('inventory') }}" class="btn btn-sm btn-success">
-        <i class="bi bi-boxes me-1"></i>재고 현황 확인
+        <i class="fa-solid fa-boxes-stacked me-1"></i>재고 현황 확인
       </a>
     </div>
   </div>
@@ -103,7 +103,7 @@
               {% if r.status == 'ok' %}
                 <i class="bi bi-check me-1"></i>재고 반영 완료
               {% else %}
-                <i class="bi bi-info-circle me-1"></i>{{ r.msg }}
+                <i class="fa-solid fa-circle-info me-1"></i>{{ r.msg }}
               {% endif %}
             </td>
           </tr>
@@ -113,7 +113,7 @@
     </div>
     {% else %}
     <div class="text-center text-muted py-5">
-      <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+      <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
       처리할 데이터가 없습니다.
     </div>
     {% endif %}

@@ -1,6 +1,6 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}재고 현황{% endblock %}
-{% block page_title %}<i class="bi bi-boxes me-2"></i>재고 현황{% endblock %}
+{% block page_title %}<i class="fa-solid fa-boxes-stacked me-2"></i>재고 현황{% endblock %}
 
 {% block content %}
 <!-- 필터 + 다운로드 -->
@@ -41,13 +41,13 @@
       </div>
       <div class="col-auto d-flex gap-2 align-items-end">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="bi bi-search me-1"></i>조회
+          <i class="fa-solid fa-magnifying-glass me-1"></i>조회
         </button>
         <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary btn-sm">초기화</a>
         <a id="downloadBtn"
            href="{{ url_for('inventory_download') }}{% if bf or ff %}?{% if bf %}branch_id={{ bf }}{% endif %}{% if bf and ff %}&{% endif %}{% if ff %}form_type_id={{ ff }}{% endif %}{% endif %}"
            class="btn btn-success btn-sm">
-          <i class="bi bi-file-earmark-excel me-1"></i>엑셀 다운로드
+          <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드
         </a>
       </div>
     </form>
@@ -56,29 +56,29 @@
 
 <!-- 범례 -->
 <div class="d-flex gap-3 mb-3 small align-items-center">
-  <span><i class="bi bi-circle-fill text-success"></i> 정상</span>
-  <span><i class="bi bi-circle-fill text-warning"></i> 부족 (최소기준 이하)</span>
-  <span><i class="bi bi-circle-fill text-danger"></i> 소진</span>
-  <span class="ms-2 text-muted"><i class="bi bi-pencil-fill"></i> 최소기준 셀 직접 수정 후 <kbd>Enter</kbd> 저장</span>
+  <span><i class="fa-solid fa-circle text-success"></i> 정상</span>
+  <span><i class="fa-solid fa-circle text-warning"></i> 부족 (최소기준 이하)</span>
+  <span><i class="fa-solid fa-circle text-danger"></i> 소진</span>
+  <span class="ms-2 text-muted"><i class="fa-solid fa-pencil"></i> 최소기준 셀 직접 수정 후 <kbd>Enter</kbd> 저장</span>
 </div>
 
 <!-- 탭 -->
 <ul class="nav nav-tabs mb-0" id="inventoryTab">
   <li class="nav-item">
     <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tabDetail">
-      <i class="bi bi-list-ul me-1"></i>지점별 상세
+      <i class="fa-solid fa-bars-ul me-1"></i>지점별 상세
       <span class="badge bg-secondary ms-1">{{ rows|length }}</span>
     </button>
   </li>
   <li class="nav-item">
     <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tabSummary">
-      <i class="bi bi-bar-chart-fill me-1"></i>양식별 누적 합계
+      <i class="fa-solid fa-chart-bar me-1"></i>양식별 누적 합계
       <span class="badge bg-primary ms-1">{{ summary_rows|length }}</span>
     </button>
   </li>
   <li class="nav-item">
     <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tabMonthly">
-      <i class="bi bi-calendar3 me-1"></i>월별 소비 현황
+      <i class="fa-solid fa-calendar me-1"></i>월별 소비 현황
       <span class="badge bg-success ms-1">최근 6개월</span>
     </button>
   </li>
@@ -102,7 +102,7 @@
                 <th class="text-center">현재 수량</th>
                 <th class="text-center" style="min-width:120px">
                   최소기준
-                  <i class="bi bi-pencil text-muted ms-1" style="font-size:.75rem"></i>
+                  <i class="fa-solid fa-pencil text-muted ms-1" style="font-size:.75rem"></i>
                 </th>
                 <th class="text-center">상태</th>
                 <th>최종 업데이트</th>
@@ -136,7 +136,7 @@
                            data-original="{{ r.min_threshold }}"
                            title="Enter 또는 포커스 이동 시 저장">
                     <span class="save-indicator text-success d-none" style="font-size:.8rem">
-                      <i class="bi bi-check-circle-fill"></i>
+                      <i class="fa-regular fa-circle-check-fill"></i>
                     </span>
                   </div>
                 </td>
@@ -154,7 +154,7 @@
         <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}건</div>
         {% else %}
         <div class="text-center text-muted py-5">
-          <i class="bi bi-inbox fs-2 d-block mb-2"></i>재고 데이터가 없습니다.
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>재고 데이터가 없습니다.
         </div>
         {% endif %}
       </div>
@@ -176,7 +176,7 @@
                 <th class="text-center">보유 지점 수</th>
                 <th class="text-center">
                   최소기준
-                  <i class="bi bi-pencil text-muted ms-1" style="font-size:.75rem"></i>
+                  <i class="fa-solid fa-pencil text-muted ms-1" style="font-size:.75rem"></i>
                 </th>
                 <th class="text-center">부족 지점</th>
                 <th class="text-center">소진 지점</th>
@@ -219,7 +219,7 @@
                            data-original="{{ r.min_threshold }}"
                            title="Enter 또는 포커스 이동 시 저장">
                     <span class="save-indicator text-success d-none" style="font-size:.8rem">
-                      <i class="bi bi-check-circle-fill"></i>
+                      <i class="fa-regular fa-circle-check-fill"></i>
                     </span>
                   </div>
                 </td>
@@ -254,7 +254,7 @@
         <div class="px-3 py-2 text-muted small border-top">총 {{ summary_rows|length }}개 양식</div>
         {% else %}
         <div class="text-center text-muted py-5">
-          <i class="bi bi-inbox fs-2 d-block mb-2"></i>재고 데이터가 없습니다.
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>재고 데이터가 없습니다.
         </div>
         {% endif %}
       </div>
@@ -312,7 +312,7 @@
         </div>
         {% else %}
         <div class="text-center text-muted py-5">
-          <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
           최근 6개월 출고 데이터가 없습니다.
         </div>
         {% endif %}
@@ -328,7 +328,7 @@
     <div class="modal-content">
       <div class="modal-header" style="background:#1a2340;color:#fff">
         <h6 class="modal-title">
-          <i class="bi bi-geo-alt-fill me-2" style="color:#60a5fa"></i>
+          <i class="fa-solid fa-location-dot me-2" style="color:#60a5fa"></i>
           <span id="modalFormName"></span> — 보유 지점 현황
         </h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -363,7 +363,7 @@
           </div>
         </div>
         <div id="modalEmpty" class="text-center py-5 text-muted d-none">
-          <i class="bi bi-inbox fs-2 d-block mb-2"></i>보유 지점 없음
+          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>보유 지점 없음
         </div>
       </div>
       <div class="modal-footer">
@@ -377,13 +377,13 @@
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
   <div id="saveToast" class="toast align-items-center text-bg-success border-0" role="alert">
     <div class="d-flex">
-      <div class="toast-body"><i class="bi bi-check-circle me-1"></i> 최소기준이 저장되었습니다.</div>
+      <div class="toast-body"><i class="fa-regular fa-circle-check me-1"></i> 최소기준이 저장되었습니다.</div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   </div>
   <div id="errToast" class="toast align-items-center text-bg-danger border-0" role="alert">
     <div class="d-flex">
-      <div class="toast-body" id="errMsg"><i class="bi bi-x-circle me-1"></i> 저장 실패</div>
+      <div class="toast-body" id="errMsg"><i class="fa-regular fa-circle-xmark me-1"></i> 저장 실패</div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   </div>

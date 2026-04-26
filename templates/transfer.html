@@ -1,6 +1,6 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}지점 간 이전{% endblock %}
-{% block page_title %}<i class="bi bi-arrow-left-right me-2"></i>지점 간 이전{% endblock %}
+{% block page_title %}<i class="fa-solid fa-right-left me-2"></i>지점 간 이전{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -42,7 +42,7 @@
                 {# 직원: 본인 지점 고정 #}
                 <input type="hidden" name="from_branch_id" value="{{ session.branch_id }}" id="fromBranch">
                 <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
-                  <i class="bi bi-geo-alt-fill text-primary"></i>
+                  <i class="fa-solid fa-location-dot text-primary"></i>
                   <strong>{{ session.branch_name }}</strong>
                   <span class="badge bg-secondary ms-1">내 지점</span>
                 </div>
@@ -108,7 +108,7 @@
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary px-4">
-              <i class="bi bi-arrow-left-right me-1"></i>이전 처리
+              <i class="fa-solid fa-right-left me-1"></i>이전 처리
             </button>
             <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
           </div>

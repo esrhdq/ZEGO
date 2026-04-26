@@ -1,17 +1,17 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}입고 처리{% endblock %}
-{% block page_title %}<i class="bi bi-box-arrow-in-down me-2"></i>입고 처리{% endblock %}
+{% block page_title %}<i class="fa-solid fa-arrow-down-to-bracket me-2"></i>입고 처리{% endblock %}
 
 {% block content %}
 <!-- 엑셀 업로드 섹션 -->
 <div class="card mb-4" style="border-left:4px solid #16a34a">
   <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
-    <i class="bi bi-file-earmark-arrow-up text-success fs-5"></i>
+    <i class="fa-solid fa-file-arrow-up text-success fs-5"></i>
     <strong>엑셀 일괄 입고</strong>
     <span class="badge bg-success ms-1">권장</span>
     <button class="btn btn-sm btn-outline-secondary ms-auto" type="button"
             data-bs-toggle="collapse" data-bs-target="#uploadSection">
-      <i class="bi bi-chevron-down"></i> 펼치기
+      <i class="fa-solid fa-chevron-down"></i> 펼치기
     </button>
   </div>
   <div class="collapse" id="uploadSection">
@@ -20,7 +20,7 @@
 
         <!-- 안내 + 템플릿 다운로드 -->
         <div class="col-md-5">
-          <h6 class="fw-semibold mb-3"><i class="bi bi-info-circle text-primary me-1"></i>사용 방법</h6>
+          <h6 class="fw-semibold mb-3"><i class="fa-solid fa-circle-info text-primary me-1"></i>사용 방법</h6>
           <ol class="small text-muted ps-3 mb-3" style="line-height:2">
             <li>아래 <strong>템플릿 다운로드</strong> 버튼으로 양식을 받습니다.</li>
             <li>
@@ -34,17 +34,17 @@
             <li>저장 후 아래 <strong>파일 선택 → 업로드</strong>합니다.</li>
           </ol>
           <a href="{{ url_for('inbound_template') }}" class="btn btn-outline-success w-100">
-            <i class="bi bi-file-earmark-excel me-2"></i>템플릿 다운로드
+            <i class="fa-solid fa-file-excel me-2"></i>템플릿 다운로드
           </a>
           <div class="text-muted small mt-2 text-center">
-            <i class="bi bi-info-circle me-1"></i>
+            <i class="fa-solid fa-circle-info me-1"></i>
             "참고" 시트에 유효한 지점코드·양식명 목록이 포함되어 있습니다.
           </div>
         </div>
 
         <!-- 파일 업로드 -->
         <div class="col-md-7">
-          <h6 class="fw-semibold mb-3"><i class="bi bi-upload text-primary me-1"></i>파일 업로드</h6>
+          <h6 class="fw-semibold mb-3"><i class="fa-solid fa-upload text-primary me-1"></i>파일 업로드</h6>
           <form method="post" action="{{ url_for('inbound_upload') }}" enctype="multipart/form-data" id="uploadForm">
             <div id="dropZone"
                  class="border rounded p-4 text-center mb-3"
@@ -53,7 +53,7 @@
                  ondragover="event.preventDefault();this.style.background='#eff6ff'"
                  ondragleave="this.style.background='#f8fafc'"
                  ondrop="handleDrop(event)">
-              <i class="bi bi-cloud-arrow-up fs-2 text-muted"></i>
+              <i class="fa-solid fa-cloud-arrow-up fs-2 text-muted"></i>
               <div class="mt-2 small text-muted">파일을 드래그하거나 클릭하여 선택</div>
               <div id="fileName" class="mt-1 small text-primary fw-semibold"></div>
               <input type="file" id="fileInput" name="file"
@@ -61,7 +61,7 @@
                      onchange="showFileName(this)">
             </div>
             <button type="submit" id="uploadBtn" class="btn btn-success w-100" disabled>
-              <i class="bi bi-cloud-upload me-2"></i>업로드 및 반영
+              <i class="fa-solid fa-cloud-arrow-up me-2"></i>업로드 및 반영
             </button>
           </form>
         </div>
@@ -114,7 +114,7 @@
               {# 직원: 본인 지점 고정 표시 #}
               <input type="hidden" name="branch_id" value="{{ session.branch_id }}" id="branchSelect">
               <div class="form-control bg-light d-flex align-items-center gap-2" style="cursor:default">
-                <i class="bi bi-geo-alt-fill text-primary"></i>
+                <i class="fa-solid fa-location-dot text-primary"></i>
                 <strong>{{ session.branch_name }}</strong>
                 <span class="badge bg-secondary ms-1">내 지점</span>
               </div>
@@ -134,7 +134,7 @@
           </div>
 
           <div id="stockInfo" class="alert alert-info d-none py-2 small mb-3">
-            <i class="bi bi-info-circle me-1"></i>
+            <i class="fa-solid fa-circle-info me-1"></i>
             현재 재고: <strong id="stockQty">—</strong>
           </div>
 
@@ -153,7 +153,7 @@
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-success px-4">
-              <i class="bi bi-check-lg me-1"></i>입고 등록
+              <i class="fa-solid fa-check me-1"></i>입고 등록
             </button>
             <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
           </div>
