@@ -128,7 +128,10 @@
 {# ── 알고리즘 안내 ── #}
 <div class="alert alert-info py-2 small mb-3">
   <i class="fa-solid fa-circle-info me-1"></i>
-  <strong>추정 방식:</strong> 최근 6개월 월평균 출고 × 3개월 × 추세보정(±15%) — 현재재고 = 권장 신청수량
+  <strong>추정 방식:</strong> 월평균 출고 × 3개월 × 추세보정(±15%) × 운항편수보정 — 현재재고 = 권장 신청수량
+  <a href="{{ url_for('flight_schedule_view') }}" class="ms-2 text-decoration-none">
+    <i class="fa-solid fa-plane me-1"></i>운항편수 입력
+  </a>
 </div>
 
 {# ── 지점별 추정 테이블 ── #}
@@ -151,6 +154,17 @@
         <span class="badge bg-danger ms-1">신청 필요 {{ need_cnt }}개</span>
       {% else %}
         <span class="badge bg-success ms-1">전 품목 충분</span>
+      {% endif %}
+      {% set finfo = flight_info_map.get(section.branch_id) %}
+      {% if finfo %}
+        <span class="badge ms-1" style="background:#0ea5e9;font-size:.68rem">
+          <i class="fa-solid fa-plane me-1"></i>운항편수 보정 ×{{ finfo.factor }}
+          ({{ finfo.avg_hist }}편→{{ finfo.avg_next }}편)
+        </span>
+      {% else %}
+        <span class="badge bg-secondary ms-1" style="font-size:.68rem;opacity:.7">
+          <i class="fa-solid fa-plane me-1"></i>편수 미입력
+        </span>
       {% endif %}
       <span class="ms-auto small opacity-75">총 {{ section.form_items|length }}개 품목 분석</span>
     </div>

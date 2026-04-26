@@ -1319,6 +1319,38 @@ def forecast():
                    f'SELECT branch_id, form_type_id, quantity FROM inventory WHERE branch_id IN ({id_str})'
                ).fetchall()}
 
+    # ── 운항편수 보정 인자 ────────────────────────────────────────────
+    nq_months = []
+    for i in range(3):
+        m_i, y_i = nq_start_m + i, nq_y
+        if m_i > 12: m_i -= 12; y_i += 1
+        nq_months.append(f'{y_i}-{m_i:02d}')
+
+    hist_ms = "'" + "','".join(month_labels) + "'"
+    next_ms  = "'" + "','".join(nq_months) + "'"
+    fh_rows = conn.execute(f'''
+        SELECT branch_id, flight_count FROM flight_schedule
+        WHERE branch_id IN ({id_str}) AND year_month IN ({hist_ms})
+    ''').fetchall()
+    fn_rows = conn.execute(f'''
+        SELECT branch_id, flight_count FROM flight_schedule
+        WHERE branch_id IN ({id_str}) AND year_month IN ({next_ms})
+    ''').fetchall()
+
+    flight_factor_map = {}
+    flight_info_map   = {}
+    for b_id in target_ids:
+        hc = [r['flight_count'] for r in fh_rows if r['branch_id'] == b_id and r['flight_count'] > 0]
+        nc = [r['flight_count'] for r in fn_rows if r['branch_id'] == b_id and r['flight_count'] > 0]
+        if hc and nc:
+            ah, an = sum(hc) / len(hc), sum(nc) / len(nc)
+            f = an / ah
+            flight_factor_map[b_id] = f
+            flight_info_map[b_id]   = dict(avg_hist=round(ah, 1), avg_next=round(an, 1), factor=round(f, 2))
+        else:
+            flight_factor_map[b_id] = 1.0
+            flight_info_map[b_id]   = None
+
     branch_map = {b['id']: dict(b) for b in branches}
 
     bucket = defaultdict(lambda: defaultdict(int))
@@ -1351,8 +1383,9 @@ def forecast():
         else:
             trend_label, trend_icon, trend_factor = '안정', '→', 1.0
 
+        flight_factor = flight_factor_map.get(b_id, 1.0)
         cur_stock   = inv_map.get((b_id, f_id), 0)
-        nq_est      = math.ceil(avg_m * 3 * trend_factor)
+        nq_est      = math.ceil(avg_m * 3 * trend_factor * flight_factor)
         recommended = max(0, nq_est - cur_stock)
 
         fname, unit, udesc = meta.get((b_id, f_id), ('', '', ''))
@@ -1388,7 +1421,7 @@ def forecast():
         branches=branches, bf=bf,
         today=today, cur_q=cur_q, next_q=next_q,
         nq_y=nq_y, nq_start_m=nq_start_m, nq_end_m=nq_end_m,
-        is_qend=is_qend)
+        is_qend=is_qend, flight_info_map=flight_info_map)
 
 
 @app.route('/report/forecast/download')
@@ -1449,6 +1482,33 @@ def forecast_download():
                    f'SELECT branch_id, form_type_id, quantity FROM inventory WHERE branch_id IN ({id_str})'
                ).fetchall()}
 
+    # ── 운항편수 보정 인자 ────────────────────────────────────────────
+    dl_nq_months = []
+    for i in range(3):
+        m_i, y_i = nq_start_m + i, nq_y
+        if m_i > 12: m_i -= 12; y_i += 1
+        dl_nq_months.append(f'{y_i}-{m_i:02d}')
+
+    dl_hist_ms = "'" + "','".join(month_labels) + "'"
+    dl_next_ms  = "'" + "','".join(dl_nq_months) + "'"
+    dl_fh = conn.execute(f'''
+        SELECT branch_id, flight_count FROM flight_schedule
+        WHERE branch_id IN ({id_str}) AND year_month IN ({dl_hist_ms})
+    ''').fetchall()
+    dl_fn = conn.execute(f'''
+        SELECT branch_id, flight_count FROM flight_schedule
+        WHERE branch_id IN ({id_str}) AND year_month IN ({dl_next_ms})
+    ''').fetchall()
+
+    dl_flight_factor = {}
+    for b_id in target_ids:
+        hc = [r['flight_count'] for r in dl_fh if r['branch_id'] == b_id and r['flight_count'] > 0]
+        nc = [r['flight_count'] for r in dl_fn if r['branch_id'] == b_id and r['flight_count'] > 0]
+        if hc and nc:
+            dl_flight_factor[b_id] = (sum(nc) / len(nc)) / (sum(hc) / len(hc))
+        else:
+            dl_flight_factor[b_id] = 1.0
+
     branch_map = {b['id']: dict(b) for b in branches}
 
     bucket = defaultdict(lambda: defaultdict(int))
@@ -1493,7 +1553,7 @@ def forecast_download():
             tf     = 1.15 if tp>0.15 else (0.9 if tp<-0.15 else 1.0)
             tl     = '증가' if tp>0.15 else ('감소' if tp<-0.15 else '안정')
             cur_s  = inv_map.get((bb,fid),0)
-            nq_est = math.ceil(avg_m*3*tf)
+            nq_est = math.ceil(avg_m * 3 * tf * dl_flight_factor.get(bb, 1.0))
             rec    = max(0, nq_est-cur_s)
 
             row_vals = ([b.get('code',''), b.get('name','')] if is_admin else []) + \
@@ -1518,6 +1578,75 @@ def forecast_download():
     fname_dl = f'{nq_y}년_Q{next_q}_신청추정_{today.strftime("%Y%m%d")}.xlsx'
     return send_file(buf, as_attachment=True, download_name=fname_dl,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ── 운항편수 관리 ──────────────────────────────────────────────────────────────
+
+@app.route('/flight-schedule', methods=['GET', 'POST'])
+@login_required
+def flight_schedule_view():
+    from datetime import date
+    conn  = get_db()
+    role  = session.get('role')
+    bid   = session.get('branch_id')
+    today = date.today()
+    bf    = request.args.get('branch_id', '')
+
+    branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
+
+    if role == 'admin':
+        view_bid = int(bf) if bf else (branches[0]['id'] if branches else None)
+    else:
+        view_bid = bid
+
+    if request.method == 'POST':
+        post_bid = int(request.form.get('branch_id', view_bid or 0))
+        if role != 'admin' and post_bid != bid:
+            flash('권한이 없습니다.', 'danger')
+            conn.close()
+            return redirect(url_for('flight_schedule_view'))
+
+        months = request.form.getlist('month')
+        counts = request.form.getlist('count')
+        for mo, cnt in zip(months, counts):
+            try:
+                c = max(0, int(cnt)) if cnt.strip() else 0
+                conn.execute('''
+                    INSERT INTO flight_schedule (branch_id, year_month, flight_count, updated_at)
+                    VALUES (%s, %s, %s, NOW())
+                    ON CONFLICT (branch_id, year_month)
+                    DO UPDATE SET flight_count=EXCLUDED.flight_count, updated_at=NOW()
+                ''', (post_bid, mo, c))
+            except (ValueError, Exception):
+                pass
+        conn.commit()
+        flash('운항편수가 저장되었습니다.', 'success')
+        conn.close()
+        qs = f'?branch_id={post_bid}' if role == 'admin' else ''
+        return redirect(url_for('flight_schedule_view') + qs)
+
+    # 과거 3개월 + 현재월 + 미래 8개월 = 12개월 표시
+    month_list = []
+    y, m = today.year, today.month - 3
+    for _ in range(12):
+        if m <= 0: m += 12; y -= 1
+        if m > 12: m -= 12; y += 1
+        month_list.append(f'{y}-{m:02d}')
+        m += 1
+
+    existing = {}
+    if view_bid:
+        rows = conn.execute(
+            'SELECT year_month, flight_count FROM flight_schedule WHERE branch_id=%s',
+            (view_bid,)
+        ).fetchall()
+        existing = {r['year_month']: r['flight_count'] for r in rows}
+
+    conn.close()
+    return render_template('flight_schedule.html',
+        branches=branches, view_bid=view_bid,
+        month_list=month_list, existing=existing,
+        today_str=today.strftime('%Y-%m'), bf=bf)
 
 
 @app.route('/api/stock')

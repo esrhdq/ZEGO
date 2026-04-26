@@ -403,6 +403,10 @@
         <span class="badge" style="background:var(--red);font-size:.58rem">NEW</span>
       </span>
     </a>
+    <a href="{{ url_for('flight_schedule_view') }}"
+       class="nav-link {% if endpoint=='flight_schedule_view' %}active{% endif %}">
+      <i class="fa-solid fa-plane"></i>운항편수 관리
+    </a>
 
     {% if session.role == 'admin' %}
     <div class="section-label">관리자</div>
