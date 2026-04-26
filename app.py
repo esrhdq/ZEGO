@@ -120,6 +120,20 @@ def verify_pw(pw, stored):
     return hashlib.sha256(pw.encode()).hexdigest() == stored
 
 
+def validate_password(pw):
+    if len(pw) < 8:
+        return '비밀번호는 8자 이상이어야 합니다.'
+    kinds = sum([
+        bool(re.search(r'[A-Z]', pw)),
+        bool(re.search(r'[a-z]', pw)),
+        bool(re.search(r'[0-9]', pw)),
+        bool(re.search(r'[^A-Za-z0-9]', pw)),
+    ])
+    if kinds < 3:
+        return '영문 대/소문자, 숫자, 특수문자 중 3종류 이상 포함해야 합니다.'
+    return None
+
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -196,6 +210,13 @@ def check_ip_and_session():
         client_ip = _client_ip()
         if client_ip not in ALLOWED_IPS:
             return render_template('403.html'), 403
+
+    # 비밀번호 6개월 강제 변경 (change_password, logout 제외)
+    if 'user_id' in session and request.endpoint not in ('change_password', 'logout', None):
+        changed_ts = session.get('_pwd_changed_at', 0)
+        if changed_ts and (datetime.now(timezone.utc).timestamp() - changed_ts) > 15552000:  # 180일
+            flash('비밀번호를 변경한 지 6개월이 지났습니다. 보안을 위해 비밀번호를 변경해 주세요.', 'warning')
+            return redirect(url_for('change_password'))
 
     # 30분 유휴 세션 만료 (API 엔드포인트 제외)
     if 'user_id' in session and not request.path.startswith('/api/'):
@@ -589,9 +610,19 @@ def login():
             conn.close()
 
             # 세션 고정 방어: 기존 세션 데이터 완전 초기화 후 재발급
+            now_ts = datetime.now(timezone.utc).timestamp()
+            pwd_changed_at = user.get('password_changed_at')
+            if pwd_changed_at:
+                if hasattr(pwd_changed_at, 'tzinfo') and pwd_changed_at.tzinfo is None:
+                    pwd_changed_at = pwd_changed_at.replace(tzinfo=timezone.utc)
+                pwd_changed_ts = pwd_changed_at.timestamp()
+            else:
+                pwd_changed_ts = now_ts
+
             session.clear()
             session.permanent = True
-            session['_last_activity'] = datetime.now(timezone.utc).timestamp()
+            session['_last_activity'] = now_ts
+            session['_pwd_changed_at'] = pwd_changed_ts
             session.update(
                 user_id=user['id'], username=user['username'],
                 role=user['role'], branch_id=user['branch_id'],
@@ -1832,8 +1863,9 @@ def create_user():
     if not username or not password:
         flash('아이디와 비밀번호를 입력하세요.', 'danger')
         return redirect(url_for('manage_users'))
-    if len(password) < 6:
-        flash('비밀번호는 6자 이상이어야 합니다.', 'danger')
+    pw_err = validate_password(password)
+    if pw_err:
+        flash(pw_err, 'danger')
         return redirect(url_for('manage_users'))
 
     conn = get_db()
@@ -1874,11 +1906,12 @@ def reset_user_password(uid):
     if session.get('role') != 'admin':
         return jsonify({'ok': False}), 403
     new_pw = request.form.get('new_password', '').strip()
-    if len(new_pw) < 6:
-        flash('비밀번호는 6자 이상이어야 합니다.', 'danger')
+    pw_err = validate_password(new_pw)
+    if pw_err:
+        flash(pw_err, 'danger')
         return redirect(url_for('manage_users'))
     conn = get_db()
-    conn.execute('UPDATE users SET password=%s WHERE id=%s', (hash_pw(new_pw), uid))
+    conn.execute('UPDATE users SET password=%s, password_changed_at=NOW() WHERE id=%s', (hash_pw(new_pw), uid))
     conn.commit()
     conn.close()
     flash('비밀번호가 초기화되었습니다.', 'success')
@@ -1902,8 +1935,9 @@ def change_password():
             flash('현재 비밀번호가 올바르지 않습니다.', 'danger')
             conn.close()
             return redirect(url_for('change_password'))
-        if len(new_pw) < 6:
-            flash('새 비밀번호는 6자 이상이어야 합니다.', 'danger')
+        pw_err = validate_password(new_pw)
+        if pw_err:
+            flash(pw_err, 'danger')
             conn.close()
             return redirect(url_for('change_password'))
         if new_pw != conf_pw:
@@ -1911,9 +1945,14 @@ def change_password():
             conn.close()
             return redirect(url_for('change_password'))
 
-        conn.execute('UPDATE users SET password=%s WHERE id=%s', (hash_pw(new_pw), session['user_id']))
+        conn.execute(
+            'UPDATE users SET password=%s, password_changed_at=NOW() WHERE id=%s',
+            (hash_pw(new_pw), session['user_id'])
+        )
         conn.commit()
         conn.close()
+        session['_pwd_changed_at'] = datetime.now(timezone.utc).timestamp()
+        log_action('비밀번호변경')
         flash('비밀번호가 변경되었습니다.', 'success')
         return redirect(url_for('dashboard'))
 
@@ -2412,6 +2451,56 @@ except Exception as _e:
 
 
 # ── 5년 경과 데이터 자동 파기 (관리자 전용) ──────────────────────────────────
+
+@app.route('/admin/access-logs/download')
+@login_required
+def download_access_logs():
+    if session.get('role') != 'admin':
+        flash('관리자 권한이 필요합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    import csv
+    from io import StringIO
+
+    date_from = request.args.get('from', '')
+    date_to   = request.args.get('to', '')
+    table     = request.args.get('table', 'access_logs')
+
+    if table not in ('access_logs', 'access_logs_archive'):
+        table = 'access_logs'
+
+    conn = get_db()
+    params = []
+    where  = []
+    if date_from:
+        where.append('created_at >= %s'); params.append(date_from)
+    if date_to:
+        where.append('created_at <= %s'); params.append(date_to + ' 23:59:59')
+
+    sql = f'SELECT id, user_id, username, action, target_info, ip_address, created_at FROM {table}'
+    if where:
+        sql += ' WHERE ' + ' AND '.join(where)
+    sql += ' ORDER BY created_at DESC'
+
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+
+    si = StringIO()
+    w = csv.writer(si)
+    w.writerow(['ID', '사용자ID', '사용자명', '행위', '대상정보', 'IP주소', '일시'])
+    for r in rows:
+        w.writerow([r['id'], r['user_id'], r['username'], r['action'],
+                    r['target_info'], r['ip_address'], r['created_at']])
+
+    log_action('접속로그_다운로드', f'{table}, {len(rows)}건')
+
+    fname = f'access_logs_{datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")}.csv'
+    return send_file(
+        BytesIO(si.getvalue().encode('utf-8-sig')),
+        as_attachment=True, download_name=fname,
+        mimetype='text/csv'
+    )
+
 
 @app.route('/admin/purge-old-data', methods=['POST'])
 @login_required
