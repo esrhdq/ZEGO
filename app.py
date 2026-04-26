@@ -299,12 +299,27 @@ def init_db():
             ''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS users (
-                    id        INTEGER PRIMARY KEY,
-                    username  TEXT NOT NULL UNIQUE,
-                    password  TEXT NOT NULL,
-                    branch_id INTEGER,
-                    role      TEXT DEFAULT 'staff',
+                    id                  INTEGER PRIMARY KEY,
+                    username            TEXT NOT NULL UNIQUE,
+                    password            TEXT NOT NULL,
+                    branch_id           INTEGER,
+                    role                TEXT DEFAULT 'staff',
+                    failed_attempts     INTEGER NOT NULL DEFAULT 0,
+                    locked_until        TIMESTAMP,
+                    last_login_at       TIMESTAMP,
+                    password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (branch_id) REFERENCES branches(id)
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS access_logs (
+                    id          INTEGER PRIMARY KEY,
+                    user_id     INTEGER,
+                    username    TEXT,
+                    action      TEXT NOT NULL,
+                    target_info TEXT,
+                    ip_address  TEXT,
+                    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             conn.execute('''
@@ -572,11 +587,12 @@ def login():
         ip = _client_ip()
         conn = get_db()
 
-        user = conn.execute(
+        row = conn.execute(
             'SELECT u.*, b.name branch_name FROM users u LEFT JOIN branches b ON u.branch_id=b.id '
             'WHERE u.username=%s',
             (username,)
         ).fetchone()
+        user = dict(row) if row else None
 
         # 잠금 확인
         if user and user.get('locked_until'):
