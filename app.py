@@ -24,41 +24,50 @@ app.secret_key = _secret
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
-# 비밀번호 특수문자 URL 인코딩 + Supabase SSL 처리
-# Python 3.12: urlparse가 [ 포함 비밀번호를 IPv6 주소로 오파싱 → try/except 처리
+# URL → 키워드 인자 dict 변환 (psycopg2.connect(**_PG)로 사용)
+# URL 파싱 대신 키워드 인자를 쓰면 비밀번호 특수문자([, ], @ 등) 인코딩 불필요
+_PG = {}
 if DATABASE_URL:
     try:
-        from urllib.parse import urlparse, urlunparse, quote
+        # 1차 시도: urlparse (Python < 3.12 또는 안전한 비밀번호)
+        from urllib.parse import urlparse, unquote
         _p = urlparse(DATABASE_URL)
-        if _p.password:
-            _encoded_pw = quote(_p.password, safe='')
-            _netloc = f"{_p.username}:{_encoded_pw}@{_p.hostname}"
-            if _p.port:
-                _netloc += f":{_p.port}"
-            DATABASE_URL = urlunparse((_p.scheme, _netloc, _p.path, '', 'sslmode=require', ''))
-        elif 'sslmode' not in DATABASE_URL:
-            DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
+        _PG = {
+            'host':    _p.hostname,
+            'port':    _p.port or 5432,
+            'user':    _p.username,
+            'password': unquote(_p.password) if _p.password else '',
+            'dbname':  (_p.path or '/postgres').lstrip('/') or 'postgres',
+            'sslmode': 'require',
+        }
     except Exception:
-        # Python 3.12: urlparse가 [ 포함 비밀번호를 IPv6로 오파싱 → 수동 인코딩
+        # 2차 시도: 수동 파싱 — Python 3.12에서 [ 포함 비밀번호 URL 파싱 실패 시
+        # rfind('@')로 userinfo/host 경계를 찾고 raw 비밀번호를 그대로 사용
         try:
-            from urllib.parse import quote as _url_quote
-            _pi = DATABASE_URL.index('://')
-            _scheme = DATABASE_URL[:_pi]
-            _rest = DATABASE_URL[_pi + 3:]   # "user:pass@host:port/db" 부분
-            _at = _rest.rfind('@')
-            if _at > 0:
-                _userinfo = _rest[:_at]
-                _hostinfo = _rest[_at + 1:]
-                _ci = _userinfo.index(':')
-                _u  = _userinfo[:_ci]
-                _pw = _userinfo[_ci + 1:]
-                DATABASE_URL = f"{_scheme}://{_u}:{_url_quote(_pw, safe='')}@{_hostinfo}"
+            _pi   = DATABASE_URL.index('://')
+            _rest = DATABASE_URL[_pi + 3:]          # user:pass@host:port/db
+            _sl   = _rest.find('/')
+            _netloc = _rest[:_sl] if _sl >= 0 else _rest
+            _path   = _rest[_sl + 1:] if _sl >= 0 else 'postgres'
+            _at   = _netloc.rfind('@')
+            _userinfo = _netloc[:_at]
+            _hostport = _netloc[_at + 1:]
+            _ci   = _userinfo.index(':')
+            _user = _userinfo[:_ci]
+            _pw   = _userinfo[_ci + 1:]             # raw 비밀번호 — 인코딩 불필요
+            _hp   = _hostport.rsplit(':', 1)
+            _PG = {
+                'host':    _hp[0],
+                'port':    int(_hp[1]) if len(_hp) > 1 else 5432,
+                'user':    _user,
+                'password': _pw,
+                'dbname':  _path.split('?')[0] or 'postgres',
+                'sslmode': 'require',
+            }
         except Exception:
-            pass
-        if 'sslmode' not in DATABASE_URL:
-            DATABASE_URL += ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
+            _PG = {}
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
-USE_SQLITE   = not DATABASE_URL
+USE_SQLITE   = not _PG
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
 _local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
 SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
@@ -127,7 +136,7 @@ def get_db():
         conn = sqlite3.connect(SQLITE_DB)
         conn.row_factory = sqlite3.Row
         return _SQLiteDB(conn)
-    return _DB(psycopg2.connect(DATABASE_URL))
+    return _DB(psycopg2.connect(**_PG))
 
 
 def hash_pw(pw):
