@@ -118,8 +118,8 @@
     <a href="{{ url_for('dashboard') }}"     class="nav-link {% if endpoint=='dashboard'    %}active{% endif %}"><i class="fa-solid fa-gauge"></i>대시보드</a>
     <a href="{{ url_for('inventory') }}"    class="nav-link {% if endpoint=='inventory'   %}active{% endif %}"><i class="fa-solid fa-boxes-stacked"></i>재고 현황</a>
     <div class="section-label mt-2">처리</div>
-    <a href="{{ url_for('inbound') }}"      class="nav-link {% if endpoint=='inbound'     %}active{% endif %}"><i class="fa-solid fa-arrow-down-to-bracket"></i>입고</a>
-    <a href="{{ url_for('outbound') }}"     class="nav-link {% if endpoint=='outbound'    %}active{% endif %}"><i class="fa-solid fa-arrow-up-from-bracket"></i>출고</a>
+    <a href="{{ url_for('inbound') }}"      class="nav-link {% if endpoint=='inbound'     %}active{% endif %}"><i class="fa-solid fa-download"></i>입고</a>
+    <a href="{{ url_for('outbound') }}"     class="nav-link {% if endpoint=='outbound'    %}active{% endif %}"><i class="fa-solid fa-upload"></i>출고</a>
     <a href="{{ url_for('transfer') }}"     class="nav-link {% if endpoint=='transfer'    %}active{% endif %}"><i class="fa-solid fa-right-left"></i>지점 간 이전</a>
     <div class="section-label mt-2">조회</div>
     <a href="{{ url_for('transactions') }}"  class="nav-link {% if endpoint=='transactions' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i>입출고 이력</a>
