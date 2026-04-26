@@ -366,6 +366,17 @@ def init_db():
                     FOREIGN KEY (branch_id) REFERENCES branches(id)
                 )
             ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS flight_schedule (
+                    id           INTEGER PRIMARY KEY,
+                    branch_id    INTEGER NOT NULL,
+                    year_month   TEXT NOT NULL,
+                    flight_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(branch_id, year_month),
+                    FOREIGN KEY (branch_id) REFERENCES branches(id)
+                )
+            ''')
         else:
             # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
             conn.execute('''
