@@ -134,6 +134,20 @@ def validate_password(pw):
     return None
 
 
+def _to_dt(val):
+    """str/datetime 모두 timezone-aware datetime으로 변환. 실패 시 None 반환."""
+    if val is None:
+        return None
+    if isinstance(val, str):
+        try:
+            val = datetime.fromisoformat(val.replace(' ', 'T'))
+        except Exception:
+            return None
+    if hasattr(val, 'tzinfo') and val.tzinfo is None:
+        val = val.replace(tzinfo=timezone.utc)
+    return val
+
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -596,10 +610,8 @@ def login():
 
         # 잠금 확인
         if user and user.get('locked_until'):
-            locked_until = user['locked_until']
-            if hasattr(locked_until, 'tzinfo') and locked_until.tzinfo is None:
-                locked_until = locked_until.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) < locked_until:
+            locked_until = _to_dt(user['locked_until'])
+            if locked_until and datetime.now(timezone.utc) < locked_until:
                 remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds() / 60) + 1
                 flash(f'로그인 5회 실패로 계정이 잠겼습니다. {remaining}분 후 다시 시도하세요.', 'danger')
                 conn.close()
@@ -627,13 +639,8 @@ def login():
 
             # 세션 고정 방어: 기존 세션 데이터 완전 초기화 후 재발급
             now_ts = datetime.now(timezone.utc).timestamp()
-            pwd_changed_at = user.get('password_changed_at')
-            if pwd_changed_at:
-                if hasattr(pwd_changed_at, 'tzinfo') and pwd_changed_at.tzinfo is None:
-                    pwd_changed_at = pwd_changed_at.replace(tzinfo=timezone.utc)
-                pwd_changed_ts = pwd_changed_at.timestamp()
-            else:
-                pwd_changed_ts = now_ts
+            pwd_changed_at = _to_dt(user.get('password_changed_at'))
+            pwd_changed_ts = pwd_changed_at.timestamp() if pwd_changed_at else now_ts
 
             session.clear()
             session.permanent = True
