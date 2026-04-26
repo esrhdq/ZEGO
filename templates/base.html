@@ -399,9 +399,6 @@
        class="nav-link {% if endpoint=='forecast' %}active{% endif %}"
        style="position:relative">
       <i class="fa-solid fa-calculator"></i>분기 신청 추정
-      <span class="position-absolute top-50 end-0 translate-middle-y me-2">
-        <span class="badge" style="background:var(--red);font-size:.58rem">NEW</span>
-      </span>
     </a>
     <a href="{{ url_for('flight_schedule_view') }}"
        class="nav-link {% if endpoint=='flight_schedule_view' %}active{% endif %}">
