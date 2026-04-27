@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file, g
 from i18n import make_T, SUPPORTED, LANG_LABELS
 import psycopg2
 import psycopg2.extras
@@ -133,11 +133,23 @@ class _SQLiteDB:
 
 
 def get_db():
-    if USE_SQLITE:
-        conn = sqlite3.connect(SQLITE_DB)
-        conn.row_factory = sqlite3.Row
-        return _SQLiteDB(conn)
-    return _DB(psycopg2.connect(**_PG))
+    if 'db' not in g:
+        if USE_SQLITE:
+            conn = sqlite3.connect(SQLITE_DB)
+            conn.row_factory = sqlite3.Row
+            g.db = _SQLiteDB(conn)
+        else:
+            g.db = _DB(psycopg2.connect(**_PG))
+    return g.db
+
+@app.teardown_appcontext
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def hash_pw(pw):
