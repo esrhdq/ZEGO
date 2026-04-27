@@ -236,20 +236,29 @@ def inject_globals():
     if 'user_id' in session:
         try:
             conn = get_db()
+            pending = 0
+            unread  = 0
             if role == 'admin':
                 r = conn.execute(
                     'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
                     ('PENDING',)
                 ).fetchone()
+                pending = int(r['cnt']) if r else 0
             elif bid:
+                # 내 지점에 들어온 PENDING 이전 요청 (승인 대기)
                 r = conn.execute(
                     'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE from_branch_id=%s AND status=%s',
                     (bid, 'PENDING')
                 ).fetchone()
-            else:
-                r = None
+                pending = int(r['cnt']) if r else 0
+                # 내 지점 대상 읽지 않은 알림 (승인/반려 결과)
+                r2 = conn.execute(
+                    'SELECT COUNT(*) AS cnt FROM notifications WHERE branch_id=%s AND is_read=0',
+                    (bid,)
+                ).fetchone()
+                unread = int(r2['cnt']) if r2 else 0
             conn.close()
-            notif_count = int(r['cnt']) if r else 0
+            notif_count = pending + unread
         except Exception:
             pass
     return {'notif_count': notif_count, 'endpoint': request.endpoint}
