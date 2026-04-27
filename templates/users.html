@@ -56,9 +56,9 @@
               </td>
               <td class="text-center">
                 {% if u.id != session.user_id %}
-                <form method="post" action="{{ url_for('delete_user', uid=u.id) }}"
-                      onsubmit="return confirm('{{ u.username }} {{ T('usr.confirm_delete') }}')">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                <form id="deleteForm-{{ u.id }}" method="post" action="{{ url_for('delete_user', uid=u.id) }}">
+                  <button type="button" class="btn btn-sm btn-outline-danger"
+                          onclick="showConfirm('{{ u.username }} {{ T('usr.confirm_delete') }}', () => document.getElementById('deleteForm-{{ u.id }}').submit())">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </form>

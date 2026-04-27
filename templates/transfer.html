@@ -199,9 +199,9 @@
               <td class="small text-muted">{{ r.requested_by }}</td>
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center">
-                  <form method="post" action="{{ url_for('approve_transfer', req_id=r.id) }}"
-                        onsubmit="return confirm('{{ T('xfer.confirm_approve') }}')">
-                    <button type="submit" class="btn btn-sm btn-success">
+                  <form id="approveForm-{{ r.id }}" method="post" action="{{ url_for('approve_transfer', req_id=r.id) }}">
+                    <button type="button" class="btn btn-sm btn-success"
+                            onclick="showConfirm('{{ T('xfer.confirm_approve') }}', () => document.getElementById('approveForm-{{ r.id }}').submit())">
                       <i class="fa-solid fa-check me-1"></i>{{ T('xfer.approve') }}
                     </button>
                   </form>
@@ -272,9 +272,9 @@
               <td class="small text-muted">{{ r.approved_by or '—' }}</td>
               <td class="text-center">
                 {% if r.status == 'APPROVED' %}
-                  <form method="post" action="{{ url_for('confirm_transfer', req_id=r.id) }}"
-                        onsubmit="return confirm('{{ T('xfer.confirm_receipt_msg') }}')">
-                    <button type="submit" class="btn btn-sm btn-primary">
+                  <form id="confirmForm-{{ r.id }}" method="post" action="{{ url_for('confirm_transfer', req_id=r.id) }}">
+                    <button type="button" class="btn btn-sm btn-primary"
+                            onclick="showConfirm('{{ T('xfer.confirm_receipt_msg') }}', () => document.getElementById('confirmForm-{{ r.id }}').submit())">
                       <i class="fa-solid fa-circle-check me-1"></i>{{ T('xfer.confirm_receipt') }}
                     </button>
                   </form>
