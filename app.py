@@ -231,14 +231,23 @@ def handle_exception(e):
 @app.context_processor
 def inject_globals():
     notif_count = 0
-    bid = session.get('branch_id')
-    if 'user_id' in session and bid:
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    if 'user_id' in session:
         try:
             conn = get_db()
-            r = conn.execute(
-                'SELECT COUNT(*) AS cnt FROM notifications WHERE branch_id=%s AND is_read=0',
-                (bid,)
-            ).fetchone()
+            if role == 'admin':
+                r = conn.execute(
+                    'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
+                    ('PENDING',)
+                ).fetchone()
+            elif bid:
+                r = conn.execute(
+                    'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE from_branch_id=%s AND status=%s',
+                    (bid, 'PENDING')
+                ).fetchone()
+            else:
+                r = None
             conn.close()
             notif_count = int(r['cnt']) if r else 0
         except Exception:
