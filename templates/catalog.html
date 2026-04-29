@@ -832,6 +832,16 @@ function catCancelEdit() {
   dirty = false;
 }
 
+function catToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = `alert alert-${type} alert-dismissible fade show`;
+  t.style.cssText = 'position:fixed;top:70px;right:20px;z-index:9000;font-size:.85rem;min-width:220px;box-shadow:0 4px 16px rgba(0,0,0,.15)';
+  const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
+  t.innerHTML = `<i class="fa-solid ${icon} me-1"></i>${msg} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
 async function catSave() {
   const items = {};
   document.querySelectorAll('.cat-check').forEach(cb => {
@@ -844,25 +854,29 @@ async function catSave() {
   const payload   = { items };
   if (branchSel) payload.branch_id = parseInt(branchSel.value);
 
-  const res = await fetch('{{ url_for("catalog_save") }}', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload),
-  });
-  const json = await res.json();
-  if (json.ok) {
-    dirty = false;
-    if (editMode) catToggleEdit();
-    document.getElementById('catSaveBar').classList.remove('show');
-    // 간단한 성공 토스트
-    const t = document.createElement('div');
-    t.className = 'alert alert-success alert-dismissible fade show';
-    t.style.cssText = 'position:fixed;top:70px;right:20px;z-index:9000;font-size:.85rem;min-width:200px';
-    t.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>저장되었습니다. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  } else {
-    alert(json.msg || '저장 실패');
+  try {
+    const res = await fetch('{{ url_for("catalog_save") }}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.ok) {
+      dirty = false;
+      if (editMode) catToggleEdit();
+      document.getElementById('catSaveBar').classList.remove('show');
+      catToast('저장되었습니다.', 'success');
+      // 보유 배지 즉시 갱신
+      document.querySelectorAll('.cat-check').forEach(cb => {
+        const card = document.getElementById('card-' + cb.dataset.code);
+        if (card) card.classList.toggle('is-owned', cb.checked);
+      });
+    } else {
+      catToast(json.msg || '저장 실패', 'danger');
+    }
+  } catch(e) {
+    catToast('저장 중 오류가 발생했습니다: ' + e.message, 'danger');
   }
 }
 

@@ -572,6 +572,22 @@ def init_db():
                     created_at          TIMESTAMP DEFAULT NOW(),
                     FOREIGN KEY (branch_id) REFERENCES branches(id)
                 );
+                CREATE TABLE IF NOT EXISTS flight_schedule (
+                    id           SERIAL PRIMARY KEY,
+                    branch_id    INTEGER NOT NULL REFERENCES branches(id),
+                    year_month   TEXT NOT NULL,
+                    flight_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at   TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(branch_id, year_month)
+                );
+                CREATE TABLE IF NOT EXISTS catalog_branch_items (
+                    id         SERIAL PRIMARY KEY,
+                    branch_id  INTEGER NOT NULL REFERENCES branches(id),
+                    item_code  TEXT NOT NULL,
+                    quantity   INTEGER DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(branch_id, item_code)
+                );
             ''')
 
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
