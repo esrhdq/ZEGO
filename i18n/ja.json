@@ -319,6 +319,12 @@
 
   "cat.prev": "前へ",
   "cat.next": "次へ",
+  "cat.edit_mode": "保有状況を編集",
+  "cat.view_mode": "編集完了",
+  "cat.save": "保存",
+  "cat.owned_count": "保有アイテム",
+  "cat.view_inventory": "支店別現況",
+  "cat.inv_back": "カタログへ",
 
   "err.403_msg": "許可されていないIPアドレスからのアクセスです。",
   "err.403_helper": "許可されたネットワークから接続してください。"

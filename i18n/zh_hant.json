@@ -319,6 +319,12 @@
 
   "cat.prev": "上一張",
   "cat.next": "下一張",
+  "cat.edit_mode": "編輯保有情況",
+  "cat.view_mode": "完成編輯",
+  "cat.save": "儲存",
+  "cat.owned_count": "保有物品",
+  "cat.view_inventory": "支點庫存",
+  "cat.inv_back": "返回目錄",
 
   "err.403_msg": "您的IP位址不在允許範圍內。",
   "err.403_helper": "請從授權網路連線。"

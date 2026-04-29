@@ -319,6 +319,12 @@
 
   "cat.prev": "이전",
   "cat.next": "다음",
+  "cat.edit_mode": "보유현황 편집",
+  "cat.view_mode": "편집 완료",
+  "cat.save": "저장",
+  "cat.owned_count": "보유 아이템",
+  "cat.view_inventory": "지점별 현황",
+  "cat.inv_back": "카탈로그로",
 
   "err.403_msg": "접근이 허용되지 않은 IP입니다.",
   "err.403_helper": "허가된 네트워크에서 접속하세요."

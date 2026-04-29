@@ -319,6 +319,12 @@
 
   "cat.prev": "上一张",
   "cat.next": "下一张",
+  "cat.edit_mode": "编辑保有情况",
+  "cat.view_mode": "完成编辑",
+  "cat.save": "保存",
+  "cat.owned_count": "保有物品",
+  "cat.view_inventory": "支点库存",
+  "cat.inv_back": "返回目录",
 
   "err.403_msg": "您的IP地址不在允许范围内。",
   "err.403_helper": "请从授权网络连接。"

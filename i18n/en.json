@@ -319,6 +319,12 @@
 
   "cat.prev": "Prev",
   "cat.next": "Next",
+  "cat.edit_mode": "Edit Holdings",
+  "cat.view_mode": "Done Editing",
+  "cat.save": "Save",
+  "cat.owned_count": "Owned Items",
+  "cat.view_inventory": "Branch Inventory",
+  "cat.inv_back": "Catalog",
 
   "err.403_msg": "Access denied: your IP address is not allowed.",
   "err.403_helper": "Please connect from an authorized network."
