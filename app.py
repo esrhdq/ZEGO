@@ -1492,6 +1492,19 @@ def report():
         GROUP BY f.id, f.name HAVING COALESCE(SUM(i.quantity),0)>0 ORDER BY qty DESC LIMIT 20
     ''').fetchall()
 
+    flight_cond = f'AND fs.branch_id={bid}' if role != 'admin' and bid else ''
+    flight_raw = conn.execute(f'''
+        SELECT fs.year_month, SUM(fs.flight_count) total_flights
+        FROM flight_schedule fs
+        WHERE fs.year_month >= TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
+        {flight_cond}
+        GROUP BY fs.year_month ORDER BY fs.year_month
+    ''').fetchall()
+    chart_flight = {
+        'labels': [r['year_month'] for r in flight_raw],
+        'data':   [r['total_flights'] for r in flight_raw],
+    }
+
     conn.close()
 
     def _rows_to_chart(rows):
@@ -1509,6 +1522,7 @@ def report():
                                'empty': [r['empty_cnt'] for r in chart_branch_status]},
         chart_top_out      = _rows_to_chart(chart_top_out),
         chart_form_qty     = _rows_to_chart(chart_form_qty),
+        chart_flight       = chart_flight,
     )
 
 

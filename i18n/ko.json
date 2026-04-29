@@ -205,6 +205,8 @@
   "rep.no_outbound": "최근 30일 출고 데이터 없음",
   "rep.no_branch_status": "지점 상태 데이터 없음",
   "rep.no_form": "양식 재고 데이터 없음",
+  "rep.chart_flight": "월별 운항편수 (최근 6개월)",
+  "rep.no_flight": "운항편수 데이터가 없습니다.",
 
   "usr.title": "사용자 관리",
   "usr.account_list": "전체 계정 목록",

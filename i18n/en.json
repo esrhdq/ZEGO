@@ -205,6 +205,8 @@
   "rep.no_outbound": "No outbound data for last 30 days",
   "rep.no_branch_status": "No branch status data",
   "rep.no_form": "No form stock data",
+  "rep.chart_flight": "Monthly Flight Count (Last 6 Months)",
+  "rep.no_flight": "No flight schedule data available.",
 
   "usr.title": "User Management",
   "usr.account_list": "All Accounts",

@@ -205,6 +205,8 @@
   "rep.no_outbound": "近30天無出庫數據",
   "rep.no_branch_status": "無站點狀態數據",
   "rep.no_form": "無表單庫存數據",
+  "rep.chart_flight": "月度航班次數（近6個月）",
+  "rep.no_flight": "暫無航班次數數據。",
 
   "usr.title": "用戶管理",
   "usr.account_list": "全部帳戶列表",

@@ -205,6 +205,8 @@
   "rep.no_outbound": "直近30日の出庫データなし",
   "rep.no_branch_status": "支店状態データなし",
   "rep.no_form": "帳票在庫データなし",
+  "rep.chart_flight": "月別運航便数（直近6ヶ月）",
+  "rep.no_flight": "運航便数データがありません。",
 
   "usr.title": "ユーザー管理",
   "usr.account_list": "全アカウント一覧",

@@ -89,6 +89,20 @@
   </div>
 </div>
 
+<!-- ── Row 1-b: 운항편수 ── -->
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white py-3 fw-semibold">
+        <i class="fa-solid fa-plane me-2 text-success"></i>{{ T('rep.chart_flight') }}
+      </div>
+      <div class="card-body">
+        <canvas id="chartFlight" style="max-height:220px"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Row 2: 지점별 재고 수량 ── -->
 <div class="row g-3 mb-3">
   <div class="col-12">
@@ -395,7 +409,34 @@ const C = {
   });
 }
 
-// ── 6. 양식별 재고 수량 수평 바 ──
+// ── 6. 운항편수 바 ──
+{
+  const d = {{ chart_flight | tojson }};
+  if (!d.labels.length) {
+    document.getElementById('chartFlight').closest('.card-body').innerHTML =
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_flight") }}</div>';
+  } else
+  new Chart(document.getElementById('chartFlight'), {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{ label:'{{ T("flt.flights") }}', data: d.data,
+        backgroundColor: 'rgba(16,185,129,.7)',
+        borderColor: '#10b981', borderWidth: 1,
+        borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
+
+// ── 7. 양식별 재고 수량 수평 바 ──
 {
   const d = {{ chart_form_qty | tojson }};
   if (!d.labels.length) {
