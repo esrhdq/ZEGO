@@ -1955,6 +1955,12 @@ def mark_notifications_read():
 
 # ── 사용자 관리 (관리자 전용) ─────────────────────────────────────────────────
 
+@app.route('/catalog')
+@login_required
+def catalog():
+    return render_template('catalog.html')
+
+
 @app.route('/admin/users')
 @login_required
 def manage_users():

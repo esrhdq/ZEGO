@@ -10,6 +10,7 @@
   "nav.report": "리포트",
   "nav.forecast": "분기 신청 추정",
   "nav.flight_schedule": "운항편수 관리",
+  "nav.catalog": "운송아이템 카탈로그",
   "nav.admin": "관리자",
   "nav.user_management": "사용자 관리",
   "nav.change_password": "비밀번호 변경",
@@ -315,6 +316,9 @@
   "flt.flights": "운항편수",
   "flt.save": "저장",
   "flt.view_forecast": "분기 신청 추정 보기",
+
+  "cat.prev": "이전",
+  "cat.next": "다음",
 
   "err.403_msg": "접근이 허용되지 않은 IP입니다.",
   "err.403_helper": "허가된 네트워크에서 접속하세요."

@@ -10,6 +10,7 @@
   "nav.report": "報表",
   "nav.forecast": "季度申請預測",
   "nav.flight_schedule": "航班數管理",
+  "nav.catalog": "運輸物品目錄",
   "nav.admin": "管理員",
   "nav.user_management": "用戶管理",
   "nav.change_password": "修改密碼",
@@ -315,6 +316,9 @@
   "flt.flights": "航班數",
   "flt.save": "儲存",
   "flt.view_forecast": "查看季度申請預測",
+
+  "cat.prev": "上一張",
+  "cat.next": "下一張",
 
   "err.403_msg": "您的IP位址不在允許範圍內。",
   "err.403_helper": "請從授權網路連線。"

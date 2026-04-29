@@ -391,6 +391,10 @@
        class="nav-link {% if endpoint=='transactions' %}active{% endif %}">
       <i class="fa-solid fa-receipt"></i>{{ T('nav.history') }}
     </a>
+    <a href="{{ url_for('catalog') }}"
+       class="nav-link {% if endpoint=='catalog' %}active{% endif %}">
+      <i class="fa-solid fa-boxes-stacked"></i>{{ T('nav.catalog') }}
+    </a>
     <a href="{{ url_for('report') }}"
        class="nav-link {% if endpoint=='report' %}active{% endif %}">
       <i class="fa-solid fa-chart-bar"></i>{{ T('nav.report') }}

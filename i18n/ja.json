@@ -10,6 +10,7 @@
   "nav.report": "レポート",
   "nav.forecast": "四半期発注予測",
   "nav.flight_schedule": "運航便数管理",
+  "nav.catalog": "輸送アイテムカタログ",
   "nav.admin": "管理者",
   "nav.user_management": "ユーザー管理",
   "nav.change_password": "パスワード変更",
@@ -315,6 +316,9 @@
   "flt.flights": "運航便数",
   "flt.save": "保存",
   "flt.view_forecast": "四半期発注予測を見る",
+
+  "cat.prev": "前へ",
+  "cat.next": "次へ",
 
   "err.403_msg": "許可されていないIPアドレスからのアクセスです。",
   "err.403_helper": "許可されたネットワークから接続してください。"

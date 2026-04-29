@@ -10,6 +10,7 @@
   "nav.report": "Reports",
   "nav.forecast": "Quarterly Forecast",
   "nav.flight_schedule": "Flight Schedule",
+  "nav.catalog": "Item Catalog",
   "nav.admin": "Admin",
   "nav.user_management": "User Management",
   "nav.change_password": "Change Password",
@@ -315,6 +316,9 @@
   "flt.flights": "Flights",
   "flt.save": "Save",
   "flt.view_forecast": "View Quarterly Forecast",
+
+  "cat.prev": "Prev",
+  "cat.next": "Next",
 
   "err.403_msg": "Access denied: your IP address is not allowed.",
   "err.403_helper": "Please connect from an authorized network."
