@@ -2046,9 +2046,31 @@ def mark_notifications_read():
 
 # ── 사용자 관리 (관리자 전용) ─────────────────────────────────────────────────
 
+def _ensure_catalog_table():
+    """catalog_branch_items 테이블이 없으면 즉시 생성"""
+    if USE_SQLITE:
+        return  # SQLite는 init_db에서 항상 생성됨
+    try:
+        conn = get_db()
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_branch_items (
+                id         SERIAL PRIMARY KEY,
+                branch_id  INTEGER NOT NULL REFERENCES branches(id),
+                item_code  TEXT NOT NULL,
+                quantity   INTEGER DEFAULT 1,
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(branch_id, item_code)
+            )
+        ''')
+        conn.commit()
+    except Exception as _e:
+        print(f"[ensure_catalog_table] {_e}")
+
+
 @app.route('/catalog')
 @login_required
 def catalog():
+    _ensure_catalog_table()
     conn = get_db()
     bid  = session.get('branch_id')
     role = session.get('role')
@@ -2073,6 +2095,7 @@ def catalog():
 @app.route('/catalog/save', methods=['POST'])
 @login_required
 def catalog_save():
+    _ensure_catalog_table()
     data     = request.get_json(silent=True) or {}
     bid      = session.get('branch_id')
     role     = session.get('role')
@@ -2108,6 +2131,7 @@ def catalog_save():
 @app.route('/catalog/inventory')
 @login_required
 def catalog_inventory():
+    _ensure_catalog_table()
     conn = get_db()
     bid  = session.get('branch_id')
     role = session.get('role')
@@ -2762,10 +2786,11 @@ def transactions_download():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
-try:
-    init_db()
-except Exception as _e:
-    print(f"[init_db] {_e}")
+with app.app_context():
+    try:
+        init_db()
+    except Exception as _e:
+        print(f"[init_db] {_e}")
 
 
 # ── 5년 경과 데이터 자동 파기 (관리자 전용) ──────────────────────────────────
