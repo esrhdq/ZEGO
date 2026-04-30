@@ -39,7 +39,6 @@
     font-size:.78rem; font-weight:700; flex-shrink:0;
   }
   .cat-section-header h2 { font-size:1rem; font-weight:800; margin:0; }
-  .cat-section-header small { font-weight:400; font-size:.78rem; color:#777; margin-left:3px; }
   .cat-section-header .cat-count {
     margin-left:auto; background:#f5f5f5; border:1px solid #e0e0e0;
     border-radius:12px; padding:2px 10px; font-size:.72rem; color:#666;
@@ -50,13 +49,11 @@
   .cat-card {
     background:#fff; border-radius:10px; border:1px solid var(--border);
     overflow:hidden; display:flex; flex-direction:column;
-    transition:box-shadow .2s,transform .2s,border-color .2s;
-    position:relative;
+    transition:box-shadow .2s,transform .2s,border-color .2s; position:relative;
   }
   .cat-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
   .cat-card.is-owned { border-color:#16a34a; box-shadow:0 0 0 2px rgba(22,163,74,.15); }
 
-  /* 보유 배지 */
   .cat-owned-badge {
     position:absolute; top:8px; right:8px; z-index:5;
     background:#16a34a; color:#fff; border-radius:50%;
@@ -66,7 +63,6 @@
   }
   .cat-card.is-owned .cat-owned-badge { display:flex; }
 
-  /* 편집 모드 오버레이 */
   .cat-edit-panel {
     display:none; background:#f0fdf4; border-top:1px solid #bbf7d0;
     padding:8px 10px; gap:8px; align-items:center;
@@ -75,8 +71,7 @@
   .cat-check { width:18px; height:18px; accent-color:#16a34a; cursor:pointer; flex-shrink:0; }
   .cat-qty {
     width:60px; border:1px solid #d1fae5; border-radius:6px;
-    padding:3px 6px; font-size:.8rem; text-align:center;
-    background:#fff; color:var(--text);
+    padding:3px 6px; font-size:.8rem; text-align:center; background:#fff; color:var(--text);
   }
   .cat-qty:disabled { background:#f5f5f5; color:#aaa; }
   .cat-qty-label { font-size:.72rem; color:#16a34a; font-weight:600; }
@@ -98,14 +93,9 @@
   .cat-sub { font-size:.71rem; color:#888; line-height:1.5; }
   .cat-tags { display:flex; flex-wrap:wrap; gap:3px; margin-top:auto; padding-top:6px; }
   .ctag { font-size:.63rem; padding:2px 7px; border-radius:10px; font-weight:600; }
-  .ctag-red    { background:#fde8ec; color:var(--red); }
-  .ctag-blue   { background:#e8f0fe; color:#1a56db; }
-  .ctag-green  { background:#e8f5e9; color:#2e7d32; }
-  .ctag-gray   { background:#f0f0f0; color:#555; }
   .ctag-orange { background:#fff3e0; color:#e65100; }
-  .ctag-purple { background:#f3e5f5; color:#7b1fa2; }
+  .ctag-gray   { background:#f0f0f0; color:#555; }
 
-  /* 전체목록 테이블 */
   .cat-master-wrap { background:#fff; border-radius:10px; border:1px solid var(--border); overflow:hidden; margin-bottom:24px; }
   .cat-master-wrap h3 { background:var(--red); color:#fff; padding:11px 16px; font-size:.92rem; font-weight:700; margin:0; }
   .cat-table { width:100%; border-collapse:collapse; font-size:.79rem; }
@@ -118,7 +108,6 @@
   td.cat-td-cat { font-weight:700; color:var(--red); white-space:nowrap; }
   td.cat-td-note { color:#777; font-size:.74rem; }
 
-  /* 플로팅 저장 바 */
   #catSaveBar {
     position:fixed; bottom:-80px; left:230px; right:0;
     background:linear-gradient(90deg,#0d1b3e,#162447);
@@ -132,7 +121,6 @@
   .cat-save-info { font-size:.85rem; opacity:.85; }
   .cat-save-count { font-weight:800; font-size:1rem; }
 
-  /* 라이트박스 */
   #catLightbox {
     display:none; position:fixed; inset:0;
     background:rgba(0,0,0,.88); z-index:9999;
@@ -204,8 +192,13 @@
 
 <!-- 헤더 바 -->
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-  <div class="text-muted small">총 34종 운송아이템 &nbsp;·&nbsp; As of APR 2026</div>
+  <div class="text-muted small">총 {{ catalog_items|length }}종 운송아이템 &nbsp;·&nbsp; 카탈로그</div>
   <div class="ms-auto d-flex gap-2">
+    {% if session.role == 'admin' %}
+    <a href="{{ url_for('catalog_edit') }}" class="btn btn-sm btn-outline-danger">
+      <i class="fa-solid fa-sliders me-1"></i>카탈로그 편집
+    </a>
+    {% endif %}
     <button id="catEditBtn" class="btn btn-sm btn-outline-success" onclick="catToggleEdit()">
       <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.edit_mode') }}
     </button>
@@ -217,28 +210,19 @@
 
 <!-- 통계바 -->
 <div class="cat-stats-bar">
-  <div class="cat-stat"><strong>X-Banner 13</strong>엑스배너</div>
-  <div class="cat-stat"><strong>저울 1</strong>테스트유닛</div>
-  <div class="cat-stat"><strong>스탠션 4</strong>고정형 스탠드</div>
-  <div class="cat-stat"><strong>거치대 2</strong>아크릴 거치대</div>
-  <div class="cat-stat"><strong>DESK TOP 1</strong></div>
-  <div class="cat-stat"><strong>ROW BRD 4</strong></div>
-  <div class="cat-stat"><strong>안내문 2</strong></div>
-  <div class="cat-stat"><strong>간판·표찰 3</strong></div>
-  <div class="cat-stat"><strong>스탬프·쿠폰 4</strong></div>
+  {% for cat, items in cat_groups.items() %}
+  <div class="cat-stat">
+    <strong>{{ items|length }}</strong>{{ cat }}
+  </div>
+  {% endfor %}
 </div>
 
 <!-- 목차 -->
+{% set toc_nums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'] %}
 <nav class="cat-toc">
-  <a href="#cat-xbanner">① X-Banner</a>
-  <a href="#cat-scale">② 저울</a>
-  <a href="#cat-stanchion">③ 스탠션 사인 꽂이</a>
-  <a href="#cat-acrylic">④ 아크릴 거치대</a>
-  <a href="#cat-desk">⑤ DESK TOP SIGN</a>
-  <a href="#cat-rowbrd">⑥ ROW BRD 안내문</a>
-  <a href="#cat-notice">⑦ 안내문</a>
-  <a href="#cat-sign">⑧ 간판·표찰</a>
-  <a href="#cat-stamp">⑨ 스탬프·쿠폰</a>
+  {% for cat in cat_groups %}
+  <a href="#cat-sec-{{ loop.index }}">{{ toc_nums[loop.index0] if loop.index0 < toc_nums|length else loop.index }} {{ cat }}</a>
+  {% endfor %}
   <a href="#cat-master">▶ 전체 목록</a>
 </nav>
 
@@ -251,7 +235,9 @@
     <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ item.name }}">
   </div>
   <div class="cat-body">
-    <div class="cat-title">{{ caller() }}</div>
+    <div class="cat-title">{{ item.name }}</div>
+    {% if item.sub_desc %}<div class="cat-sub">{{ item.sub_desc|safe }}</div>{% endif %}
+    <div class="cat-tags"><span class="ctag ctag-orange">{{ item.cat }}</span></div>
   </div>
   <div class="cat-edit-panel">
     <input type="checkbox" class="cat-check" data-code="{{ item.code }}"
@@ -265,521 +251,35 @@
 </div>
 {% endmacro %}
 
-<!-- 1. X-Banner (13종) -->
-<section class="cat-section" id="cat-xbanner">
+<!-- 카테고리별 섹션 -->
+{% for cat, items in cat_groups.items() %}
+<section class="cat-section" id="cat-sec-{{ loop.index }}">
   <div class="cat-section-header">
-    <div class="cat-section-num">1</div>
-    <h2>X-Banner <small>엑스배너</small></h2>
-    <span class="cat-count">13종</span>
+    <div class="cat-section-num">{{ loop.index }}</div>
+    <h2>{{ cat }}</h2>
+    <span class="cat-count">{{ items|length }}종</span>
   </div>
   <div class="cat-grid">
-
-    {% set item = catalog_items[0] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="승객 수하물 수취대 안내 — X-Banner">
-        <img src="{{ url_for('static', filename='item_images/img_28.png') }}" alt="승객 수하물 수취대 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">승객 수하물 수취대 안내</div>
-        <div class="cat-sub">Baggage Claim Area<br>내용 추가 / 로고 변경</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">로고변경</span><span class="ctag ctag-blue">내용추가</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[1] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="유모차 수취 안내 — X-Banner">
-        <img src="{{ url_for('static', filename='item_images/img_31.png') }}" alt="유모차 수취 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">유모차 수취 안내</div>
-        <div class="cat-sub">Baby Stroller Pick-up<br>로고 변경하여 진행</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">로고변경</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[2] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="지연·결항·탑승구 변경 안내 — 600×1800mm">
-        <img src="{{ url_for('static', filename='item_images/img_25.png') }}" alt="지연·결항·탑승구 변경 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">지연·결항·탑승구 변경 안내</div>
-        <div class="cat-sub">600×1800mm<br>중국어 / 대만어 / 일본어 3종</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">보드마카코팅</span><span class="ctag ctag-blue">3개 언어</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[3] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="탑승수속 카운터 — X-Banner">
-        <img src="{{ url_for('static', filename='item_images/img_21.png') }}" alt="탑승수속 카운터">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">탑승수속 카운터</div>
-        <div class="cat-sub">Check In Counter<br>チェックインカウンター / 办理手续柜台</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-blue">4개 언어</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[4] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="탑승구 — X-Banner">
-        <img src="{{ url_for('static', filename='item_images/img_20.png') }}" alt="탑승구">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">탑승구</div>
-        <div class="cat-sub">Boarding Gate</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[5] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="여권·탑승권 제시 안내 — 600×1800mm">
-        <img src="{{ url_for('static', filename='item_images/img_07.png') }}" alt="여권/탑승권 제시 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">여권 / 탑승권 제시 안내</div>
-        <div class="cat-sub">600×1800mm / 2가지 시안<br>한·영·일·중 4개 언어</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-blue">4개 언어</span><span class="ctag ctag-gray">2종 시안</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[6] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="위탁수하물 금지물품 안내 — 3가지 시안">
-        <img src="{{ url_for('static', filename='item_images/img_44.png') }}" alt="위탁수하물 금지물품 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">위탁수하물 금지물품 안내</div>
-        <div class="cat-sub">라이터 / 전자담배 / 배터리<br>3가지 시안</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">금지물품</span><span class="ctag ctag-gray">3종 시안</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {# xb12: 위탁수하물 금지물품 안내 (대만) #}
-    {% set item = catalog_items[7] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="위탁수하물 금지물품 안내 (대만)">
-        <img src="{{ url_for('static', filename='item_images/img_45.png') }}" alt="위탁수하물 금지물품 안내 (대만)">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">위탁수하물 금지물품 안내 (대만)</div>
-        <div class="cat-sub">易斯達航空 / 대만 노선 전용<br>번체 중국어</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">금지물품</span><span class="ctag ctag-purple">대만 전용</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[8] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="창문 닫이 안내 (군사공항용) — 연길공항">
-        <img src="{{ url_for('static', filename='item_images/img_12.png') }}" alt="창문 닫이 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">창문 닫이 안내 (군사공항용)</div>
-        <div class="cat-sub">연길 공항 전용<br>중국어(간/번체) 2종</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-purple">군사공항</span><span class="ctag ctag-blue">중국어</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {# 기타에서 이동한 3개 #}
-    {% set item = catalog_items[9] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="베트남용 ATC 안내">
-        <img src="{{ url_for('static', filename='item_images/img_36.png') }}" alt="베트남용 ATC 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">베트남용 ATC 안내</div>
-        <div class="cat-sub">지연 ATC 관련 안내문<br>베트남 노선 전용</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-purple">베트남 전용</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[10] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="노선 안내 — 예) 인천↔팔라완">
-        <img src="{{ url_for('static', filename='item_images/img_34.png') }}" alt="노선 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">노선 안내</div>
-        <div class="cat-sub">예) 인천 ↕ 팔라완<br>로고 변경하여 진행</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">로고변경</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {% set item = catalog_items[11] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="탑승 수속 안내 — 카운터 운영시간 표기">
-        <img src="{{ url_for('static', filename='item_images/img_39.png') }}" alt="탑승 수속 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">탑승 수속 안내 (운영시간)</div>
-        <div class="cat-sub">ZE[ ] COUNTER / 카운터 운영시간<br>チェックイン(Check-In)</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-blue">운영시간 표기</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
-    {# sc01: 기내 반입 수하물 안내 (저울 버전) — X-Banner로 이동 #}
-    {% set item = catalog_items[12] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="기내 반입 수하물 안내 (저울 버전)">
-        <img src="{{ url_for('static', filename='item_images/img_13.png') }}" alt="기내 반입 수하물 안내">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">기내 반입 수하물 안내 (저울 버전)</div>
-        <div class="cat-sub">55×40×20cm / 10kg<br>저울 버전 2개 + 저울 2개</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-green">TEST UNIT 가능</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-
+    {% for item in items %}{{ cat_card(item) }}{% endfor %}
   </div>
 </section>
-
-<!-- 2. 저울 (1종) -->
-<section class="cat-section" id="cat-scale">
-  <div class="cat-section-header"><div class="cat-section-num">2</div><h2>저울 <small>테스트유닛</small></h2><span class="cat-count">1종</span></div>
-  <div class="cat-grid">
-    {% set item = catalog_items[13] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ item.name }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ item.name }}</div>
-        <div class="cat-sub">기내반입 수하물 규격 확인용<br>내부 눈금(자) 포함</div>
-        <div class="cat-tags"><span class="ctag ctag-gray">특수제작</span><span class="ctag ctag-blue">눈금(자) 포함</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 3. 스탠션 (4종: 고정형만) -->
-<section class="cat-section" id="cat-stanchion">
-  <div class="cat-section-header"><div class="cat-section-num">3</div><h2>스탠션 사인 꽂이 <small>A4사이즈 / 고정형</small></h2><span class="cat-count">4종</span></div>
-  <div class="cat-grid">
-    {% set stnames = ['고정형 — 입구/출구 안내','고정형 — 위탁수하물 금지물품','고정형 — 셀프체크인 승객 구분','고정형 — 셀프체크인 수하물 전용'] %}
-    {% set stsubs = ['300×300mm / 입구·출구·기다리는 곳','배터리 / 라이터 금지','CHECK-IN / BAG DROP / 2종 세트','KIOSK Baggage Check-in Counter'] %}
-    {% for i in range(4) %}
-    {% set item = catalog_items[14+i] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ stnames[i] }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ stnames[i] }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ stnames[i] }}</div>
-        <div class="cat-sub">{{ stsubs[i] }}</div>
-        <div class="cat-tags"><span class="ctag ctag-gray">고정형</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-<!-- 4. 아크릴 거치대 (2종) -->
-<section class="cat-section" id="cat-acrylic">
-  <div class="cat-section-header"><div class="cat-section-num">4</div><h2>아크릴 거치대</h2><span class="cat-count">2종</span></div>
-  <div class="cat-grid">
-    {% set acnames = ['아크릴 거치대 (A4사이즈)','약관 거치대 아크릴'] %}
-    {% set acsubs  = ['카운터용 A4 안내문 거치대','290×320mm'] %}
-    {% for i in range(2) %}
-    {% set item = catalog_items[18+i] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ acnames[i] }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ acnames[i] }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ acnames[i] }}</div>
-        <div class="cat-sub">{{ acsubs[i] }}</div>
-        <div class="cat-tags"><span class="ctag ctag-gray">아크릴</span>{% if i==0 %}<span class="ctag ctag-orange">카운터용</span>{% endif %}</div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-<!-- 5. DESK TOP -->
-<section class="cat-section" id="cat-desk">
-  <div class="cat-section-header"><div class="cat-section-num">5</div><h2>DESK TOP SIGN <small>데스크탑 사인</small></h2><span class="cat-count">1종</span></div>
-  <div class="cat-grid">
-    {% set item = catalog_items[20] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="DESK TOP SIGN — 카운터 이석·수속마감 안내">
-        <img src="{{ url_for('static', filename='item_images/img_46.png') }}" alt="DESK TOP SIGN">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">카운터 이석 및 수속마감 안내</div>
-        <div class="cat-sub">360×170mm / 재질변경<br>한·영·일·중 4개 언어</div>
-        <div class="cat-tags"><span class="ctag ctag-orange">DESK TOP</span><span class="ctag ctag-blue">4개 언어</span><span class="ctag ctag-red">재질변경</span></div>
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 6. ROW BRD -->
-<section class="cat-section" id="cat-rowbrd">
-  <div class="cat-section-header"><div class="cat-section-num">6</div><h2>ROW BRD 안내문</h2><span class="cat-count">4종</span></div>
-  <div class="cat-grid">
-    {% set rbnames = ['탑승순서 안내 (양면)','탑승중 안내','INFORMATION','국제선 대형수하물 위탁 카운터'] %}
-    {% set rbsubs  = ['우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능','NOW BOARDING','운영시간 안내 (한·중 2개 언어)','골프채 등 대형수하물 / 방향 표시'] %}
-    {% for i in range(4) %}
-    {% set item = catalog_items[21+i] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ rbnames[i] }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ rbnames[i] }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ rbnames[i] }}</div>
-        <div class="cat-sub">{{ rbsubs[i] }}</div>
-        {% if i==0 %}<div class="cat-tags"><span class="ctag ctag-red">보드마카코팅</span><span class="ctag ctag-green">양면</span></div>
-        {% elif i==1 %}<div class="cat-tags"><span class="ctag ctag-gray">탑승 진행 중</span></div>
-        {% elif i==2 %}<div class="cat-tags"><span class="ctag ctag-blue">운영시간</span><span class="ctag ctag-purple">중국 노선</span></div>
-        {% else %}<div class="cat-tags"><span class="ctag ctag-orange">대형수하물</span><span class="ctag ctag-blue">방향표시</span></div>{% endif %}
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-<!-- 7. 안내문 -->
-<section class="cat-section" id="cat-notice">
-  <div class="cat-section-header"><div class="cat-section-num">7</div><h2>안내문</h2><span class="cat-count">2종</span></div>
-  <div class="cat-grid">
-    {% set ntnames = ['탑승순서 안내문','카운터 종합 안내문'] %}
-    {% set ntsubs  = ['580×1040mm<br>1~4단계 우선순서 표기','안내 내용 변경 가능<br>카운터 사이즈 확인 필요'] %}
-    {% for i in range(2) %}
-    {% set item = catalog_items[25+i] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ ntnames[i] }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ ntnames[i] }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ ntnames[i] }}</div>
-        <div class="cat-sub">{{ ntsubs[i] }}</div>
-        {% if i==0 %}<div class="cat-tags"><span class="ctag ctag-red">보드마카코팅</span><span class="ctag ctag-blue">사이즈·언어 변경가능</span></div>
-        {% else %}<div class="cat-tags"><span class="ctag ctag-green">내용변경가능</span></div>{% endif %}
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-<!-- 8. 간판·표찰 -->
-<section class="cat-section" id="cat-sign">
-  <div class="cat-section-header"><div class="cat-section-num">8</div><h2>간판 · 표찰 <small>사무실·접수처</small></h2><span class="cat-count">3종</span></div>
-  <div class="cat-grid">
-    {% set sgnames = ['사무실 간판 (부착형)','항공기피해 구제접수처 — 카운터형','항공기피해 구제접수처 — 벽면부착형'] %}
-    {% set sgsubs  = ['이스타항공 / イースタ-航空 / 易斯达航空公司<br>언어변경 가능','200×155mm','190×100mm'] %}
-    {% for i in range(3) %}
-    {% set item = catalog_items[27+i] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ sgnames[i] }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ sgnames[i] }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ sgnames[i] }}</div>
-        <div class="cat-sub">{{ sgsubs[i] }}</div>
-        {% if i==0 %}<div class="cat-tags"><span class="ctag ctag-gray">간판</span><span class="ctag ctag-green">언어변경가능</span></div>
-        {% elif i==1 %}<div class="cat-tags"><span class="ctag ctag-orange">카운터형</span></div>
-        {% else %}<div class="cat-tags"><span class="ctag ctag-gray">벽면부착형</span></div>{% endif %}
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
-
-<!-- 9. 스탬프·쿠폰 -->
-<section class="cat-section" id="cat-stamp">
-  <div class="cat-section-header"><div class="cat-section-num">9</div><h2>스탬프 · 쿠폰</h2><span class="cat-count">4종</span></div>
-  <div class="cat-grid">
-    {% set spnames = ['GD 날인 스탬프 (중국노선)','AOC 도장 (인천)','밀쿠폰 (Meal Coupon)','밀쿠폰 날짜 스탬프'] %}
-    {% set spsubs  = ['지점명 변경하여 제작','20mm 원형 / CORRECTION / AOC','10,000원 / 사이즈·금액 변경 가능','38mm / EASTAR JET 로고 포함<br>날짜변경 가능'] %}
-    {% for i in range(4) %}
-    {% set item = catalog_items[30+i] %}
-    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
-      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
-      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ spnames[i] }}">
-        <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ spnames[i] }}">
-      </div>
-      <div class="cat-body">
-        <div class="cat-title">{{ spnames[i] }}</div>
-        <div class="cat-sub">{{ spsubs[i] }}</div>
-        {% if i==0 %}<div class="cat-tags"><span class="ctag ctag-purple">중국노선</span><span class="ctag ctag-green">지점명변경가능</span></div>
-        {% elif i==1 %}<div class="cat-tags"><span class="ctag ctag-purple">인천 전용</span></div>
-        {% elif i==2 %}<div class="cat-tags"><span class="ctag ctag-green">사이즈변경가능</span><span class="ctag ctag-gray">단면제작가능</span></div>
-        {% else %}<div class="cat-tags"><span class="ctag ctag-green">날짜변경가능</span></div>{% endif %}
-      </div>
-      <div class="cat-edit-panel">
-        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
-        <span class="cat-qty-label">보유수량</span>
-        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</section>
+{% endfor %}
 
 <!-- 전체 목록 -->
 <div class="cat-master-wrap" id="cat-master">
   <h3>▶ 전체 아이템 목록표</h3>
   <div class="table-responsive">
     <table class="cat-table">
-      <thead><tr><th>#</th><th>구분</th><th>종류</th><th>규격 / 형태</th><th>비고</th></tr></thead>
+      <thead><tr><th>#</th><th>구분</th><th>종류</th><th>규격 / 상세</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td class="cat-td-cat">X-Banner</td><td>승객 수하물 수취대 안내</td><td>—</td><td class="cat-td-note">로고변경, 내용추가</td></tr>
-        <tr><td>2</td><td class="cat-td-cat">X-Banner</td><td>유모차 수취 안내</td><td>—</td><td class="cat-td-note">로고변경</td></tr>
-        <tr><td>3</td><td class="cat-td-cat">X-Banner</td><td>지연·결항·탑승구 변경 안내</td><td>600×1800mm</td><td class="cat-td-note">보드마카코팅, 중·대만·일 3언어</td></tr>
-        <tr><td>4</td><td class="cat-td-cat">X-Banner</td><td>탑승수속 카운터</td><td>X-Banner</td><td class="cat-td-note">4개 언어</td></tr>
-        <tr><td>5</td><td class="cat-td-cat">X-Banner</td><td>탑승구</td><td>X-Banner</td><td class="cat-td-note">—</td></tr>
-        <tr><td>6</td><td class="cat-td-cat">X-Banner</td><td>여권 / 탑승권 제시 안내</td><td>600×1800mm</td><td class="cat-td-note">2가지 시안</td></tr>
-        <tr><td>7</td><td class="cat-td-cat">X-Banner</td><td>위탁수하물 금지물품 안내</td><td>3가지 시안</td><td class="cat-td-note">라이터·전자담배·배터리</td></tr>
-        <tr><td>8</td><td class="cat-td-cat">X-Banner</td><td>위탁수하물 금지물품 안내 (대만)</td><td>—</td><td class="cat-td-note">易斯達航空, 번체 중국어</td></tr>
-        <tr><td>9</td><td class="cat-td-cat">X-Banner</td><td>창문 닫이 안내 (군사공항용)</td><td>2종</td><td class="cat-td-note">연길 공항, 중국어(간/번체)</td></tr>
-        <tr><td>10</td><td class="cat-td-cat">X-Banner</td><td>베트남용 ATC 안내</td><td>—</td><td class="cat-td-note">베트남 노선 전용</td></tr>
-        <tr><td>11</td><td class="cat-td-cat">X-Banner</td><td>노선 안내</td><td>—</td><td class="cat-td-note">로고변경</td></tr>
-        <tr><td>12</td><td class="cat-td-cat">X-Banner</td><td>탑승 수속 안내 (카운터 운영시간)</td><td>—</td><td class="cat-td-note">—</td></tr>
-        <tr><td>13</td><td class="cat-td-cat">X-Banner</td><td>기내 반입 수하물 안내 (저울 버전)</td><td>저울 2개+배너 2개</td><td class="cat-td-note">TEST UNIT 가능</td></tr>
-        <tr><td>14</td><td class="cat-td-cat">저울</td><td>테스트 유닛</td><td>테스트유닛</td><td class="cat-td-note">내부 눈금(자) 포함</td></tr>
-        <tr><td>15</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 입구/출구 안내</td><td>300×300mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>16</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 위탁수하물 금지물품</td><td>고정형</td><td class="cat-td-note">—</td></tr>
-        <tr><td>17</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 셀프체크인 승객 구분</td><td>고정형</td><td class="cat-td-note">2종 세트</td></tr>
-        <tr><td>18</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 셀프체크인 수하물 전용</td><td>고정형</td><td class="cat-td-note">—</td></tr>
-        <tr><td>19</td><td class="cat-td-cat">아크릴 거치대</td><td>아크릴 거치대 (A4사이즈)</td><td>A4</td><td class="cat-td-note">카운터용</td></tr>
-        <tr><td>20</td><td class="cat-td-cat">약관거치대</td><td>약관 거치대 아크릴</td><td>290×320mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>21</td><td class="cat-td-cat">DESK TOP SIGN</td><td>카운터 이석 및 수속마감 안내</td><td>360×170mm</td><td class="cat-td-note">재질변경, 4개 언어</td></tr>
-        <tr><td>22</td><td class="cat-td-cat">ROW BRD 안내문</td><td>탑승순서 안내 (양면)</td><td>양면</td><td class="cat-td-note">보드마카코팅, 언어변경가능</td></tr>
-        <tr><td>23</td><td class="cat-td-cat">ROW BRD 안내문</td><td>탑승중 안내</td><td>—</td><td class="cat-td-note">—</td></tr>
-        <tr><td>24</td><td class="cat-td-cat">ROW BRD 안내문</td><td>INFORMATION</td><td>—</td><td class="cat-td-note">운영시간 안내, 중국 노선</td></tr>
-        <tr><td>25</td><td class="cat-td-cat">ROW BRD 안내문</td><td>국제선 대형수하물 위탁 카운터</td><td>—</td><td class="cat-td-note">골프채 등, 방향 표시</td></tr>
-        <tr><td>26</td><td class="cat-td-cat">안내문</td><td>탑승순서 안내문</td><td>580×1040mm</td><td class="cat-td-note">사이즈·언어변경가능</td></tr>
-        <tr><td>27</td><td class="cat-td-cat">안내문</td><td>카운터 종합 안내문</td><td>카운터 사이즈</td><td class="cat-td-note">내용변경가능</td></tr>
-        <tr><td>28</td><td class="cat-td-cat">사무실 간판</td><td>부착형</td><td>부착형</td><td class="cat-td-note">언어변경가능</td></tr>
-        <tr><td>29</td><td class="cat-td-cat">항공기피해구제접수처</td><td>카운터형</td><td>200×155mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>30</td><td class="cat-td-cat">항공기피해구제접수처</td><td>벽면부착형</td><td>190×100mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>31</td><td class="cat-td-cat">스탬프</td><td>GD 날인 스탬프 (중국노선)</td><td>—</td><td class="cat-td-note">지점명 변경하여 제작</td></tr>
-        <tr><td>32</td><td class="cat-td-cat">스탬프</td><td>AOC 도장 (인천)</td><td>20mm 원형</td><td class="cat-td-note">—</td></tr>
-        <tr><td>33</td><td class="cat-td-cat">쿠폰</td><td>밀쿠폰</td><td>사이즈변경가능</td><td class="cat-td-note">단면 제작 가능</td></tr>
-        <tr><td>34</td><td class="cat-td-cat">스탬프</td><td>밀쿠폰 날짜 스탬프</td><td>38mm</td><td class="cat-td-note">날짜변경 가능</td></tr>
+        {% for item in catalog_items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="cat-td-cat">{{ item.cat }}</td>
+          <td>{{ item.name }}</td>
+          <td class="cat-td-note">{{ item.sub_desc|safe if item.sub_desc else '—' }}</td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
@@ -819,7 +319,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') catLbNav(1);
 });
 
-// ── 보유현황 편집 모드 ──
 let editMode = false;
 let dirty = false;
 
@@ -875,19 +374,10 @@ function catToast(msg, type) {
   const t = document.createElement('div');
   t.className = `alert alert-${type} alert-dismissible fade show`;
   t.style.cssText = [
-    'position:fixed',
-    'top:50%',
-    'left:50%',
-    'transform:translate(-50%,-50%)',
-    'z-index:99999',
-    'font-size:1rem',
-    'font-weight:600',
-    'min-width:280px',
-    'max-width:90vw',
-    'text-align:center',
-    'padding:20px 28px',
-    'border-radius:14px',
-    'box-shadow:0 8px 40px rgba(0,0,0,.35)',
+    'position:fixed','top:50%','left:50%','transform:translate(-50%,-50%)',
+    'z-index:99999','font-size:1rem','font-weight:600','min-width:280px',
+    'max-width:90vw','text-align:center','padding:20px 28px',
+    'border-radius:14px','box-shadow:0 8px 40px rgba(0,0,0,.35)',
   ].join(';');
   const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
   t.innerHTML = `<i class="fa-solid ${icon} me-2"></i>${msg}<button type="button" class="btn-close ms-3" data-bs-dismiss="alert"></button>`;
@@ -909,7 +399,6 @@ async function catSave() {
     const v = parseInt(branchSel.value);
     if (!isNaN(v)) payload.branch_id = v;
   } else {
-    // staff: 세션 branch_id를 템플릿에서 직접 주입
     const sessionBid = {{ session.get('branch_id') | tojson }};
     if (sessionBid) payload.branch_id = sessionBid;
   }
@@ -927,7 +416,6 @@ async function catSave() {
       if (editMode) catToggleEdit();
       document.getElementById('catSaveBar').classList.remove('show');
       catToast('저장되었습니다.', 'success');
-      // 보유 배지 즉시 갱신
       document.querySelectorAll('.cat-check').forEach(cb => {
         const card = document.getElementById('card-' + cb.dataset.code);
         if (card) card.classList.toggle('is-owned', cb.checked);
@@ -940,7 +428,6 @@ async function catSave() {
   }
 }
 
-// 초기 보유수 표시
 updateSaveCount();
 </script>
 {% endblock %}

@@ -17,51 +17,54 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 
-# ── 운송아이템 카탈로그 항목 정의 ─────────────────────────────────────────────
+# ── 카탈로그 기본 카테고리 순서 ───────────────────────────────────────────────
+CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', 'ROW BRD', '안내문', '간판·표찰', '스탬프·쿠폰']
+
+# ── 운송아이템 카탈로그 기본 항목 (DB 시딩용) ─────────────────────────────────
 CATALOG_ITEMS = [
-    # X-Banner (13종: 기존 12 + 위탁수하물 금지물품 대만 추가)
-    {'code':'xb01','img':'img_28','name':'승객 수하물 수취대 안내',         'cat':'X-Banner'},
-    {'code':'xb02','img':'img_31','name':'유모차 수취 안내',                 'cat':'X-Banner'},
-    {'code':'xb03','img':'img_25','name':'지연·결항·탑승구 변경 안내',       'cat':'X-Banner'},
-    {'code':'xb04','img':'img_21','name':'탑승수속 카운터',                  'cat':'X-Banner'},
-    {'code':'xb05','img':'img_20','name':'탑승구',                           'cat':'X-Banner'},
-    {'code':'xb06','img':'img_07','name':'여권/탑승권 제시 안내',            'cat':'X-Banner'},
-    {'code':'xb07','img':'img_44','name':'위탁수하물 금지물품 안내',         'cat':'X-Banner'},
-    {'code':'xb12','img':'img_45','name':'위탁수하물 금지물품 안내 (대만)',  'cat':'X-Banner'},
-    {'code':'xb08','img':'img_12','name':'창문 닫이 안내 (군사공항용)',      'cat':'X-Banner'},
-    {'code':'xb09','img':'img_36','name':'베트남용 ATC 안내',                'cat':'X-Banner'},
-    {'code':'xb10','img':'img_34','name':'노선 안내',                        'cat':'X-Banner'},
-    {'code':'xb11','img':'img_39','name':'탑승 수속 안내 (운영시간)',        'cat':'X-Banner'},
-    {'code':'sc01','img':'img_13','name':'기내 반입 수하물 안내 (저울 버전)','cat':'X-Banner'},
+    # X-Banner (15종)
+    {'code':'xb01','img':'img_28','name':'승객 수하물 수취대 안내',         'cat':'X-Banner', 'sub_desc':'Baggage Claim Area<br>내용 추가 / 로고 변경',             'sort':10},
+    {'code':'xb02','img':'img_31','name':'유모차 수취 안내',                 'cat':'X-Banner', 'sub_desc':'Baby Stroller Pick-up<br>로고 변경하여 진행',              'sort':20},
+    {'code':'xb03','img':'img_25','name':'지연·결항·탑승구 변경 안내',       'cat':'X-Banner', 'sub_desc':'600×1800mm<br>중국어 / 대만어 / 일본어 3종',               'sort':30},
+    {'code':'xb04','img':'img_21','name':'탑승수속 카운터',                  'cat':'X-Banner', 'sub_desc':'Check In Counter<br>チェックインカウンター / 办理手续柜台',   'sort':40},
+    {'code':'xb05','img':'img_20','name':'탑승구',                           'cat':'X-Banner', 'sub_desc':'Boarding Gate',                                            'sort':50},
+    {'code':'xb06','img':'img_07','name':'여권/탑승권 제시 안내',            'cat':'X-Banner', 'sub_desc':'600×1800mm / 2가지 시안<br>한·영·일·중 4개 언어',           'sort':60},
+    {'code':'xb07','img':'img_44','name':'위탁수하물 금지물품 안내',         'cat':'X-Banner', 'sub_desc':'라이터 / 전자담배 / 배터리<br>3가지 시안',                   'sort':70},
+    {'code':'xb12','img':'img_45','name':'위탁수하물 금지물품 안내 (대만)',  'cat':'X-Banner', 'sub_desc':'易斯達航空 / 대만 노선 전용<br>번체 중국어',                  'sort':80},
+    {'code':'xb08','img':'img_12','name':'창문 닫이 안내 (군사공항용)',      'cat':'X-Banner', 'sub_desc':'연길 공항 전용<br>중국어(간/번체) 2종',                       'sort':90},
+    {'code':'xb09','img':'img_36','name':'베트남용 ATC 안내',                'cat':'X-Banner', 'sub_desc':'지연 ATC 관련 안내문<br>베트남 노선 전용',                    'sort':100},
+    {'code':'xb10','img':'img_34','name':'노선 안내',                        'cat':'X-Banner', 'sub_desc':'예) 인천 ↕ 팔라완<br>로고 변경하여 진행',                    'sort':110},
+    {'code':'xb11','img':'img_39','name':'탑승 수속 안내 (운영시간)',        'cat':'X-Banner', 'sub_desc':'ZE[ ] COUNTER / 카운터 운영시간<br>チェックイン(Check-In)',   'sort':120},
+    {'code':'sc01','img':'img_13','name':'기내 반입 수하물 안내 (저울 버전)','cat':'X-Banner', 'sub_desc':'55×40×20cm / 10kg<br>저울 버전 2개 + 저울 2개',              'sort':130},
+    {'code':'rb03','img':'img_47','name':'INFORMATION',                      'cat':'X-Banner', 'sub_desc':'운영시간 안내 (한·중 2개 언어)',                              'sort':140},
+    {'code':'rb04','img':'img_48','name':'국제선 대형수하물 위탁 카운터',    'cat':'X-Banner', 'sub_desc':'골프채 등 대형수하물 / 방향 표시',                            'sort':150},
     # 저울 (1종)
-    {'code':'sc02','img':'img_38','name':'테스트 유닛',                      'cat':'저울'},
+    {'code':'sc02','img':'img_38','name':'테스트 유닛',                      'cat':'저울',     'sub_desc':'기내반입 수하물 규격 확인용<br>내부 눈금(자) 포함',             'sort':10},
     # 스탠션 사인 꽂이 (4종)
-    {'code':'st01','img':'img_02','name':'고정형 — 입구/출구 안내',          'cat':'스탠션'},
-    {'code':'st02','img':'img_29','name':'고정형 — 위탁수하물 금지물품',     'cat':'스탠션'},
-    {'code':'st03','img':'img_04','name':'고정형 — 셀프체크인 승객 구분',   'cat':'스탠션'},
-    {'code':'st04','img':'img_32','name':'고정형 — 셀프체크인 수하물 전용', 'cat':'스탠션'},
+    {'code':'st01','img':'img_02','name':'고정형 — 입구/출구 안내',          'cat':'스탠션',   'sub_desc':'300×300mm / 입구·출구·기다리는 곳',                           'sort':10},
+    {'code':'st02','img':'img_29','name':'고정형 — 위탁수하물 금지물품',     'cat':'스탠션',   'sub_desc':'배터리 / 라이터 금지',                                         'sort':20},
+    {'code':'st03','img':'img_04','name':'고정형 — 셀프체크인 승객 구분',   'cat':'스탠션',   'sub_desc':'CHECK-IN / BAG DROP / 2종 세트',                              'sort':30},
+    {'code':'st04','img':'img_32','name':'고정형 — 셀프체크인 수하물 전용', 'cat':'스탠션',   'sub_desc':'KIOSK Baggage Check-in Counter',                              'sort':40},
     # 아크릴 거치대 (2종)
-    {'code':'ac01','img':'img_01','name':'아크릴 거치대 (A4사이즈)',         'cat':'아크릴 거치대'},
-    {'code':'ac02','img':'img_43','name':'약관 거치대 아크릴',               'cat':'아크릴 거치대'},
+    {'code':'ac01','img':'img_01','name':'아크릴 거치대 (A4사이즈)',         'cat':'아크릴 거치대','sub_desc':'카운터용 A4 안내문 거치대',                              'sort':10},
+    {'code':'ac02','img':'img_43','name':'약관 거치대 아크릴',               'cat':'아크릴 거치대','sub_desc':'290×320mm',                                             'sort':20},
     # DESK TOP SIGN (1종)
-    {'code':'ds01','img':'img_46','name':'카운터 이석 및 수속마감 안내',     'cat':'DESK TOP'},
-    # ROW BRD 안내문 (4종)
-    {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',             'cat':'ROW BRD'},
-    {'code':'rb02','img':'img_06','name':'탑승중 안내',                      'cat':'ROW BRD'},
-    {'code':'rb03','img':'img_47','name':'INFORMATION',                      'cat':'ROW BRD'},
-    {'code':'rb04','img':'img_48','name':'국제선 대형수하물 위탁 카운터',    'cat':'ROW BRD'},
+    {'code':'ds01','img':'img_46','name':'카운터 이석 및 수속마감 안내',     'cat':'DESK TOP', 'sub_desc':'360×170mm / 재질변경<br>한·영·일·중 4개 언어',               'sort':10},
+    # ROW BRD 안내문 (2종 — INFORMATION·대형수하물은 X-Banner로 이동)
+    {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',             'cat':'ROW BRD',  'sub_desc':'우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능',             'sort':10},
+    {'code':'rb02','img':'img_06','name':'탑승중 안내',                      'cat':'ROW BRD',  'sub_desc':'NOW BOARDING',                                               'sort':20},
     # 안내문 (2종)
-    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'안내문'},
-    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'안내문'},
+    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'안내문',   'sub_desc':'580×1040mm<br>1~4단계 우선순서 표기',                          'sort':10},
+    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'안내문',   'sub_desc':'안내 내용 변경 가능<br>카운터 사이즈 확인 필요',                 'sort':20},
     # 간판·표찰 (3종)
-    {'code':'sg01','img':'img_03','name':'사무실 간판 (부착형)',              'cat':'간판·표찰'},
-    {'code':'sg02','img':'img_42','name':'항공기피해 구제접수처 — 카운터형', 'cat':'간판·표찰'},
-    {'code':'sg03','img':'img_17','name':'항공기피해 구제접수처 — 벽면부착형','cat':'간판·표찰'},
+    {'code':'sg01','img':'img_03','name':'사무실 간판 (부착형)',              'cat':'간판·표찰','sub_desc':'이스타항공 / イースタ-航空 / 易斯达航空公司<br>언어변경 가능', 'sort':10},
+    {'code':'sg02','img':'img_42','name':'항공기피해 구제접수처 — 카운터형', 'cat':'간판·표찰','sub_desc':'200×155mm',                                                  'sort':20},
+    {'code':'sg03','img':'img_17','name':'항공기피해 구제접수처 — 벽면부착형','cat':'간판·표찰','sub_desc':'190×100mm',                                                 'sort':30},
     # 스탬프·쿠폰 (4종)
-    {'code':'sp01','img':'img_10','name':'GD 날인 스탬프 (중국노선)',        'cat':'스탬프·쿠폰'},
-    {'code':'sp02','img':'img_24','name':'AOC 도장 (인천)',                  'cat':'스탬프·쿠폰'},
-    {'code':'sp03','img':'img_27','name':'밀쿠폰 (Meal Coupon)',             'cat':'스탬프·쿠폰'},
-    {'code':'sp04','img':'img_26','name':'밀쿠폰 날짜 스탬프',               'cat':'스탬프·쿠폰'},
+    {'code':'sp01','img':'img_10','name':'GD 날인 스탬프 (중국노선)',        'cat':'스탬프·쿠폰','sub_desc':'지점명 변경하여 제작',                                    'sort':10},
+    {'code':'sp02','img':'img_24','name':'AOC 도장 (인천)',                  'cat':'스탬프·쿠폰','sub_desc':'20mm 원형 / CORRECTION / AOC',                             'sort':20},
+    {'code':'sp03','img':'img_27','name':'밀쿠폰 (Meal Coupon)',             'cat':'스탬프·쿠폰','sub_desc':'10,000원 / 사이즈·금액 변경 가능',                         'sort':30},
+    {'code':'sp04','img':'img_26','name':'밀쿠폰 날짜 스탬프',               'cat':'스탬프·쿠폰','sub_desc':'38mm / EASTAR JET 로고 포함<br>날짜변경 가능',             'sort':40},
 ]
 _secret = os.environ.get('SECRET_KEY', '')
 if not _secret:
@@ -496,6 +499,16 @@ def init_db():
                     UNIQUE(branch_id, item_code)
                 )
             ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_defs (
+                    code       TEXT PRIMARY KEY,
+                    img        TEXT NOT NULL,
+                    name       TEXT NOT NULL,
+                    cat        TEXT NOT NULL,
+                    sub_desc   TEXT NOT NULL DEFAULT '',
+                    sort_order INTEGER NOT NULL DEFAULT 0
+                )
+            ''')
         else:
             # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
             conn.execute('''
@@ -588,6 +601,14 @@ def init_db():
                     quantity   INTEGER DEFAULT 1,
                     updated_at TIMESTAMP DEFAULT NOW(),
                     UNIQUE(branch_id, item_code)
+                );
+                CREATE TABLE IF NOT EXISTS catalog_defs (
+                    code       TEXT PRIMARY KEY,
+                    img        TEXT NOT NULL,
+                    name       TEXT NOT NULL,
+                    cat        TEXT NOT NULL,
+                    sub_desc   TEXT NOT NULL DEFAULT '',
+                    sort_order INTEGER NOT NULL DEFAULT 0
                 );
             ''')
 
@@ -684,6 +705,12 @@ def init_db():
             )
         conn.commit()
 
+        # catalog_defs 시딩 (SQLite, 최초 1회)
+        if USE_SQLITE:
+            cat_cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
+            if cat_cnt == 0:
+                _seed_catalog_defs(conn)
+
         if USE_SQLITE:
             cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
             if 'period_month' not in cols:
@@ -739,9 +766,22 @@ def init_db():
                         updated_at TIMESTAMP DEFAULT NOW(),
                         UNIQUE(branch_id, item_code)
                     );
+                    CREATE TABLE IF NOT EXISTS catalog_defs (
+                        code       TEXT PRIMARY KEY,
+                        img        TEXT NOT NULL,
+                        name       TEXT NOT NULL,
+                        cat        TEXT NOT NULL,
+                        sub_desc   TEXT NOT NULL DEFAULT '',
+                        sort_order INTEGER NOT NULL DEFAULT 0
+                    );
                 END $$
             ''')
         conn.commit()
+
+        # catalog_defs 시딩 (최초 1회)
+        cat_cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
+        if cat_cnt == 0:
+            _seed_catalog_defs(conn)
 
     except Exception:
         conn.rollback()
@@ -2045,12 +2085,60 @@ def mark_notifications_read():
     return jsonify({'ok': True})
 
 
+# ── 카탈로그 관련 헬퍼 ────────────────────────────────────────────────────────
+
+def _seed_catalog_defs(conn):
+    """CATALOG_ITEMS를 catalog_defs에 시딩 (ON CONFLICT DO NOTHING)"""
+    for item in CATALOG_ITEMS:
+        conn.execute(
+            'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
+            'VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (code) DO NOTHING',
+            (item['code'], item['img'], item['name'], item['cat'],
+             item.get('sub_desc', ''), item.get('sort', 0))
+        )
+    conn.commit()
+
+
+def _get_catalog_items(conn):
+    """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)"""
+    rows = conn.execute(
+        'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs'
+    ).fetchall()
+    items = [dict(r) for r in rows]
+    cat_idx = {cat: i for i, cat in enumerate(CAT_ORDER)}
+    items.sort(key=lambda x: (cat_idx.get(x['cat'], 999), x.get('sort_order', 0)))
+    return items
+
+
+def _get_cat_groups(conn):
+    """카탈로그 아이템을 cat 별로 그룹화 (CAT_ORDER 정렬). {cat: [items]} OrderedDict 반환."""
+    from collections import OrderedDict
+    items = _get_catalog_items(conn)
+    groups = OrderedDict()
+    for cat in CAT_ORDER:
+        groups[cat] = []
+    for item in items:
+        cat = item['cat']
+        if cat not in groups:
+            groups[cat] = []
+        groups[cat].append(item)
+    return OrderedDict((k, v) for k, v in groups.items() if v)
+
+
 # ── 사용자 관리 (관리자 전용) ─────────────────────────────────────────────────
 
 def _ensure_catalog_table():
-    """catalog_branch_items 테이블이 없으면 즉시 생성"""
+    """catalog_branch_items + catalog_defs 테이블 보장 및 시딩"""
     if USE_SQLITE:
-        return  # SQLite는 init_db에서 항상 생성됨
+        # SQLite는 init_db에서 이미 생성됨 — 시딩만 확인
+        try:
+            conn = get_db()
+            cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
+            if cnt == 0:
+                _seed_catalog_defs(conn)
+        except Exception as _e:
+            print(f'[ensure_catalog_table/sqlite] {_e}')
+        return
     try:
         conn = get_db()
         conn.execute('''
@@ -2063,9 +2151,22 @@ def _ensure_catalog_table():
                 UNIQUE(branch_id, item_code)
             )
         ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_defs (
+                code       TEXT PRIMARY KEY,
+                img        TEXT NOT NULL,
+                name       TEXT NOT NULL,
+                cat        TEXT NOT NULL,
+                sub_desc   TEXT NOT NULL DEFAULT '',
+                sort_order INTEGER NOT NULL DEFAULT 0
+            )
+        ''')
         conn.commit()
+        cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
+        if cnt == 0:
+            _seed_catalog_defs(conn)
     except Exception as _e:
-        print(f"[ensure_catalog_table] {_e}")
+        print(f'[ensure_catalog_table] {_e}')
 
 
 @app.route('/catalog')
@@ -2074,10 +2175,8 @@ def catalog():
     _ensure_catalog_table()
     conn = get_db()
     bid  = session.get('branch_id')
-    role = session.get('role')
     branches = conn.execute('SELECT id, code, name, type FROM branches ORDER BY type, code').fetchall()
 
-    # 내 지점 보유 현황 로드
     my_items = {}
     if bid:
         rows = conn.execute(
@@ -2085,9 +2184,12 @@ def catalog():
         ).fetchall()
         my_items = {r['item_code']: r['quantity'] for r in rows}
 
+    catalog_items = _get_catalog_items(conn)
+    cat_groups    = _get_cat_groups(conn)
     conn.close()
     return render_template('catalog.html',
-        catalog_items=CATALOG_ITEMS,
+        catalog_items=catalog_items,
+        cat_groups=cat_groups,
         my_items=my_items,
         branches=branches,
     )
@@ -2157,9 +2259,8 @@ def catalog_inventory():
             ORDER BY cbi.item_code
         ''', (bid,)).fetchall()
 
-    # branch → {item_code: qty} 구조로 변환
     from collections import defaultdict
-    branch_map  = {}   # code → {name, type, items: {code: qty}}
+    branch_map  = {}
     branch_order = []
     for r in rows:
         bc = r['code']
@@ -2169,23 +2270,135 @@ def catalog_inventory():
         if r['item_code']:
             branch_map[bc]['items'][r['item_code']] = r['quantity']
 
+    catalog_items = _get_catalog_items(conn)
     conn.close()
-    # 카탈로그 현황 지점 표시 순서 (사용자 지정)
+
     _CATALOG_ORDER = [
-        'GMP','CJU','CJJ','PUS','ICN',          # 국내
-        'NRT','KIX','FUK','CTS','OKA','KMJ','TKS',  # 일본
-        'BKK','CNX','DAD','CXR','PQC','MDC',    # 동남아
-        'TSA','TPE','PVG','YNJ','CGO','YNT','HKG','ALA',  # 중화권·기타
+        'GMP','CJU','CJJ','PUS','ICN',
+        'NRT','KIX','FUK','CTS','OKA','KMJ','TKS',
+        'BKK','CNX','DAD','CXR','PQC','MDC',
+        'TSA','TPE','PVG','YNJ','CGO','YNT','HKG','ALA',
     ]
     _exclude = {'광명역', '서울역', '이지드랍', 'CARGO'}
     branch_order = [bc for bc in branch_order if bc not in _exclude]
     branch_order.sort(key=lambda bc: _CATALOG_ORDER.index(bc) if bc in _CATALOG_ORDER else 999)
 
     return render_template('catalog_inventory.html',
-        catalog_items=CATALOG_ITEMS,
+        catalog_items=catalog_items,
         branch_map=branch_map,
         branch_order=branch_order,
     )
+
+
+# ── 관리자 카탈로그 편집 ───────────────────────────────────────────────────────
+
+_STATIC_IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'item_images')
+
+
+@app.route('/admin/catalog/edit')
+@login_required
+def catalog_edit():
+    if session.get('role') != 'admin':
+        flash('관리자 권한이 필요합니다.', 'danger')
+        return redirect(url_for('catalog'))
+    _ensure_catalog_table()
+    conn = get_db()
+    items = _get_catalog_items(conn)
+    conn.close()
+    return render_template('catalog_edit.html',
+        catalog_items=items,
+        cat_order=CAT_ORDER,
+    )
+
+
+@app.route('/admin/catalog/add', methods=['POST'])
+@login_required
+def catalog_add():
+    if session.get('role') != 'admin':
+        flash('관리자 권한이 필요합니다.', 'danger')
+        return redirect(url_for('catalog'))
+    _ensure_catalog_table()
+
+    name     = request.form.get('name', '').strip()
+    cat      = request.form.get('cat', '').strip()
+    sub_desc = request.form.get('sub_desc', '').strip()
+    custom_code = request.form.get('code', '').strip()
+
+    if not name or not cat:
+        flash('아이템명과 카테고리는 필수입니다.', 'danger')
+        return redirect(url_for('catalog_edit'))
+
+    f = request.files.get('image')
+    if not f or not f.filename:
+        flash('이미지 파일을 선택해 주세요. (PNG)', 'danger')
+        return redirect(url_for('catalog_edit'))
+
+    from werkzeug.utils import secure_filename
+    orig = secure_filename(f.filename)
+    ext  = os.path.splitext(orig)[1].lower()
+    if ext not in ('.png', '.jpg', '.jpeg', '.webp'):
+        flash('PNG / JPG / WEBP 형식만 허용됩니다.', 'danger')
+        return redirect(url_for('catalog_edit'))
+
+    if not os.path.isdir(_STATIC_IMG_DIR) or not os.access(_STATIC_IMG_DIR, os.W_OK):
+        flash('이미지 저장 폴더에 쓰기 권한 없음. 로컬 환경에서만 업로드 가능합니다.', 'danger')
+        return redirect(url_for('catalog_edit'))
+
+    import uuid
+    uid       = uuid.uuid4().hex[:10]
+    img_stem  = f'adm_{uid}'          # 확장자 제외 파일명
+    save_name = img_stem + '.png'      # 항상 .png로 저장
+
+    try:
+        from PIL import Image
+        img = Image.open(f.stream).convert('RGBA')
+        bg  = Image.new('RGBA', img.size, (255, 255, 255, 255))
+        bg.paste(img, mask=img.split()[3])
+        bg.convert('RGB').save(os.path.join(_STATIC_IMG_DIR, save_name), 'PNG')
+    except Exception:
+        # PIL 없거나 변환 실패 시 원본 그대로 저장
+        f.stream.seek(0)
+        f.save(os.path.join(_STATIC_IMG_DIR, save_name))
+
+    code = custom_code if custom_code else f'adm_{uid}'
+    # Validate code uniqueness
+    conn = get_db()
+    existing = conn.execute('SELECT code FROM catalog_defs WHERE code=%s', (code,)).fetchone()
+    if existing:
+        flash(f'코드 "{code}" 가 이미 사용 중입니다.', 'danger')
+        conn.close()
+        return redirect(url_for('catalog_edit'))
+
+    max_sort = conn.execute(
+        'SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_defs WHERE cat=%s', (cat,)
+    ).fetchone()['m']
+
+    conn.execute(
+        'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
+        'VALUES (%s, %s, %s, %s, %s, %s)',
+        (code, img_stem, name, cat, sub_desc, max_sort + 10)
+    )
+    conn.commit()
+    conn.close()
+    flash(f'"{name}" 아이템이 추가되었습니다.', 'success')
+    return redirect(url_for('catalog_edit'))
+
+
+@app.route('/admin/catalog/delete', methods=['POST'])
+@login_required
+def catalog_delete():
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+    _ensure_catalog_table()
+    code = request.get_json(silent=True, force=True).get('code', '') if request.is_json else request.form.get('code', '')
+    if not code:
+        return jsonify({'ok': False, 'msg': '코드 없음'}), 400
+    conn = get_db()
+    conn.execute('DELETE FROM catalog_defs WHERE code=%s', (code,))
+    conn.execute('DELETE FROM catalog_branch_items WHERE item_code=%s', (code,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
 
 
 @app.route('/admin/users')

@@ -417,6 +417,10 @@
        class="nav-link {% if endpoint=='manage_users' %}active{% endif %}">
       <i class="fa-solid fa-users-gear"></i>{{ T('nav.user_management') }}
     </a>
+    <a href="{{ url_for('catalog_edit') }}"
+       class="nav-link {% if endpoint=='catalog_edit' %}active{% endif %}">
+      <i class="fa-solid fa-sliders"></i>{{ T('nav.catalog_edit') }}
+    </a>
     {% endif %}
   </nav>
 

@@ -12,6 +12,7 @@
   "nav.flight_schedule": "운항편수 관리",
   "nav.catalog_section": "운송아이템",
   "nav.catalog": "운송아이템 카탈로그",
+  "nav.catalog_edit": "카탈로그 편집",
   "nav.admin": "관리자",
   "nav.user_management": "사용자 관리",
   "nav.change_password": "비밀번호 변경",

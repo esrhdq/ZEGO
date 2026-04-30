@@ -12,6 +12,7 @@
   "nav.flight_schedule": "Flight Schedule",
   "nav.catalog_section": "Transport Items",
   "nav.catalog": "Item Catalog",
+  "nav.catalog_edit": "Catalog Editor",
   "nav.admin": "Admin",
   "nav.user_management": "User Management",
   "nav.change_password": "Change Password",

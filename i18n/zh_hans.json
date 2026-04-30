@@ -12,6 +12,7 @@
   "nav.flight_schedule": "航班数管理",
   "nav.catalog_section": "运输物品",
   "nav.catalog": "运输物品目录",
+  "nav.catalog_edit": "目录编辑",
   "nav.admin": "管理员",
   "nav.user_management": "用户管理",
   "nav.change_password": "修改密码",
