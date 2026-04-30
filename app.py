@@ -2125,8 +2125,6 @@ def _seed_catalog_defs(conn):
             'VALUES (%s, %s, %s, %s, %s, %s) '
             'ON CONFLICT (code) DO UPDATE SET '
             '  img=CASE WHEN COALESCE(catalog_defs.img_data,\'\')=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
-            '  name=EXCLUDED.name, '
-            '  sub_desc=EXCLUDED.sub_desc, '
             '  sort_order=EXCLUDED.sort_order',
             (item['code'], item['img'], item['name'], item['cat'],
              item.get('sub_desc', ''), item.get('sort', 0))
