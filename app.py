@@ -19,46 +19,49 @@ app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspa
 
 # ── 운송아이템 카탈로그 항목 정의 ─────────────────────────────────────────────
 CATALOG_ITEMS = [
-    # X-Banner (12종: 기존 11 + 기내반입수하물 이동)
-    {'code':'xb01','img':'img_28','name':'승객 수하물 수취대 안내',       'cat':'X-Banner'},
-    {'code':'xb02','img':'img_31','name':'유모차 수취 안내',               'cat':'X-Banner'},
-    {'code':'xb03','img':'img_25','name':'지연·결항·탑승구 변경 안내',     'cat':'X-Banner'},
-    {'code':'xb04','img':'img_21','name':'탑승수속 카운터',                'cat':'X-Banner'},
-    {'code':'xb05','img':'img_20','name':'탑승구',                         'cat':'X-Banner'},
-    {'code':'xb06','img':'img_07','name':'여권/탑승권 제시 안내',          'cat':'X-Banner'},
-    {'code':'xb07','img':'img_37','name':'위탁수하물 금지물품 안내',       'cat':'X-Banner'},
-    {'code':'xb08','img':'img_12','name':'창문 닫이 안내 (군사공항용)',    'cat':'X-Banner'},
-    {'code':'xb09','img':'img_36','name':'베트남용 ATC 안내',              'cat':'X-Banner'},
-    {'code':'xb10','img':'img_34','name':'노선 안내',                      'cat':'X-Banner'},
-    {'code':'xb11','img':'img_39','name':'탑승 수속 안내 (운영시간)',      'cat':'X-Banner'},
+    # X-Banner (13종: 기존 12 + 위탁수하물 금지물품 대만 추가)
+    {'code':'xb01','img':'img_28','name':'승객 수하물 수취대 안내',         'cat':'X-Banner'},
+    {'code':'xb02','img':'img_31','name':'유모차 수취 안내',                 'cat':'X-Banner'},
+    {'code':'xb03','img':'img_25','name':'지연·결항·탑승구 변경 안내',       'cat':'X-Banner'},
+    {'code':'xb04','img':'img_21','name':'탑승수속 카운터',                  'cat':'X-Banner'},
+    {'code':'xb05','img':'img_20','name':'탑승구',                           'cat':'X-Banner'},
+    {'code':'xb06','img':'img_07','name':'여권/탑승권 제시 안내',            'cat':'X-Banner'},
+    {'code':'xb07','img':'img_44','name':'위탁수하물 금지물품 안내',         'cat':'X-Banner'},
+    {'code':'xb12','img':'img_45','name':'위탁수하물 금지물품 안내 (대만)',  'cat':'X-Banner'},
+    {'code':'xb08','img':'img_12','name':'창문 닫이 안내 (군사공항용)',      'cat':'X-Banner'},
+    {'code':'xb09','img':'img_36','name':'베트남용 ATC 안내',                'cat':'X-Banner'},
+    {'code':'xb10','img':'img_34','name':'노선 안내',                        'cat':'X-Banner'},
+    {'code':'xb11','img':'img_39','name':'탑승 수속 안내 (운영시간)',        'cat':'X-Banner'},
     {'code':'sc01','img':'img_13','name':'기내 반입 수하물 안내 (저울 버전)','cat':'X-Banner'},
     # 저울 (1종)
-    {'code':'sc02','img':'img_38','name':'테스트 유닛',                    'cat':'저울'},
-    # 스탠션 사인 꽂이 (4종: 아크릴형 제거)
-    {'code':'st01','img':'img_02','name':'고정형 — 입구/출구 안내',        'cat':'스탠션'},
-    {'code':'st02','img':'img_29','name':'고정형 — 위탁수하물 금지물품',   'cat':'스탠션'},
-    {'code':'st03','img':'img_04','name':'고정형 — 셀프체크인 승객 구분', 'cat':'스탠션'},
-    {'code':'st04','img':'img_32','name':'고정형 — 셀프체크인 수하물 전용','cat':'스탠션'},
-    # 아크릴 거치대 (2종: 거치대 아크릴 중복 제거)
-    {'code':'ac01','img':'img_01','name':'아크릴 거치대 (A4사이즈)',       'cat':'아크릴 거치대'},
-    {'code':'ac02','img':'img_16','name':'약관 거치대 아크릴',             'cat':'아크릴 거치대'},
+    {'code':'sc02','img':'img_38','name':'테스트 유닛',                      'cat':'저울'},
+    # 스탠션 사인 꽂이 (4종)
+    {'code':'st01','img':'img_02','name':'고정형 — 입구/출구 안내',          'cat':'스탠션'},
+    {'code':'st02','img':'img_29','name':'고정형 — 위탁수하물 금지물품',     'cat':'스탠션'},
+    {'code':'st03','img':'img_04','name':'고정형 — 셀프체크인 승객 구분',   'cat':'스탠션'},
+    {'code':'st04','img':'img_32','name':'고정형 — 셀프체크인 수하물 전용', 'cat':'스탠션'},
+    # 아크릴 거치대 (2종)
+    {'code':'ac01','img':'img_01','name':'아크릴 거치대 (A4사이즈)',         'cat':'아크릴 거치대'},
+    {'code':'ac02','img':'img_43','name':'약관 거치대 아크릴',               'cat':'아크릴 거치대'},
     # DESK TOP SIGN (1종)
-    {'code':'ds01','img':'img_09','name':'카운터 이석 및 수속마감 안내',   'cat':'DESK TOP'},
-    # ROW BRD 안내문 (2종)
-    {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',           'cat':'ROW BRD'},
-    {'code':'rb02','img':'img_06','name':'탑승중 안내',                    'cat':'ROW BRD'},
+    {'code':'ds01','img':'img_46','name':'카운터 이석 및 수속마감 안내',     'cat':'DESK TOP'},
+    # ROW BRD 안내문 (4종)
+    {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',             'cat':'ROW BRD'},
+    {'code':'rb02','img':'img_06','name':'탑승중 안내',                      'cat':'ROW BRD'},
+    {'code':'rb03','img':'img_47','name':'INFORMATION',                      'cat':'ROW BRD'},
+    {'code':'rb04','img':'img_48','name':'국제선 대형수하물 위탁 카운터',    'cat':'ROW BRD'},
     # 안내문 (2종)
-    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                'cat':'안내문'},
-    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',             'cat':'안내문'},
+    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'안내문'},
+    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'안내문'},
     # 간판·표찰 (3종)
-    {'code':'sg01','img':'img_03','name':'사무실 간판 (부착형)',            'cat':'간판·표찰'},
-    {'code':'sg02','img':'img_14','name':'항공기피해 구제접수처 — 카운터형','cat':'간판·표찰'},
+    {'code':'sg01','img':'img_03','name':'사무실 간판 (부착형)',              'cat':'간판·표찰'},
+    {'code':'sg02','img':'img_42','name':'항공기피해 구제접수처 — 카운터형', 'cat':'간판·표찰'},
     {'code':'sg03','img':'img_17','name':'항공기피해 구제접수처 — 벽면부착형','cat':'간판·표찰'},
     # 스탬프·쿠폰 (4종)
-    {'code':'sp01','img':'img_10','name':'GD 날인 스탬프 (중국노선)',      'cat':'스탬프·쿠폰'},
-    {'code':'sp02','img':'img_24','name':'AOC 도장 (인천)',                'cat':'스탬프·쿠폰'},
-    {'code':'sp03','img':'img_27','name':'밀쿠폰 (Meal Coupon)',           'cat':'스탬프·쿠폰'},
-    {'code':'sp04','img':'img_26','name':'밀쿠폰 날짜 스탬프',             'cat':'스탬프·쿠폰'},
+    {'code':'sp01','img':'img_10','name':'GD 날인 스탬프 (중국노선)',        'cat':'스탬프·쿠폰'},
+    {'code':'sp02','img':'img_24','name':'AOC 도장 (인천)',                  'cat':'스탬프·쿠폰'},
+    {'code':'sp03','img':'img_27','name':'밀쿠폰 (Meal Coupon)',             'cat':'스탬프·쿠폰'},
+    {'code':'sp04','img':'img_26','name':'밀쿠폰 날짜 스탬프',               'cat':'스탬프·쿠폰'},
 ]
 _secret = os.environ.get('SECRET_KEY', '')
 if not _secret:

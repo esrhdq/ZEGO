@@ -204,7 +204,7 @@
 
 <!-- 헤더 바 -->
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-  <div class="text-muted small">총 31종 운송아이템 &nbsp;·&nbsp; As of JUL 2024</div>
+  <div class="text-muted small">총 34종 운송아이템 &nbsp;·&nbsp; As of APR 2026</div>
   <div class="ms-auto d-flex gap-2">
     <button id="catEditBtn" class="btn btn-sm btn-outline-success" onclick="catToggleEdit()">
       <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.edit_mode') }}
@@ -217,12 +217,12 @@
 
 <!-- 통계바 -->
 <div class="cat-stats-bar">
-  <div class="cat-stat"><strong>X-Banner 12</strong>엑스배너</div>
+  <div class="cat-stat"><strong>X-Banner 13</strong>엑스배너</div>
   <div class="cat-stat"><strong>저울 1</strong>테스트유닛</div>
   <div class="cat-stat"><strong>스탠션 4</strong>고정형 스탠드</div>
   <div class="cat-stat"><strong>거치대 2</strong>아크릴 거치대</div>
   <div class="cat-stat"><strong>DESK TOP 1</strong></div>
-  <div class="cat-stat"><strong>ROW BRD 2</strong></div>
+  <div class="cat-stat"><strong>ROW BRD 4</strong></div>
   <div class="cat-stat"><strong>안내문 2</strong></div>
   <div class="cat-stat"><strong>간판·표찰 3</strong></div>
   <div class="cat-stat"><strong>스탬프·쿠폰 4</strong></div>
@@ -265,12 +265,12 @@
 </div>
 {% endmacro %}
 
-<!-- 1. X-Banner (12종) -->
+<!-- 1. X-Banner (13종) -->
 <section class="cat-section" id="cat-xbanner">
   <div class="cat-section-header">
     <div class="cat-section-num">1</div>
     <h2>X-Banner <small>엑스배너</small></h2>
-    <span class="cat-count">12종</span>
+    <span class="cat-count">13종</span>
   </div>
   <div class="cat-grid">
 
@@ -386,7 +386,7 @@
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="위탁수하물 금지물품 안내 — 3가지 시안">
-        <img src="{{ url_for('static', filename='item_images/img_37.png') }}" alt="위탁수하물 금지물품 안내">
+        <img src="{{ url_for('static', filename='item_images/img_44.png') }}" alt="위탁수하물 금지물품 안내">
       </div>
       <div class="cat-body">
         <div class="cat-title">위탁수하물 금지물품 안내</div>
@@ -400,7 +400,26 @@
       </div>
     </div>
 
+    {# xb12: 위탁수하물 금지물품 안내 (대만) #}
     {% set item = catalog_items[7] %}
+    <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
+      <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
+      <div class="cat-thumb" onclick="catOpenLB(this)" data-title="위탁수하물 금지물품 안내 (대만)">
+        <img src="{{ url_for('static', filename='item_images/img_45.png') }}" alt="위탁수하물 금지물품 안내 (대만)">
+      </div>
+      <div class="cat-body">
+        <div class="cat-title">위탁수하물 금지물품 안내 (대만)</div>
+        <div class="cat-sub">易斯達航空 / 대만 노선 전용<br>번체 중국어</div>
+        <div class="cat-tags"><span class="ctag ctag-orange">X-Banner</span><span class="ctag ctag-red">금지물품</span><span class="ctag ctag-purple">대만 전용</span></div>
+      </div>
+      <div class="cat-edit-panel">
+        <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
+        <span class="cat-qty-label">보유수량</span>
+        <input type="number" class="cat-qty" data-code="{{ item.code }}" min="0" max="999" value="{{ my_items.get(item.code, 1) }}" {% if item.code not in my_items %}disabled{% endif %} oninput="catMarkDirty()">
+      </div>
+    </div>
+
+    {% set item = catalog_items[8] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="창문 닫이 안내 (군사공항용) — 연길공항">
@@ -419,7 +438,7 @@
     </div>
 
     {# 기타에서 이동한 3개 #}
-    {% set item = catalog_items[8] %}
+    {% set item = catalog_items[9] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="베트남용 ATC 안내">
@@ -437,7 +456,7 @@
       </div>
     </div>
 
-    {% set item = catalog_items[9] %}
+    {% set item = catalog_items[10] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="노선 안내 — 예) 인천↔팔라완">
@@ -455,7 +474,7 @@
       </div>
     </div>
 
-    {% set item = catalog_items[10] %}
+    {% set item = catalog_items[11] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="탑승 수속 안내 — 카운터 운영시간 표기">
@@ -474,7 +493,7 @@
     </div>
 
     {# sc01: 기내 반입 수하물 안내 (저울 버전) — X-Banner로 이동 #}
-    {% set item = catalog_items[11] %}
+    {% set item = catalog_items[12] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="기내 반입 수하물 안내 (저울 버전)">
@@ -499,7 +518,7 @@
 <section class="cat-section" id="cat-scale">
   <div class="cat-section-header"><div class="cat-section-num">2</div><h2>저울 <small>테스트유닛</small></h2><span class="cat-count">1종</span></div>
   <div class="cat-grid">
-    {% set item = catalog_items[12] %}
+    {% set item = catalog_items[13] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
@@ -526,7 +545,7 @@
     {% set stnames = ['고정형 — 입구/출구 안내','고정형 — 위탁수하물 금지물품','고정형 — 셀프체크인 승객 구분','고정형 — 셀프체크인 수하물 전용'] %}
     {% set stsubs = ['300×300mm / 입구·출구·기다리는 곳','배터리 / 라이터 금지','CHECK-IN / BAG DROP / 2종 세트','KIOSK Baggage Check-in Counter'] %}
     {% for i in range(4) %}
-    {% set item = catalog_items[13+i] %}
+    {% set item = catalog_items[14+i] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ stnames[i] }}">
@@ -554,7 +573,7 @@
     {% set acnames = ['아크릴 거치대 (A4사이즈)','약관 거치대 아크릴'] %}
     {% set acsubs  = ['카운터용 A4 안내문 거치대','290×320mm'] %}
     {% for i in range(2) %}
-    {% set item = catalog_items[17+i] %}
+    {% set item = catalog_items[18+i] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ acnames[i] }}">
@@ -579,11 +598,11 @@
 <section class="cat-section" id="cat-desk">
   <div class="cat-section-header"><div class="cat-section-num">5</div><h2>DESK TOP SIGN <small>데스크탑 사인</small></h2><span class="cat-count">1종</span></div>
   <div class="cat-grid">
-    {% set item = catalog_items[19] %}
+    {% set item = catalog_items[20] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="DESK TOP SIGN — 카운터 이석·수속마감 안내">
-        <img src="{{ url_for('static', filename='item_images/img_09.png') }}" alt="DESK TOP SIGN">
+        <img src="{{ url_for('static', filename='item_images/img_46.png') }}" alt="DESK TOP SIGN">
       </div>
       <div class="cat-body">
         <div class="cat-title">카운터 이석 및 수속마감 안내</div>
@@ -601,12 +620,12 @@
 
 <!-- 6. ROW BRD -->
 <section class="cat-section" id="cat-rowbrd">
-  <div class="cat-section-header"><div class="cat-section-num">6</div><h2>ROW BRD 안내문</h2><span class="cat-count">2종</span></div>
+  <div class="cat-section-header"><div class="cat-section-num">6</div><h2>ROW BRD 안내문</h2><span class="cat-count">4종</span></div>
   <div class="cat-grid">
-    {% set rbnames = ['탑승순서 안내 (양면)','탑승중 안내'] %}
-    {% set rbsubs  = ['우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능','NOW BOARDING'] %}
-    {% for i in range(2) %}
-    {% set item = catalog_items[20+i] %}
+    {% set rbnames = ['탑승순서 안내 (양면)','탑승중 안내','INFORMATION','국제선 대형수하물 위탁 카운터'] %}
+    {% set rbsubs  = ['우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능','NOW BOARDING','운영시간 안내 (한·중 2개 언어)','골프채 등 대형수하물 / 방향 표시'] %}
+    {% for i in range(4) %}
+    {% set item = catalog_items[21+i] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ rbnames[i] }}">
@@ -616,7 +635,9 @@
         <div class="cat-title">{{ rbnames[i] }}</div>
         <div class="cat-sub">{{ rbsubs[i] }}</div>
         {% if i==0 %}<div class="cat-tags"><span class="ctag ctag-red">보드마카코팅</span><span class="ctag ctag-green">양면</span></div>
-        {% else %}<div class="cat-tags"><span class="ctag ctag-gray">탑승 진행 중</span></div>{% endif %}
+        {% elif i==1 %}<div class="cat-tags"><span class="ctag ctag-gray">탑승 진행 중</span></div>
+        {% elif i==2 %}<div class="cat-tags"><span class="ctag ctag-blue">운영시간</span><span class="ctag ctag-purple">중국 노선</span></div>
+        {% else %}<div class="cat-tags"><span class="ctag ctag-orange">대형수하물</span><span class="ctag ctag-blue">방향표시</span></div>{% endif %}
       </div>
       <div class="cat-edit-panel">
         <input type="checkbox" class="cat-check" data-code="{{ item.code }}" {% if item.code in my_items %}checked{% endif %} onchange="catCheckChange(this)">
@@ -635,7 +656,7 @@
     {% set ntnames = ['탑승순서 안내문','카운터 종합 안내문'] %}
     {% set ntsubs  = ['580×1040mm<br>1~4단계 우선순서 표기','안내 내용 변경 가능<br>카운터 사이즈 확인 필요'] %}
     {% for i in range(2) %}
-    {% set item = catalog_items[22+i] %}
+    {% set item = catalog_items[25+i] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ ntnames[i] }}">
@@ -664,7 +685,7 @@
     {% set sgnames = ['사무실 간판 (부착형)','항공기피해 구제접수처 — 카운터형','항공기피해 구제접수처 — 벽면부착형'] %}
     {% set sgsubs  = ['이스타항공 / イースタ-航空 / 易斯达航空公司<br>언어변경 가능','200×155mm','190×100mm'] %}
     {% for i in range(3) %}
-    {% set item = catalog_items[24+i] %}
+    {% set item = catalog_items[27+i] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ sgnames[i] }}">
@@ -694,7 +715,7 @@
     {% set spnames = ['GD 날인 스탬프 (중국노선)','AOC 도장 (인천)','밀쿠폰 (Meal Coupon)','밀쿠폰 날짜 스탬프'] %}
     {% set spsubs  = ['지점명 변경하여 제작','20mm 원형 / CORRECTION / AOC','10,000원 / 사이즈·금액 변경 가능','38mm / EASTAR JET 로고 포함<br>날짜변경 가능'] %}
     {% for i in range(4) %}
-    {% set item = catalog_items[27+i] %}
+    {% set item = catalog_items[30+i] %}
     <div class="cat-card {% if item.code in my_items %}is-owned{% endif %}" id="card-{{ item.code }}">
       <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
       <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ spnames[i] }}">
@@ -732,30 +753,33 @@
         <tr><td>5</td><td class="cat-td-cat">X-Banner</td><td>탑승구</td><td>X-Banner</td><td class="cat-td-note">—</td></tr>
         <tr><td>6</td><td class="cat-td-cat">X-Banner</td><td>여권 / 탑승권 제시 안내</td><td>600×1800mm</td><td class="cat-td-note">2가지 시안</td></tr>
         <tr><td>7</td><td class="cat-td-cat">X-Banner</td><td>위탁수하물 금지물품 안내</td><td>3가지 시안</td><td class="cat-td-note">라이터·전자담배·배터리</td></tr>
-        <tr><td>8</td><td class="cat-td-cat">X-Banner</td><td>창문 닫이 안내 (군사공항용)</td><td>2종</td><td class="cat-td-note">연길 공항, 중국어(간/번체)</td></tr>
-        <tr><td>9</td><td class="cat-td-cat">X-Banner</td><td>베트남용 ATC 안내</td><td>—</td><td class="cat-td-note">베트남 노선 전용</td></tr>
-        <tr><td>10</td><td class="cat-td-cat">X-Banner</td><td>노선 안내</td><td>—</td><td class="cat-td-note">로고변경</td></tr>
-        <tr><td>11</td><td class="cat-td-cat">X-Banner</td><td>탑승 수속 안내 (카운터 운영시간)</td><td>—</td><td class="cat-td-note">—</td></tr>
-        <tr><td>12</td><td class="cat-td-cat">X-Banner</td><td>기내 반입 수하물 안내 (저울 버전)</td><td>저울 2개+배너 2개</td><td class="cat-td-note">TEST UNIT 가능</td></tr>
-        <tr><td>13</td><td class="cat-td-cat">저울</td><td>테스트 유닛</td><td>테스트유닛</td><td class="cat-td-note">내부 눈금(자) 포함</td></tr>
-        <tr><td>14</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 입구/출구 안내</td><td>300×300mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>15</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 위탁수하물 금지물품</td><td>고정형</td><td class="cat-td-note">—</td></tr>
-        <tr><td>16</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 셀프체크인 승객 구분</td><td>고정형</td><td class="cat-td-note">2종 세트</td></tr>
-        <tr><td>17</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 셀프체크인 수하물 전용</td><td>고정형</td><td class="cat-td-note">—</td></tr>
-        <tr><td>18</td><td class="cat-td-cat">아크릴 거치대</td><td>아크릴 거치대 (A4사이즈)</td><td>A4</td><td class="cat-td-note">카운터용</td></tr>
-        <tr><td>19</td><td class="cat-td-cat">약관거치대</td><td>약관 거치대 아크릴</td><td>290×320mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>20</td><td class="cat-td-cat">DESK TOP SIGN</td><td>카운터 이석 및 수속마감 안내</td><td>360×170mm</td><td class="cat-td-note">재질변경, 4개 언어</td></tr>
-        <tr><td>21</td><td class="cat-td-cat">ROW BRD 안내문</td><td>탑승순서 안내 (양면)</td><td>양면</td><td class="cat-td-note">보드마카코팅, 언어변경가능</td></tr>
-        <tr><td>22</td><td class="cat-td-cat">ROW BRD 안내문</td><td>탑승중 안내</td><td>—</td><td class="cat-td-note">—</td></tr>
-        <tr><td>23</td><td class="cat-td-cat">안내문</td><td>탑승순서 안내문</td><td>580×1040mm</td><td class="cat-td-note">사이즈·언어변경가능</td></tr>
-        <tr><td>24</td><td class="cat-td-cat">안내문</td><td>카운터 종합 안내문</td><td>카운터 사이즈</td><td class="cat-td-note">내용변경가능</td></tr>
-        <tr><td>25</td><td class="cat-td-cat">사무실 간판</td><td>부착형</td><td>부착형</td><td class="cat-td-note">언어변경가능</td></tr>
-        <tr><td>26</td><td class="cat-td-cat">항공기피해구제접수처</td><td>카운터형</td><td>200×155mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>27</td><td class="cat-td-cat">항공기피해구제접수처</td><td>벽면부착형</td><td>190×100mm</td><td class="cat-td-note">—</td></tr>
-        <tr><td>28</td><td class="cat-td-cat">스탬프</td><td>GD 날인 스탬프 (중국노선)</td><td>—</td><td class="cat-td-note">지점명 변경하여 제작</td></tr>
-        <tr><td>29</td><td class="cat-td-cat">스탬프</td><td>AOC 도장 (인천)</td><td>20mm 원형</td><td class="cat-td-note">—</td></tr>
-        <tr><td>30</td><td class="cat-td-cat">쿠폰</td><td>밀쿠폰</td><td>사이즈변경가능</td><td class="cat-td-note">단면 제작 가능</td></tr>
-        <tr><td>31</td><td class="cat-td-cat">스탬프</td><td>밀쿠폰 날짜 스탬프</td><td>38mm</td><td class="cat-td-note">날짜변경 가능</td></tr>
+        <tr><td>8</td><td class="cat-td-cat">X-Banner</td><td>위탁수하물 금지물품 안내 (대만)</td><td>—</td><td class="cat-td-note">易斯達航空, 번체 중국어</td></tr>
+        <tr><td>9</td><td class="cat-td-cat">X-Banner</td><td>창문 닫이 안내 (군사공항용)</td><td>2종</td><td class="cat-td-note">연길 공항, 중국어(간/번체)</td></tr>
+        <tr><td>10</td><td class="cat-td-cat">X-Banner</td><td>베트남용 ATC 안내</td><td>—</td><td class="cat-td-note">베트남 노선 전용</td></tr>
+        <tr><td>11</td><td class="cat-td-cat">X-Banner</td><td>노선 안내</td><td>—</td><td class="cat-td-note">로고변경</td></tr>
+        <tr><td>12</td><td class="cat-td-cat">X-Banner</td><td>탑승 수속 안내 (카운터 운영시간)</td><td>—</td><td class="cat-td-note">—</td></tr>
+        <tr><td>13</td><td class="cat-td-cat">X-Banner</td><td>기내 반입 수하물 안내 (저울 버전)</td><td>저울 2개+배너 2개</td><td class="cat-td-note">TEST UNIT 가능</td></tr>
+        <tr><td>14</td><td class="cat-td-cat">저울</td><td>테스트 유닛</td><td>테스트유닛</td><td class="cat-td-note">내부 눈금(자) 포함</td></tr>
+        <tr><td>15</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 입구/출구 안내</td><td>300×300mm</td><td class="cat-td-note">—</td></tr>
+        <tr><td>16</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 위탁수하물 금지물품</td><td>고정형</td><td class="cat-td-note">—</td></tr>
+        <tr><td>17</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 셀프체크인 승객 구분</td><td>고정형</td><td class="cat-td-note">2종 세트</td></tr>
+        <tr><td>18</td><td class="cat-td-cat">스탠션 사인 꽂이</td><td>고정형 — 셀프체크인 수하물 전용</td><td>고정형</td><td class="cat-td-note">—</td></tr>
+        <tr><td>19</td><td class="cat-td-cat">아크릴 거치대</td><td>아크릴 거치대 (A4사이즈)</td><td>A4</td><td class="cat-td-note">카운터용</td></tr>
+        <tr><td>20</td><td class="cat-td-cat">약관거치대</td><td>약관 거치대 아크릴</td><td>290×320mm</td><td class="cat-td-note">—</td></tr>
+        <tr><td>21</td><td class="cat-td-cat">DESK TOP SIGN</td><td>카운터 이석 및 수속마감 안내</td><td>360×170mm</td><td class="cat-td-note">재질변경, 4개 언어</td></tr>
+        <tr><td>22</td><td class="cat-td-cat">ROW BRD 안내문</td><td>탑승순서 안내 (양면)</td><td>양면</td><td class="cat-td-note">보드마카코팅, 언어변경가능</td></tr>
+        <tr><td>23</td><td class="cat-td-cat">ROW BRD 안내문</td><td>탑승중 안내</td><td>—</td><td class="cat-td-note">—</td></tr>
+        <tr><td>24</td><td class="cat-td-cat">ROW BRD 안내문</td><td>INFORMATION</td><td>—</td><td class="cat-td-note">운영시간 안내, 중국 노선</td></tr>
+        <tr><td>25</td><td class="cat-td-cat">ROW BRD 안내문</td><td>국제선 대형수하물 위탁 카운터</td><td>—</td><td class="cat-td-note">골프채 등, 방향 표시</td></tr>
+        <tr><td>26</td><td class="cat-td-cat">안내문</td><td>탑승순서 안내문</td><td>580×1040mm</td><td class="cat-td-note">사이즈·언어변경가능</td></tr>
+        <tr><td>27</td><td class="cat-td-cat">안내문</td><td>카운터 종합 안내문</td><td>카운터 사이즈</td><td class="cat-td-note">내용변경가능</td></tr>
+        <tr><td>28</td><td class="cat-td-cat">사무실 간판</td><td>부착형</td><td>부착형</td><td class="cat-td-note">언어변경가능</td></tr>
+        <tr><td>29</td><td class="cat-td-cat">항공기피해구제접수처</td><td>카운터형</td><td>200×155mm</td><td class="cat-td-note">—</td></tr>
+        <tr><td>30</td><td class="cat-td-cat">항공기피해구제접수처</td><td>벽면부착형</td><td>190×100mm</td><td class="cat-td-note">—</td></tr>
+        <tr><td>31</td><td class="cat-td-cat">스탬프</td><td>GD 날인 스탬프 (중국노선)</td><td>—</td><td class="cat-td-note">지점명 변경하여 제작</td></tr>
+        <tr><td>32</td><td class="cat-td-cat">스탬프</td><td>AOC 도장 (인천)</td><td>20mm 원형</td><td class="cat-td-note">—</td></tr>
+        <tr><td>33</td><td class="cat-td-cat">쿠폰</td><td>밀쿠폰</td><td>사이즈변경가능</td><td class="cat-td-note">단면 제작 가능</td></tr>
+        <tr><td>34</td><td class="cat-td-cat">스탬프</td><td>밀쿠폰 날짜 스탬프</td><td>38mm</td><td class="cat-td-note">날짜변경 가능</td></tr>
       </tbody>
     </table>
   </div>
