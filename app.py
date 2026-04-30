@@ -19,7 +19,7 @@ app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspa
 
 # ── 운송아이템 카탈로그 항목 정의 ─────────────────────────────────────────────
 CATALOG_ITEMS = [
-    # X-Banner (11종: 기존 8 + 기타에서 이동 3)
+    # X-Banner (12종: 기존 11 + 기내반입수하물 이동)
     {'code':'xb01','img':'img_28','name':'승객 수하물 수취대 안내',       'cat':'X-Banner'},
     {'code':'xb02','img':'img_31','name':'유모차 수취 안내',               'cat':'X-Banner'},
     {'code':'xb03','img':'img_25','name':'지연·결항·탑승구 변경 안내',     'cat':'X-Banner'},
@@ -31,19 +31,17 @@ CATALOG_ITEMS = [
     {'code':'xb09','img':'img_36','name':'베트남용 ATC 안내',              'cat':'X-Banner'},
     {'code':'xb10','img':'img_34','name':'노선 안내',                      'cat':'X-Banner'},
     {'code':'xb11','img':'img_39','name':'탑승 수속 안내 (운영시간)',      'cat':'X-Banner'},
-    # 저울 (2종)
-    {'code':'sc01','img':'img_13','name':'기내 반입 수하물 안내 (저울 버전)','cat':'저울'},
+    {'code':'sc01','img':'img_13','name':'기내 반입 수하물 안내 (저울 버전)','cat':'X-Banner'},
+    # 저울 (1종)
     {'code':'sc02','img':'img_38','name':'테스트 유닛',                    'cat':'저울'},
-    # 스탠션 사인 꽂이 (5종)
+    # 스탠션 사인 꽂이 (4종: 아크릴형 제거)
     {'code':'st01','img':'img_02','name':'고정형 — 입구/출구 안내',        'cat':'스탠션'},
     {'code':'st02','img':'img_29','name':'고정형 — 위탁수하물 금지물품',   'cat':'스탠션'},
     {'code':'st03','img':'img_04','name':'고정형 — 셀프체크인 승객 구분', 'cat':'스탠션'},
     {'code':'st04','img':'img_32','name':'고정형 — 셀프체크인 수하물 전용','cat':'스탠션'},
-    {'code':'st05','img':'img_15','name':'아크릴형 — 안내물 자율변경',     'cat':'스탠션'},
-    # 아크릴 거치대 (3종)
+    # 아크릴 거치대 (2종: 거치대 아크릴 중복 제거)
     {'code':'ac01','img':'img_01','name':'아크릴 거치대 (A4사이즈)',       'cat':'아크릴 거치대'},
     {'code':'ac02','img':'img_16','name':'약관 거치대 아크릴',             'cat':'아크릴 거치대'},
-    {'code':'ac03','img':'img_15','name':'거치대 아크릴',                  'cat':'아크릴 거치대'},
     # DESK TOP SIGN (1종)
     {'code':'ds01','img':'img_09','name':'카운터 이석 및 수속마감 안내',   'cat':'DESK TOP'},
     # ROW BRD 안내문 (2종)
@@ -2099,15 +2097,17 @@ def catalog_save():
     data     = request.get_json(silent=True) or {}
     bid      = session.get('branch_id')
     role     = session.get('role')
-    target   = data.get('branch_id', bid)
-    if target: target = int(target)
+    # JSON의 null/NaN은 Python None → or 연산으로 세션 branch_id fallback
+    _raw     = data.get('branch_id')
+    target   = int(_raw) if _raw is not None else bid
 
     if role != 'admin' and target != bid:
         return jsonify({'ok': False, 'msg': '권한 없음'}), 403
     if not target:
-        return jsonify({'ok': False, 'msg': '지점 없음'}), 400
+        return jsonify({'ok': False, 'msg': '지점이 배정되지 않았습니다. 관리자에게 문의하세요.'}), 400
 
     items = data.get('items', {})   # {item_code: quantity}
+
     conn  = get_db()
     for code, qty in items.items():
         qty = max(0, int(qty))
