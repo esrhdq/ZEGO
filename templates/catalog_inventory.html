@@ -80,19 +80,19 @@
     border-radius:4px;
   }
 
-  /* 지점 헤더 */
+  /* 지점 헤더 — 가로 방향 */
   .branch-th {
-    writing-mode:vertical-lr; transform:rotate(180deg);
-    max-width:38px; min-width:36px; font-size:.68rem;
-    padding:8px 4px !important; text-align:center !important;
-    white-space:nowrap; overflow:hidden;
+    min-width:50px; max-width:50px;
+    padding:6px 3px !important; text-align:center !important;
+    vertical-align:bottom; line-height:1.3;
+    white-space:nowrap;
   }
-  .branch-th .b-code { font-weight:800; display:block; }
-  .branch-th .b-name { font-size:.6rem; opacity:.8; display:block; }
+  .branch-th .b-code { font-weight:800; display:block; font-size:.72rem; }
+  .branch-th .b-name { font-size:.6rem; opacity:.85; display:block; }
 
-  .col-item-cat  { width:90px; }
-  .col-item-name { width:150px; }
-  .col-total     { width:44px; }
+  .col-item-cat  { width:88px; }
+  .col-item-name { width:160px; }
+  .col-total     { width:48px; }
 
   /* 범례 */
   .inv-legend {
@@ -100,12 +100,6 @@
     display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;
   }
   .inv-legend span { display:flex; align-items:center; gap:4px; }
-
-  @media(max-width:767.98px) {
-    .branch-th { max-width:28px; min-width:26px; font-size:.6rem; }
-    .col-item-name { width:110px; }
-    .col-item-cat  { width:70px; }
-  }
 </style>
 
 <!-- 상단 버튼 -->
@@ -121,30 +115,6 @@
 </div>
 
 {% if branch_order %}
-
-<!-- 요약 카드 -->
-{% set total_branches = branch_order|length %}
-{% set total_items = catalog_items|length %}
-<div class="inv-summary">
-  <div class="inv-summary-card">
-    <div class="s-num">{{ total_branches }}</div>
-    <div class="s-label">등록 지점</div>
-  </div>
-  <div class="inv-summary-card">
-    <div class="s-num">{{ total_items }}</div>
-    <div class="s-label">전체 아이템</div>
-  </div>
-  {% set owned_pairs = namespace(count=0) %}
-  {% for bc in branch_order %}{% for item in catalog_items %}{% if item.code in branch_map[bc]['items'] %}{% set owned_pairs.count = owned_pairs.count + 1 %}{% endif %}{% endfor %}{% endfor %}
-  <div class="inv-summary-card">
-    <div class="s-num">{{ owned_pairs.count }}</div>
-    <div class="s-label">보유 등록 건수</div>
-  </div>
-  <div class="inv-summary-card">
-    <div class="s-num">{{ ((owned_pairs.count / (total_branches * total_items)) * 100)|round(1) if total_branches > 0 else 0 }}%</div>
-    <div class="s-label">평균 보유율</div>
-  </div>
-</div>
 
 <!-- 카테고리 필터 -->
 {% set cats = [] %}
@@ -168,17 +138,10 @@
           {% for bc in branch_order %}
           <th class="branch-th">
             <span class="b-code">{{ bc }}</span>
-            <span class="b-name">{{ branch_map[bc].name[:4] }}</span>
+            <span class="b-name">{{ branch_map[bc]['name'] }}</span>
           </th>
           {% endfor %}
-          <th class="col-total" rowspan="2" style="vertical-align:middle;text-align:center;background:#fff7ed;color:#c2410c">보유<br>지점</th>
-        </tr>
-        <tr>
-          {% for bc in branch_order %}
-          <th style="text-align:center;font-size:.62rem;color:#999;padding:3px 2px">
-            {{ branch_map[bc].type[:2] if branch_map[bc].type else '' }}
-          </th>
-          {% endfor %}
+          <th class="col-total" style="vertical-align:middle;text-align:center;background:#fff7ed;color:#c2410c">보유<br>지점</th>
         </tr>
       </thead>
       <tbody>
@@ -219,7 +182,7 @@
 <div class="inv-legend">
   <span><span style="display:inline-block;width:20px;height:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:3px"></span> 숫자 = 보유수량</span>
   <span><span style="color:#ccc;font-size:1rem">·</span> 미보유</span>
-  <span>tfoot 합계 = 지점별 보유 아이템 수</span>
+  <span>맨 아래 행 숫자 = 지점별 총 보유 아이템 수</span>
 </div>
 
 {% else %}
