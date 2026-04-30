@@ -135,7 +135,7 @@
     <div class="s-label">전체 아이템</div>
   </div>
   {% set owned_pairs = namespace(count=0) %}
-  {% for bc in branch_order %}{% for item in catalog_items %}{% if item.code in branch_map[bc].items %}{% set owned_pairs.count = owned_pairs.count + 1 %}{% endif %}{% endfor %}{% endfor %}
+  {% for bc in branch_order %}{% for item in catalog_items %}{% if item.code in branch_map[bc]['items'] %}{% set owned_pairs.count = owned_pairs.count + 1 %}{% endif %}{% endfor %}{% endfor %}
   <div class="inv-summary-card">
     <div class="s-num">{{ owned_pairs.count }}</div>
     <div class="s-label">보유 등록 건수</div>
@@ -184,13 +184,13 @@
       <tbody>
         {% for item in catalog_items %}
         {% set owned_count = namespace(n=0) %}
-        {% for bc in branch_order %}{% if item.code in branch_map[bc].items %}{% set owned_count.n = owned_count.n + 1 %}{% endif %}{% endfor %}
+        {% for bc in branch_order %}{% if item.code in branch_map[bc]['items'] %}{% set owned_count.n = owned_count.n + 1 %}{% endif %}{% endfor %}
         <tr data-cat="{{ item.cat }}">
           <td class="item-cat">{{ item.cat }}</td>
           <td class="item-name">{{ item.name }}</td>
           {% for bc in branch_order %}
-          {% if item.code in branch_map[bc].items %}
-          {% set qty = branch_map[bc].items[item.code] %}
+          {% if item.code in branch_map[bc]['items'] %}
+          {% set qty = branch_map[bc]['items'][item.code] %}
           <td class="cell-owned">{{ qty }}</td>
           {% else %}
           <td class="cell-none">·</td>
@@ -205,7 +205,7 @@
           <td colspan="2" style="text-align:right;padding:8px;font-size:.76rem;color:#555">보유 아이템 수</td>
           {% for bc in branch_order %}
           {% set bc_count = namespace(n=0) %}
-          {% for item in catalog_items %}{% if item.code in branch_map[bc].items %}{% set bc_count.n = bc_count.n + 1 %}{% endif %}{% endfor %}
+          {% for item in catalog_items %}{% if item.code in branch_map[bc]['items'] %}{% set bc_count.n = bc_count.n + 1 %}{% endif %}{% endfor %}
           <td style="text-align:center;color:var(--red);font-size:.78rem">{{ bc_count.n }}</td>
           {% endfor %}
           <td style="text-align:center;color:#c2410c">—</td>
