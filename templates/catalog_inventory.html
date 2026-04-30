@@ -198,7 +198,7 @@
           <td class="item-cat">{{ item.cat }}</td>
           <td class="item-name">
             <span class="item-name-link"
-              onclick="invOpenLB('{{ url_for('static', filename='item_images/' + item.img + '.png') }}','{{ item.name }}')">
+              onclick="invOpenLB('{{ cat_img_url(item.img) }}','{{ item.name }}')">
               {{ item.name }}
             </span>
           </td>

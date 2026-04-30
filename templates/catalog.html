@@ -232,7 +232,7 @@
 <div class="cat-card {% if owned %}is-owned{% endif %}" id="card-{{ item.code }}">
   <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
   <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
-    <img src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}" alt="{{ item.name }}">
+    <img src="{{ cat_img_url(item.img) }}" alt="{{ item.name }}">
   </div>
   <div class="cat-body">
     <div class="cat-title">{{ item.name }}</div>

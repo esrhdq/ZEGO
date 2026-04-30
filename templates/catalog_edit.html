@@ -131,7 +131,7 @@
           <td class="text-muted" style="font-size:.75rem">{{ loop.index }}</td>
           <td>
             <img class="item-thumb"
-                 src="{{ url_for('static', filename='item_images/' + item.img + '.png') }}"
+                 src="{{ cat_img_url(item.img) }}"
                  alt="{{ item.name }}"
                  onerror="this.style.opacity='.3'">
           </td>

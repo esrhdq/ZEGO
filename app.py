@@ -2293,6 +2293,27 @@ def catalog_inventory():
 # ── 관리자 카탈로그 편집 ───────────────────────────────────────────────────────
 
 _STATIC_IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'item_images')
+_TMP_IMG_DIR    = '/tmp/item_images'
+
+
+@app.route('/ci/<filename>')
+def catalog_img(filename):
+    """카탈로그 이미지 서빙: /tmp/item_images → static/item_images 순 탐색.
+    Vercel 등 읽기전용 환경에서도 업로드된 이미지를 서빙하기 위한 라우트."""
+    import re
+    if not re.match(r'^[\w\-]+\.(?:png|jpg|jpeg|webp)$', filename, re.IGNORECASE):
+        return '', 404
+    tmp_path = os.path.join(_TMP_IMG_DIR, filename)
+    if os.path.isfile(tmp_path):
+        return send_file(tmp_path)
+    from flask import send_from_directory
+    return send_from_directory(_STATIC_IMG_DIR, filename)
+
+
+@app.template_global()
+def cat_img_url(img_stem):
+    """카탈로그 이미지 URL — /ci/ 라우트 경유 (tmp 업로드 이미지 포함 모두 처리)"""
+    return url_for('catalog_img', filename=img_stem + '.png')
 
 
 @app.route('/admin/catalog/edit')
@@ -2339,25 +2360,32 @@ def catalog_add():
         flash('PNG / JPG / WEBP 형식만 허용됩니다.', 'danger')
         return redirect(url_for('catalog_edit'))
 
-    if not os.path.isdir(_STATIC_IMG_DIR) or not os.access(_STATIC_IMG_DIR, os.W_OK):
-        flash('이미지 저장 폴더에 쓰기 권한 없음. 로컬 환경에서만 업로드 가능합니다.', 'danger')
-        return redirect(url_for('catalog_edit'))
-
     import uuid
     uid       = uuid.uuid4().hex[:10]
-    img_stem  = f'adm_{uid}'          # 확장자 제외 파일명
-    save_name = img_stem + '.png'      # 항상 .png로 저장
+    img_stem  = f'adm_{uid}'
+    save_name = img_stem + '.png'
 
+    # 저장 폴더: static/item_images가 쓰기 가능하면 우선, 아니면 /tmp/item_images (Vercel 등)
+    if os.path.isdir(_STATIC_IMG_DIR) and os.access(_STATIC_IMG_DIR, os.W_OK):
+        save_dir = _STATIC_IMG_DIR
+    else:
+        os.makedirs(_TMP_IMG_DIR, exist_ok=True)
+        save_dir = _TMP_IMG_DIR
+
+    save_path = os.path.join(save_dir, save_name)
     try:
-        from PIL import Image
-        img = Image.open(f.stream).convert('RGBA')
-        bg  = Image.new('RGBA', img.size, (255, 255, 255, 255))
-        bg.paste(img, mask=img.split()[3])
-        bg.convert('RGB').save(os.path.join(_STATIC_IMG_DIR, save_name), 'PNG')
+        from PIL import Image as _PILImage
+        _img = _PILImage.open(f.stream)
+        _bg  = _PILImage.new('RGB', _img.size, (255, 255, 255))
+        if _img.mode in ('RGBA', 'LA', 'P'):
+            _img = _img.convert('RGBA')
+            _bg.paste(_img, mask=_img.split()[3])
+        else:
+            _bg.paste(_img.convert('RGB'))
+        _bg.save(save_path, 'PNG')
     except Exception:
-        # PIL 없거나 변환 실패 시 원본 그대로 저장
         f.stream.seek(0)
-        f.save(os.path.join(_STATIC_IMG_DIR, save_name))
+        f.save(save_path)
 
     code = custom_code if custom_code else f'adm_{uid}'
     # Validate code uniqueness
