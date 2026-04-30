@@ -222,9 +222,11 @@
       <div class="modal-body pb-2">
         <div class="d-flex align-items-center gap-3 mb-3">
           <div class="adm-thumb-wrap"><img id="cem-thumb" src="" alt=""></div>
-          <div>
-            <div class="text-muted" style="font-size:.7rem;margin-bottom:2px">아이템 코드</div>
-            <code id="cem-code-disp" style="font-size:.85rem;color:#444"></code>
+          <div class="flex-grow-1">
+            <label class="adm-form-label d-block" style="font-size:.7rem;margin-bottom:2px">아이템 코드 <span class="text-muted fw-normal">(영숫자·_)</span></label>
+            <input type="text" id="cem-newcode" class="form-control form-control-sm"
+                   pattern="[a-zA-Z0-9_]{1,20}" style="font-family:monospace"
+                   placeholder="예) xb15">
           </div>
         </div>
         <input type="hidden" id="cem-code">
@@ -241,6 +243,11 @@
         <div class="mb-2">
           <label class="adm-form-label d-block">설명 <span class="text-muted fw-normal">(선택)</span></label>
           <input type="text" id="cem-subdesc" class="form-control form-control-sm" placeholder="예) 600×1800mm / 4개 언어">
+        </div>
+        <div class="mb-2">
+          <label class="adm-form-label d-block">정렬순서 <span class="text-muted fw-normal">(숫자 오름차순)</span></label>
+          <input type="number" id="cem-sort" class="form-control form-control-sm"
+                 min="0" max="9999" style="width:120px">
         </div>
         <div class="mb-1">
           <label class="adm-form-label d-block">이미지 교체 <span class="text-muted fw-normal">(선택 — 비우면 기존 유지)</span></label>
@@ -379,6 +386,7 @@
           data-cat="{{ item.cat | e }}"
           data-sub="{{ item.sub_desc | e }}"
           data-img="{{ cat_img_url(item.img) }}"
+          data-sort="{{ item.sort_order }}"
           onclick="event.stopPropagation(); catOpenEdit(this)"
           title="수정">
     <i class="fa-solid fa-pen"></i>
@@ -593,13 +601,14 @@ updateSaveCount();
 /* ── 관리자: 아이템 수정 ── */
 {% if session.role == 'admin' %}
 function catOpenEdit(btn) {
-  document.getElementById('cem-code').value        = btn.dataset.code;
-  document.getElementById('cem-code-disp').textContent = btn.dataset.code;
-  document.getElementById('cem-name').value        = btn.dataset.name;
-  document.getElementById('cem-cat').value         = btn.dataset.cat;
-  document.getElementById('cem-subdesc').value     = btn.dataset.sub;
-  document.getElementById('cem-thumb').src         = btn.dataset.img;
-  document.getElementById('cem-image').value       = '';
+  document.getElementById('cem-code').value    = btn.dataset.code;
+  document.getElementById('cem-newcode').value = btn.dataset.code;
+  document.getElementById('cem-name').value    = btn.dataset.name;
+  document.getElementById('cem-cat').value     = btn.dataset.cat;
+  document.getElementById('cem-subdesc').value = btn.dataset.sub;
+  document.getElementById('cem-sort').value    = btn.dataset.sort || 0;
+  document.getElementById('cem-thumb').src     = btn.dataset.img;
+  document.getElementById('cem-image').value   = '';
   document.getElementById('cem-img-fname').textContent = '';
   const lbl = document.getElementById('cem-img-label');
   lbl.classList.remove('has-file');
@@ -625,16 +634,19 @@ function cemImgChange(input) {
 }
 
 async function catSubmitEdit() {
-  const code    = document.getElementById('cem-code').value;
-  const name    = document.getElementById('cem-name').value.trim();
-  const cat     = document.getElementById('cem-cat').value;
-  const subDesc = document.getElementById('cem-subdesc').value.trim();
-  const imgFile = document.getElementById('cem-image').files[0];
+  const code      = document.getElementById('cem-code').value;
+  const newCode   = document.getElementById('cem-newcode').value.trim() || code;
+  const name      = document.getElementById('cem-name').value.trim();
+  const cat       = document.getElementById('cem-cat').value;
+  const subDesc   = document.getElementById('cem-subdesc').value.trim();
+  const sortOrder = parseInt(document.getElementById('cem-sort').value) || 0;
+  const imgFile   = document.getElementById('cem-image').files[0];
   if (!name) { catToast('아이템명을 입력해 주세요.', 'danger'); return; }
 
   const fd = new FormData();
-  fd.append('code', code); fd.append('name', name);
-  fd.append('cat', cat);   fd.append('sub_desc', subDesc);
+  fd.append('code', code);        fd.append('new_code', newCode);
+  fd.append('name', name);        fd.append('cat', cat);
+  fd.append('sub_desc', subDesc); fd.append('sort_order', sortOrder);
   if (imgFile) fd.append('image', imgFile);
 
   const btn = document.getElementById('cem-submit-btn');
@@ -646,8 +658,10 @@ async function catSubmitEdit() {
     if (json.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('catEditModal')).hide();
       catToast(`"${name}" 수정 완료`, 'success');
+      const actualCode = json.new_code || code;
       const card = document.getElementById('card-' + code);
       if (card) {
+        card.id = 'card-' + actualCode;
         card.querySelector('.cat-title').textContent = name;
         const subEl = card.querySelector('.cat-sub');
         if (subEl) subEl.innerHTML = json.sub_desc || '';
@@ -665,10 +679,18 @@ async function catSubmitEdit() {
         }
         const editBtn = card.querySelector('.admin-card-edit');
         if (editBtn) {
+          editBtn.dataset.code = actualCode;
           editBtn.dataset.name = name;
           editBtn.dataset.cat  = cat;
           editBtn.dataset.sub  = subDesc;
+          editBtn.dataset.sort = sortOrder;
           if (json.img_url) editBtn.dataset.img = json.img_url;
+        }
+        if (actualCode !== code) {
+          const cb  = card.querySelector('.cat-check');
+          const qty = card.querySelector('.cat-qty');
+          if (cb)  cb.dataset.code  = actualCode;
+          if (qty) qty.dataset.code = actualCode;
         }
       }
     } else {

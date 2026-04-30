@@ -2487,20 +2487,35 @@ def catalog_update():
     _ensure_catalog_table()
 
     code     = request.form.get('code', '').strip()
+    new_code = request.form.get('new_code', '').strip() or code
     name     = request.form.get('name', '').strip()
     cat      = request.form.get('cat', '').strip()
     sub_desc = request.form.get('sub_desc', '').strip()
+    try:
+        sort_order = int(request.form.get('sort_order', 0) or 0)
+    except (ValueError, TypeError):
+        sort_order = 0
 
-    if not code or not name or not cat:
+    if not code or not new_code or not name or not cat:
         return jsonify({'ok': False, 'msg': '필수 항목 누락'}), 400
 
     conn = get_db()
     existing = conn.execute(
-        'SELECT img, img_data FROM catalog_defs WHERE code=%s', (code,)
+        'SELECT img, img_data, sort_order FROM catalog_defs WHERE code=%s', (code,)
     ).fetchone()
     if not existing:
         conn.close()
         return jsonify({'ok': False, 'msg': '아이템을 찾을 수 없습니다.'}), 404
+
+    # 코드 변경 시 중복 확인 + branch_items 연동
+    if new_code != code:
+        dup = conn.execute('SELECT code FROM catalog_defs WHERE code=%s', (new_code,)).fetchone()
+        if dup:
+            conn.close()
+            return jsonify({'ok': False, 'msg': f'코드 "{new_code}" 가 이미 사용 중입니다.'})
+        conn.execute(
+            'UPDATE catalog_branch_items SET item_code=%s WHERE item_code=%s', (new_code, code)
+        )
 
     img_stem     = existing['img']
     img_data_b64 = existing['img_data'] or ''
@@ -2549,13 +2564,14 @@ def catalog_update():
         new_img_url = url_for('catalog_img', filename=img_stem + '.png')
 
     conn.execute(
-        'UPDATE catalog_defs SET name=%s, cat=%s, sub_desc=%s, img=%s, img_data=%s WHERE code=%s',
-        (name, cat, sub_desc, img_stem, img_data_b64, code)
+        'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
+        'img=%s, img_data=%s, sort_order=%s WHERE code=%s',
+        (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, code)
     )
     conn.commit()
     conn.close()
 
-    resp = {'ok': True, 'sub_desc': sub_desc}
+    resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code}
     if new_img_url:
         resp['img_url'] = new_img_url
     return jsonify(resp)

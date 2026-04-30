@@ -71,9 +71,11 @@
           <div class="em-thumb-wrap">
             <img id="em-thumb" src="" alt="">
           </div>
-          <div>
-            <div class="text-muted" style="font-size:.7rem;margin-bottom:2px">아이템 코드</div>
-            <code id="em-code-disp" style="font-size:.85rem;color:#444"></code>
+          <div class="flex-grow-1">
+            <label class="form-label" style="font-size:.7rem;margin-bottom:2px">아이템 코드 <span class="text-muted fw-normal">(영숫자·_)</span></label>
+            <input type="text" id="em-newcode" class="form-control form-control-sm"
+                   pattern="[a-zA-Z0-9_]{1,20}" style="font-family:monospace"
+                   placeholder="예) xb15">
           </div>
         </div>
         <input type="hidden" id="em-code">
@@ -96,6 +98,12 @@
           <label class="form-label">설명 <span class="text-muted fw-normal">(선택)</span></label>
           <input type="text" id="em-subdesc" class="form-control form-control-sm"
                  placeholder="예) 600×1800mm / 4개 언어">
+        </div>
+        <!-- 정렬순서 -->
+        <div class="mb-2">
+          <label class="form-label">정렬순서 <span class="text-muted fw-normal">(숫자 오름차순)</span></label>
+          <input type="number" id="em-sort" class="form-control form-control-sm"
+                 min="0" max="9999" style="width:120px">
         </div>
         <!-- 이미지 교체 -->
         <div class="mb-1">
@@ -228,6 +236,7 @@
                       data-cat="{{ item.cat }}"
                       data-sub="{{ item.sub_desc|replace('"', '&quot;') }}"
                       data-img="{{ cat_img_url(item.img) }}"
+                      data-sort="{{ item.sort_order }}"
                       onclick="openEdit(this)">
                 <i class="fa-solid fa-pen"></i>
               </button>
@@ -252,10 +261,11 @@
 /* ── 수정 모달 ── */
 function openEdit(btn) {
   document.getElementById('em-code').value        = btn.dataset.code;
-  document.getElementById('em-code-disp').textContent = btn.dataset.code;
+  document.getElementById('em-newcode').value     = btn.dataset.code;
   document.getElementById('em-name').value        = btn.dataset.name;
   document.getElementById('em-cat').value         = btn.dataset.cat;
   document.getElementById('em-subdesc').value     = btn.dataset.sub;
+  document.getElementById('em-sort').value        = btn.dataset.sort || 0;
   document.getElementById('em-thumb').src         = btn.dataset.img;
   document.getElementById('em-image').value       = '';
   document.getElementById('em-img-fname').textContent = '';
@@ -285,19 +295,23 @@ function onImgFileChange(input) {
 }
 
 async function submitEdit() {
-  const code     = document.getElementById('em-code').value;
-  const name     = document.getElementById('em-name').value.trim();
-  const cat      = document.getElementById('em-cat').value;
-  const subDesc  = document.getElementById('em-subdesc').value.trim();
-  const imgFile  = document.getElementById('em-image').files[0];
+  const code      = document.getElementById('em-code').value;
+  const newCode   = document.getElementById('em-newcode').value.trim() || code;
+  const name      = document.getElementById('em-name').value.trim();
+  const cat       = document.getElementById('em-cat').value;
+  const subDesc   = document.getElementById('em-subdesc').value.trim();
+  const sortOrder = parseInt(document.getElementById('em-sort').value) || 0;
+  const imgFile   = document.getElementById('em-image').files[0];
 
   if (!name) { showToast('아이템명을 입력해 주세요.', 'danger'); return; }
 
   const fd = new FormData();
   fd.append('code', code);
+  fd.append('new_code', newCode);
   fd.append('name', name);
   fd.append('cat', cat);
   fd.append('sub_desc', subDesc);
+  fd.append('sort_order', sortOrder);
   if (imgFile) fd.append('image', imgFile);
 
   const btn = document.getElementById('em-submit-btn');
@@ -312,10 +326,13 @@ async function submitEdit() {
       showToast(`"${name}" 수정 완료`, 'success');
 
       // 테이블 행 인라인 업데이트
+      const actualCode = json.new_code || code;
       const row = document.getElementById('row-' + code);
       if (row) {
+        row.id = 'row-' + actualCode;
         row.querySelector('.item-name').textContent = name;
         row.querySelector('.cat-badge').textContent = cat;
+        row.querySelector('.item-code').textContent = actualCode;
         const subCell = row.querySelector('.item-sub');
         subCell.innerHTML = json.sub_desc || '—';
         if (json.img_url) {
@@ -325,10 +342,20 @@ async function submitEdit() {
         // 수정 버튼 data 갱신
         const editBtn = row.querySelector('[data-edit]');
         if (editBtn) {
+          editBtn.dataset.code = actualCode;
           editBtn.dataset.name = name;
           editBtn.dataset.cat  = cat;
           editBtn.dataset.sub  = subDesc;
+          editBtn.dataset.sort = sortOrder;
           if (json.img_url) editBtn.dataset.img = json.img_url;
+        }
+        // 삭제 버튼 코드 갱신
+        if (actualCode !== code) {
+          const delBtn = row.querySelectorAll('button')[1];
+          if (delBtn) {
+            delBtn.setAttribute('onclick',
+              `deleteItem('${actualCode}','${name.replace(/'/g, "\\'")}')`);
+          }
         }
       }
     } else {
