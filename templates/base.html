@@ -391,10 +391,6 @@
        class="nav-link {% if endpoint=='transactions' %}active{% endif %}">
       <i class="fa-solid fa-receipt"></i>{{ T('nav.history') }}
     </a>
-    <a href="{{ url_for('catalog') }}"
-       class="nav-link {% if endpoint=='catalog' %}active{% endif %}">
-      <i class="fa-solid fa-boxes-stacked"></i>{{ T('nav.catalog') }}
-    </a>
     <a href="{{ url_for('report') }}"
        class="nav-link {% if endpoint=='report' %}active{% endif %}">
       <i class="fa-solid fa-chart-bar"></i>{{ T('nav.report') }}
@@ -407,6 +403,12 @@
     <a href="{{ url_for('flight_schedule_view') }}"
        class="nav-link {% if endpoint=='flight_schedule_view' %}active{% endif %}">
       <i class="fa-solid fa-plane"></i>{{ T('nav.flight_schedule') }}
+    </a>
+
+    <div class="section-label">{{ T('nav.catalog_section') }}</div>
+    <a href="{{ url_for('catalog') }}"
+       class="nav-link nav-sub {% if endpoint in ('catalog','catalog_save','catalog_inventory') %}active{% endif %}">
+      <i class="fa-solid fa-boxes-stacked"></i>{{ T('nav.catalog') }}
     </a>
 
     {% if session.role == 'admin' %}
