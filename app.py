@@ -2167,9 +2167,16 @@ def catalog_inventory():
             branch_map[bc]['items'][r['item_code']] = r['quantity']
 
     conn.close()
-    # 카탈로그 현황에서 제외할 지점 (비운영/내부)
-    _exclude = {'광명역', '서울역', '이지드랍'}
+    # 카탈로그 현황 지점 표시 순서 (사용자 지정)
+    _CATALOG_ORDER = [
+        'GMP','CJU','CJJ','PUS','ICN',          # 국내
+        'NRT','KIX','FUK','CTS','OKA','KMJ','TKS',  # 일본
+        'BKK','CNX','DAD','CXR','PQC','MDC',    # 동남아
+        'TSA','TPE','PVG','YNJ','CGO','YNT','HKG','ALA',  # 중화권·기타
+    ]
+    _exclude = {'광명역', '서울역', '이지드랍', 'CARGO'}
     branch_order = [bc for bc in branch_order if bc not in _exclude]
+    branch_order.sort(key=lambda bc: _CATALOG_ORDER.index(bc) if bc in _CATALOG_ORDER else 999)
 
     return render_template('catalog_inventory.html',
         catalog_items=CATALOG_ITEMS,
