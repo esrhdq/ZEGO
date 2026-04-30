@@ -2096,15 +2096,18 @@ def mark_notifications_read():
 
 def _seed_catalog_defs(conn):
     """CATALOG_ITEMS를 catalog_defs에 시딩.
-    DO UPDATE로 img/name/cat/sub_desc/sort_order를 갱신하되,
-    관리자가 업로드한 img_data(base64)는 보존."""
+    name/cat/sub_desc/sort_order는 코드 기준으로 갱신.
+    img는 관리자가 이미지를 업로드한 경우(img_data != '')엔 유지,
+    업로드 이미지가 없는 경우에만 코드 기준값으로 갱신."""
     for item in CATALOG_ITEMS:
         conn.execute(
             'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
             'VALUES (%s, %s, %s, %s, %s, %s) '
             'ON CONFLICT (code) DO UPDATE SET '
-            '  img=EXCLUDED.img, name=EXCLUDED.name, '
-            '  cat=EXCLUDED.cat, sub_desc=EXCLUDED.sub_desc, '
+            '  img=CASE WHEN catalog_defs.img_data=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
+            '  name=EXCLUDED.name, '
+            '  cat=EXCLUDED.cat, '
+            '  sub_desc=EXCLUDED.sub_desc, '
             '  sort_order=EXCLUDED.sort_order',
             (item['code'], item['img'], item['name'], item['cat'],
              item.get('sub_desc', ''), item.get('sort', 0))
