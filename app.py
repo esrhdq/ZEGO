@@ -190,6 +190,11 @@ def get_db():
             g.db = _SQLiteDB(conn)
         else:
             g.db = _DB(psycopg2.connect(**_PG))
+    else:
+        # 연결이 끊긴 경우(Vercel cold start 등) 재접속
+        db = g.db
+        if not USE_SQLITE and hasattr(db, '_conn') and db._conn.closed:
+            g.db = _DB(psycopg2.connect(**_PG))
     return g.db
 
 @app.teardown_appcontext
@@ -708,7 +713,14 @@ def init_db():
 
         # catalog_defs 시딩 (SQLite — DO UPDATE로 코드 변경사항 반영)
         if USE_SQLITE:
-            _seed_catalog_defs(conn)
+            try:
+                _seed_catalog_defs(conn)
+            except Exception as _se:
+                print(f'[init_db/seed/sqlite] {_se}')
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
 
         if USE_SQLITE:
             cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
@@ -788,7 +800,15 @@ def init_db():
         conn.commit()
 
         # catalog_defs 시딩 (DO UPDATE — 코드 변경사항 배포 시 자동 반영)
-        _seed_catalog_defs(conn)
+        # 별도 try/except: 시딩 실패가 전체 init_db를 막지 않도록
+        try:
+            _seed_catalog_defs(conn)
+        except Exception as _se:
+            print(f'[init_db/seed] {_se}')
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
     except Exception:
         conn.rollback()
@@ -2104,7 +2124,7 @@ def _seed_catalog_defs(conn):
             'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
             'VALUES (%s, %s, %s, %s, %s, %s) '
             'ON CONFLICT (code) DO UPDATE SET '
-            '  img=CASE WHEN catalog_defs.img_data=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
+            '  img=CASE WHEN COALESCE(catalog_defs.img_data,\'\')=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
             '  name=EXCLUDED.name, '
             '  cat=EXCLUDED.cat, '
             '  sub_desc=EXCLUDED.sub_desc, '
@@ -2175,22 +2195,19 @@ def _ensure_catalog_table():
                 cat        TEXT NOT NULL,
                 sub_desc   TEXT NOT NULL DEFAULT '',
                 sort_order INTEGER NOT NULL DEFAULT 0,
-                img_data   TEXT NOT NULL DEFAULT ''
+                img_data   TEXT DEFAULT ''
             )
         ''')
-        # img_data 컬럼 마이그레이션 (기존 DB 대응)
-        try:
-            conn.execute(
-                "ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS img_data TEXT NOT NULL DEFAULT ''"
-            )
-        except Exception:
-            pass
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
             _seed_catalog_defs(conn)
     except Exception as _e:
         print(f'[ensure_catalog_table] {_e}')
+        try:
+            get_db().rollback()
+        except Exception:
+            pass
 
 
 @app.route('/catalog')
