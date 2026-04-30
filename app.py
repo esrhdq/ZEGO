@@ -18,7 +18,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 
 # ── 카탈로그 기본 카테고리 순서 ───────────────────────────────────────────────
-CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', '카운터 종합 안내문', '간판·표찰', '스탬프·쿠폰']
+CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', '안내문', '카운터 종합 안내문', '간판·표찰', '스탬프·쿠폰']
 
 # ── 운송아이템 카탈로그 기본 항목 (DB 시딩용) ─────────────────────────────────
 CATALOG_ITEMS = [
@@ -50,11 +50,12 @@ CATALOG_ITEMS = [
     {'code':'ac02','img':'img_43','name':'약관 거치대 아크릴',               'cat':'아크릴 거치대','sub_desc':'290×320mm',                                             'sort':20},
     # DESK TOP SIGN (1종)
     {'code':'ds01','img':'img_46','name':'카운터 이석 및 수속마감 안내',     'cat':'DESK TOP', 'sub_desc':'360×170mm / 재질변경<br>한·영·일·중 4개 언어',               'sort':10},
-    # 카운터 종합 안내문 (ROW BRD + 안내문 통합, 4종)
+    # 안내문 (2종)
+    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'안내문',            'sub_desc':'580×1040mm<br>1~4단계 우선순서 표기',               'sort':10},
+    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'안내문',            'sub_desc':'안내 내용 변경 가능<br>카운터 사이즈 확인 필요',      'sort':20},
+    # 카운터 종합 안내문 (구 ROW BRD, 2종)
     {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',             'cat':'카운터 종합 안내문', 'sub_desc':'우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능', 'sort':10},
     {'code':'rb02','img':'img_06','name':'탑승중 안내',                      'cat':'카운터 종합 안내문', 'sub_desc':'NOW BOARDING',                                      'sort':20},
-    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'카운터 종합 안내문', 'sub_desc':'580×1040mm<br>1~4단계 우선순서 표기',               'sort':30},
-    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'카운터 종합 안내문', 'sub_desc':'안내 내용 변경 가능<br>카운터 사이즈 확인 필요',      'sort':40},
     # 간판·표찰 (3종)
     {'code':'sg01','img':'img_03','name':'사무실 간판 (부착형)',              'cat':'간판·표찰','sub_desc':'이스타항공 / イースタ-航空 / 易斯达航空公司<br>언어변경 가능', 'sort':10},
     {'code':'sg02','img':'img_42','name':'항공기피해 구제접수처 — 카운터형', 'cat':'간판·표찰','sub_desc':'200×155mm',                                                  'sort':20},
