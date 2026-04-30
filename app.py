@@ -18,7 +18,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 
 # ── 카탈로그 기본 카테고리 순서 ───────────────────────────────────────────────
-CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', 'ROW BRD', '안내문', '간판·표찰', '스탬프·쿠폰']
+CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', '카운터 종합 안내문', '간판·표찰', '스탬프·쿠폰']
 
 # ── 운송아이템 카탈로그 기본 항목 (DB 시딩용) ─────────────────────────────────
 CATALOG_ITEMS = [
@@ -50,12 +50,11 @@ CATALOG_ITEMS = [
     {'code':'ac02','img':'img_43','name':'약관 거치대 아크릴',               'cat':'아크릴 거치대','sub_desc':'290×320mm',                                             'sort':20},
     # DESK TOP SIGN (1종)
     {'code':'ds01','img':'img_46','name':'카운터 이석 및 수속마감 안내',     'cat':'DESK TOP', 'sub_desc':'360×170mm / 재질변경<br>한·영·일·중 4개 언어',               'sort':10},
-    # ROW BRD 안내문 (2종 — INFORMATION·대형수하물은 X-Banner로 이동)
-    {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',             'cat':'ROW BRD',  'sub_desc':'우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능',             'sort':10},
-    {'code':'rb02','img':'img_06','name':'탑승중 안내',                      'cat':'ROW BRD',  'sub_desc':'NOW BOARDING',                                               'sort':20},
-    # 안내문 (2종)
-    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'안내문',   'sub_desc':'580×1040mm<br>1~4단계 우선순서 표기',                          'sort':10},
-    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'안내문',   'sub_desc':'안내 내용 변경 가능<br>카운터 사이즈 확인 필요',                 'sort':20},
+    # 카운터 종합 안내문 (ROW BRD + 안내문 통합, 4종)
+    {'code':'rb01','img':'img_05','name':'탑승순서 안내 (양면)',             'cat':'카운터 종합 안내문', 'sub_desc':'우선탑승 / BOARDING ZONE<br>사이즈·언어변경 가능', 'sort':10},
+    {'code':'rb02','img':'img_06','name':'탑승중 안내',                      'cat':'카운터 종합 안내문', 'sub_desc':'NOW BOARDING',                                      'sort':20},
+    {'code':'nt01','img':'img_23','name':'탑승순서 안내문',                  'cat':'카운터 종합 안내문', 'sub_desc':'580×1040mm<br>1~4단계 우선순서 표기',               'sort':30},
+    {'code':'nt02','img':'img_11','name':'카운터 종합 안내문',               'cat':'카운터 종합 안내문', 'sub_desc':'안내 내용 변경 가능<br>카운터 사이즈 확인 필요',      'sort':40},
     # 간판·표찰 (3종)
     {'code':'sg01','img':'img_03','name':'사무실 간판 (부착형)',              'cat':'간판·표찰','sub_desc':'이스타항공 / イースタ-航空 / 易斯达航空公司<br>언어변경 가능', 'sort':10},
     {'code':'sg02','img':'img_42','name':'항공기피해 구제접수처 — 카운터형', 'cat':'간판·표찰','sub_desc':'200×155mm',                                                  'sort':20},
@@ -2394,9 +2393,15 @@ def catalog_edit():
 @app.route('/admin/catalog/add', methods=['POST'])
 @login_required
 def catalog_add():
+    is_ajax = request.form.get('_ajax') == '1'
+    def _fail(msg):
+        if is_ajax:
+            return jsonify({'ok': False, 'msg': msg})
+        flash(msg, 'danger')
+        return redirect(url_for('catalog_edit'))
+
     if session.get('role') != 'admin':
-        flash('관리자 권한이 필요합니다.', 'danger')
-        return redirect(url_for('catalog'))
+        return _fail('관리자 권한이 필요합니다.')
     _ensure_catalog_table()
 
     name     = request.form.get('name', '').strip()
@@ -2405,19 +2410,16 @@ def catalog_add():
     custom_code = request.form.get('code', '').strip()
 
     if not name or not cat:
-        flash('아이템명과 카테고리는 필수입니다.', 'danger')
-        return redirect(url_for('catalog_edit'))
+        return _fail('아이템명과 카테고리는 필수입니다.')
 
     f = request.files.get('image')
     if not f or not f.filename:
-        flash('이미지 파일을 선택해 주세요. (PNG)', 'danger')
-        return redirect(url_for('catalog_edit'))
+        return _fail('이미지 파일을 선택해 주세요.')
 
     # 확장자는 원본 파일명에서 직접 추출 (secure_filename은 한글 등 비ASCII 제거로 확장자 오파싱 가능)
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in ('.png', '.jpg', '.jpeg', '.webp'):
-        flash('PNG / JPG / WEBP 형식만 허용됩니다.', 'danger')
-        return redirect(url_for('catalog_edit'))
+        return _fail('PNG / JPG / WEBP 형식만 허용됩니다.')
 
     import uuid
     uid       = uuid.uuid4().hex[:10]
@@ -2459,9 +2461,8 @@ def catalog_add():
     conn = get_db()
     existing = conn.execute('SELECT code FROM catalog_defs WHERE code=%s', (code,)).fetchone()
     if existing:
-        flash(f'코드 "{code}" 가 이미 사용 중입니다.', 'danger')
         conn.close()
-        return redirect(url_for('catalog_edit'))
+        return _fail(f'코드 "{code}" 가 이미 사용 중입니다.')
 
     max_sort = conn.execute(
         'SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_defs WHERE cat=%s', (cat,)
@@ -2474,6 +2475,8 @@ def catalog_add():
     )
     conn.commit()
     conn.close()
+    if is_ajax:
+        return jsonify({'ok': True, 'msg': f'"{name}" 아이템이 추가되었습니다.'})
     flash(f'"{name}" 아이템이 추가되었습니다.', 'success')
     return redirect(url_for('catalog_edit'))
 
