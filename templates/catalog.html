@@ -167,7 +167,10 @@
     box-shadow:0 2px 8px rgba(0,0,0,.3); transition:background .15s;
   }
   #catLightbox .lb-close:hover { background:var(--red); color:#fff; }
-  #catLightbox .lb-nav { display:flex; gap:10px; }
+  #catLightbox .lb-nav {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    display:flex; gap:10px; z-index:10000;
+  }
   #catLightbox .lb-nav button {
     background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.4);
     color:#fff; padding:6px 22px; border-radius:20px;
