@@ -2333,9 +2333,8 @@ def catalog_add():
         flash('이미지 파일을 선택해 주세요. (PNG)', 'danger')
         return redirect(url_for('catalog_edit'))
 
-    from werkzeug.utils import secure_filename
-    orig = secure_filename(f.filename)
-    ext  = os.path.splitext(orig)[1].lower()
+    # 확장자는 원본 파일명에서 직접 추출 (secure_filename은 한글 등 비ASCII 제거로 확장자 오파싱 가능)
+    ext = os.path.splitext(f.filename)[1].lower()
     if ext not in ('.png', '.jpg', '.jpeg', '.webp'):
         flash('PNG / JPG / WEBP 형식만 허용됩니다.', 'danger')
         return redirect(url_for('catalog_edit'))
