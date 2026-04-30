@@ -94,13 +94,59 @@
   .col-item-name { width:160px; }
   .col-total     { width:48px; }
 
+  /* 아이템명 클릭 */
+  .item-name-link {
+    cursor:pointer; color:inherit; text-decoration:none;
+    border-bottom:1px dashed #bbb; transition:color .15s;
+  }
+  .item-name-link:hover { color:var(--red); border-color:var(--red); }
+
   /* 범례 */
   .inv-legend {
     font-size:.72rem; color:#888;
     display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;
   }
   .inv-legend span { display:flex; align-items:center; gap:4px; }
+
+  /* 라이트박스 */
+  #invLightbox {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.88); z-index:9999;
+    align-items:center; justify-content:center;
+    padding:20px; cursor:zoom-out;
+  }
+  #invLightbox.active { display:flex; }
+  #invLightbox .lb-inner {
+    position:relative; width:min(94vw,1100px); max-height:97vh;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    cursor:default;
+  }
+  #invLightbox img {
+    width:100%; max-height:88vh; object-fit:contain;
+    border-radius:10px; box-shadow:0 16px 60px rgba(0,0,0,.6);
+    background:#fff; padding:20px;
+  }
+  #invLightbox .lb-title {
+    color:#fff; font-size:1rem; font-weight:700;
+    text-align:center; text-shadow:0 1px 4px rgba(0,0,0,.5);
+  }
+  #invLightbox .lb-close {
+    position:absolute; top:-14px; right:-14px;
+    width:36px; height:36px; background:#fff; border:none; border-radius:50%;
+    font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.3); transition:background .15s; z-index:1;
+  }
+  #invLightbox .lb-close:hover { background:var(--red); color:#fff; }
 </style>
+
+<!-- 라이트박스 -->
+<div id="invLightbox" onclick="invCloseLB(event)">
+  <div class="lb-inner" onclick="event.stopPropagation()">
+    <button class="lb-close" onclick="invCloseLB()">✕</button>
+    <img id="invLbImg" src="" alt="">
+    <div id="invLbTitle" class="lb-title"></div>
+  </div>
+</div>
 
 <!-- 상단 버튼 -->
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -150,7 +196,12 @@
         {% for bc in branch_order %}{% if item.code in branch_map[bc]['items'] %}{% set owned_count.n = owned_count.n + 1 %}{% endif %}{% endfor %}
         <tr data-cat="{{ item.cat }}">
           <td class="item-cat">{{ item.cat }}</td>
-          <td class="item-name">{{ item.name }}</td>
+          <td class="item-name">
+            <span class="item-name-link"
+              onclick="invOpenLB('{{ url_for('static', filename='item_images/' + item.img + '.png') }}','{{ item.name }}')">
+              {{ item.name }}
+            </span>
+          </td>
           {% for bc in branch_order %}
           {% if item.code in branch_map[bc]['items'] %}
           {% set qty = branch_map[bc]['items'][item.code] %}
@@ -205,12 +256,25 @@ function invFilter(cat, btn) {
   document.querySelectorAll('.inv-ftag').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelectorAll('#invTable tbody tr').forEach(tr => {
-    if (cat === 'all' || tr.dataset.cat === cat) {
-      tr.style.display = '';
-    } else {
-      tr.style.display = 'none';
-    }
+    tr.style.display = (cat === 'all' || tr.dataset.cat === cat) ? '' : 'none';
   });
 }
+
+function invOpenLB(src, title) {
+  document.getElementById('invLbImg').src   = src;
+  document.getElementById('invLbTitle').textContent = title;
+  document.getElementById('invLightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function invCloseLB(e) {
+  if (e && e.target !== document.getElementById('invLightbox')) return;
+  document.getElementById('invLightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') invCloseLB();
+});
 </script>
 {% endblock %}
