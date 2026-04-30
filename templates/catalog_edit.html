@@ -37,7 +37,87 @@
     padding:12px 16px; font-size:.8rem; color:#7a4000; margin-bottom:16px;
   }
   .del-fade { opacity:.35; pointer-events:none; transition:opacity .4s; }
+
+  /* 수정 모달 */
+  #editModal .modal-header { background:var(--red); color:#fff; padding:10px 16px; }
+  #editModal .modal-title  { font-size:.92rem; font-weight:700; }
+  #editModal .form-label   { font-size:.83rem; font-weight:600; margin-bottom:3px; }
+  .em-thumb-wrap {
+    width:90px; height:68px; background:#f5f5f5; border:1px solid #e0e0e0;
+    border-radius:6px; display:flex; align-items:center; justify-content:center;
+    overflow:hidden; flex-shrink:0;
+  }
+  .em-thumb-wrap img { width:100%; height:100%; object-fit:contain; }
+  .img-replace-label {
+    display:inline-block; padding:5px 12px; background:#f5f5f5;
+    border:1.5px dashed #ccc; border-radius:6px; cursor:pointer;
+    font-size:.78rem; color:#555; transition:all .15s;
+  }
+  .img-replace-label:hover { border-color:var(--red); color:var(--red); background:#fff8f0; }
+  .img-replace-label.has-file { border-color:var(--red); color:var(--red); background:#fff0f0; font-weight:600; }
 </style>
+
+<!-- 수정 모달 -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="fa-solid fa-pen me-2"></i>아이템 수정</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-2">
+        <!-- 썸네일 + 코드 -->
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="em-thumb-wrap">
+            <img id="em-thumb" src="" alt="">
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:.7rem;margin-bottom:2px">아이템 코드</div>
+            <code id="em-code-disp" style="font-size:.85rem;color:#444"></code>
+          </div>
+        </div>
+        <input type="hidden" id="em-code">
+        <!-- 아이템명 -->
+        <div class="mb-2">
+          <label class="form-label">아이템명 <span class="text-danger">*</span></label>
+          <input type="text" id="em-name" class="form-control form-control-sm">
+        </div>
+        <!-- 카테고리 -->
+        <div class="mb-2">
+          <label class="form-label">카테고리 <span class="text-danger">*</span></label>
+          <select id="em-cat" class="form-select form-select-sm">
+            {% for c in cat_order %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- 설명 -->
+        <div class="mb-2">
+          <label class="form-label">설명 <span class="text-muted fw-normal">(선택)</span></label>
+          <input type="text" id="em-subdesc" class="form-control form-control-sm"
+                 placeholder="예) 600×1800mm / 4개 언어">
+        </div>
+        <!-- 이미지 교체 -->
+        <div class="mb-1">
+          <label class="form-label d-block">이미지 교체 <span class="text-muted fw-normal">(선택 — 비우면 기존 유지)</span></label>
+          <label class="img-replace-label" id="em-img-label" for="em-image">
+            <i class="fa-solid fa-image me-1"></i>파일 선택
+          </label>
+          <input type="file" id="em-image" class="d-none"
+                 accept=".png,.jpg,.jpeg,.webp"
+                 onchange="onImgFileChange(this)">
+          <span id="em-img-fname" class="ms-2 text-muted" style="font-size:.75rem"></span>
+        </div>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-danger btn-sm" id="em-submit-btn" onclick="submitEdit()">
+          <i class="fa-solid fa-floppy-disk me-1"></i>저장
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- 상단 버튼 -->
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -64,8 +144,7 @@
   <div class="add-form">
     <div class="note-box">
       <i class="fa-solid fa-circle-info me-1"></i>
-      이미지는 <strong>PNG / JPG / WEBP</strong> 형식을 허용합니다. 업로드 파일은 <code>static/item_images/</code>에 PNG로 저장됩니다.<br>
-      배포 환경에서는 재시작 시 이미지가 유실될 수 있으므로, 추가 후 <strong>git commit &amp; push</strong>를 권장합니다.
+      이미지는 <strong>PNG / JPG / WEBP</strong> 형식을 허용합니다. 업로드 이미지는 DB에 저장되므로 서버 재시작 후에도 유지됩니다.
     </div>
     <form method="POST" action="{{ url_for('catalog_add') }}" enctype="multipart/form-data">
       <div class="row g-3">
@@ -122,7 +201,7 @@
           <th>카테고리</th>
           <th>아이템명</th>
           <th>설명</th>
-          <th style="width:60px">삭제</th>
+          <th style="width:90px;text-align:center">액션</th>
         </tr>
       </thead>
       <tbody>
@@ -139,12 +218,25 @@
           <td><span class="cat-badge">{{ item.cat }}</span></td>
           <td class="item-name">{{ item.name }}</td>
           <td class="item-sub">{{ item.sub_desc|safe if item.sub_desc else '—' }}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-danger"
-                    style="font-size:.74rem;padding:3px 10px"
-                    onclick="deleteItem('{{ item.code }}','{{ item.name|replace("'","\\'") }}')">
-              <i class="fa-solid fa-trash"></i>
-            </button>
+          <td style="text-align:center">
+            <div class="d-flex gap-1 justify-content-center">
+              <button class="btn btn-sm btn-outline-primary"
+                      style="font-size:.74rem;padding:3px 9px"
+                      data-edit="1"
+                      data-code="{{ item.code }}"
+                      data-name="{{ item.name|replace('"', '&quot;') }}"
+                      data-cat="{{ item.cat }}"
+                      data-sub="{{ item.sub_desc|replace('"', '&quot;') }}"
+                      data-img="{{ cat_img_url(item.img) }}"
+                      onclick="openEdit(this)">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger"
+                      style="font-size:.74rem;padding:3px 9px"
+                      onclick="deleteItem('{{ item.code }}','{{ item.name|replace("'","\\'") }}')">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -157,6 +249,100 @@
 
 {% block scripts %}
 <script>
+/* ── 수정 모달 ── */
+function openEdit(btn) {
+  document.getElementById('em-code').value        = btn.dataset.code;
+  document.getElementById('em-code-disp').textContent = btn.dataset.code;
+  document.getElementById('em-name').value        = btn.dataset.name;
+  document.getElementById('em-cat').value         = btn.dataset.cat;
+  document.getElementById('em-subdesc').value     = btn.dataset.sub;
+  document.getElementById('em-thumb').src         = btn.dataset.img;
+  document.getElementById('em-image').value       = '';
+  document.getElementById('em-img-fname').textContent = '';
+  document.getElementById('em-img-label').classList.remove('has-file');
+  document.getElementById('em-img-label').innerHTML =
+    '<i class="fa-solid fa-image me-1"></i>파일 선택';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).show();
+}
+
+function onImgFileChange(input) {
+  const label = document.getElementById('em-img-label');
+  const fname = document.getElementById('em-img-fname');
+  if (input.files && input.files[0]) {
+    const name = input.files[0].name;
+    label.innerHTML = '<i class="fa-solid fa-check me-1"></i>교체 예정';
+    label.classList.add('has-file');
+    fname.textContent = name;
+    // 미리보기
+    const reader = new FileReader();
+    reader.onload = e => { document.getElementById('em-thumb').src = e.target.result; };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    label.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    label.classList.remove('has-file');
+    fname.textContent = '';
+  }
+}
+
+async function submitEdit() {
+  const code     = document.getElementById('em-code').value;
+  const name     = document.getElementById('em-name').value.trim();
+  const cat      = document.getElementById('em-cat').value;
+  const subDesc  = document.getElementById('em-subdesc').value.trim();
+  const imgFile  = document.getElementById('em-image').files[0];
+
+  if (!name) { showToast('아이템명을 입력해 주세요.', 'danger'); return; }
+
+  const fd = new FormData();
+  fd.append('code', code);
+  fd.append('name', name);
+  fd.append('cat', cat);
+  fd.append('sub_desc', subDesc);
+  if (imgFile) fd.append('image', imgFile);
+
+  const btn = document.getElementById('em-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
+
+  try {
+    const res  = await fetch('{{ url_for("catalog_update") }}', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (json.ok) {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).hide();
+      showToast(`"${name}" 수정 완료`, 'success');
+
+      // 테이블 행 인라인 업데이트
+      const row = document.getElementById('row-' + code);
+      if (row) {
+        row.querySelector('.item-name').textContent = name;
+        row.querySelector('.cat-badge').textContent = cat;
+        const subCell = row.querySelector('.item-sub');
+        subCell.innerHTML = json.sub_desc || '—';
+        if (json.img_url) {
+          const thumb = row.querySelector('.item-thumb');
+          thumb.src = json.img_url + '?t=' + Date.now();
+        }
+        // 수정 버튼 data 갱신
+        const editBtn = row.querySelector('[data-edit]');
+        if (editBtn) {
+          editBtn.dataset.name = name;
+          editBtn.dataset.cat  = cat;
+          editBtn.dataset.sub  = subDesc;
+          if (json.img_url) editBtn.dataset.img = json.img_url;
+        }
+      }
+    } else {
+      showToast(json.msg || '수정 실패', 'danger');
+    }
+  } catch(e) {
+    showToast('오류: ' + e.message, 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>저장';
+  }
+}
+
+/* ── 삭제 ── */
 async function deleteItem(code, name) {
   if (!confirm(`"${name}" 을(를) 삭제하시겠습니까?\n\n⚠️ 각 지점의 보유 기록도 함께 삭제됩니다.`)) return;
   const row = document.getElementById('row-' + code);
@@ -181,6 +367,7 @@ async function deleteItem(code, name) {
   }
 }
 
+/* ── 토스트 ── */
 function showToast(msg, type) {
   const t = document.createElement('div');
   t.className = `alert alert-${type} alert-dismissible fade show`;

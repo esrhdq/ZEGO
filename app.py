@@ -506,7 +506,8 @@ def init_db():
                     name       TEXT NOT NULL,
                     cat        TEXT NOT NULL,
                     sub_desc   TEXT NOT NULL DEFAULT '',
-                    sort_order INTEGER NOT NULL DEFAULT 0
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    img_data   TEXT NOT NULL DEFAULT ''
                 )
             ''')
         else:
@@ -705,11 +706,9 @@ def init_db():
             )
         conn.commit()
 
-        # catalog_defs 시딩 (SQLite, 최초 1회)
+        # catalog_defs 시딩 (SQLite — DO UPDATE로 코드 변경사항 반영)
         if USE_SQLITE:
-            cat_cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
-            if cat_cnt == 0:
-                _seed_catalog_defs(conn)
+            _seed_catalog_defs(conn)
 
         if USE_SQLITE:
             cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
@@ -721,6 +720,9 @@ def init_db():
             if 'transaction_date' not in cols:
                 conn.execute('ALTER TABLE transactions ADD COLUMN transaction_date TEXT')
                 conn.execute("UPDATE transactions SET transaction_date = date(created_at)")
+            cat_cols = [r[1] for r in conn.execute('PRAGMA table_info(catalog_defs)').fetchall()]
+            if 'img_data' not in cat_cols:
+                conn.execute("ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT ''")
         else:
             conn.execute('''
                 DO $$
@@ -772,16 +774,21 @@ def init_db():
                         name       TEXT NOT NULL,
                         cat        TEXT NOT NULL,
                         sub_desc   TEXT NOT NULL DEFAULT '',
-                        sort_order INTEGER NOT NULL DEFAULT 0
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        img_data   TEXT NOT NULL DEFAULT ''
                     );
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='catalog_defs' AND column_name='img_data'
+                    ) THEN
+                        ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT '';
+                    END IF;
                 END $$
             ''')
         conn.commit()
 
-        # catalog_defs 시딩 (최초 1회)
-        cat_cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
-        if cat_cnt == 0:
-            _seed_catalog_defs(conn)
+        # catalog_defs 시딩 (DO UPDATE — 코드 변경사항 배포 시 자동 반영)
+        _seed_catalog_defs(conn)
 
     except Exception:
         conn.rollback()
@@ -2088,11 +2095,17 @@ def mark_notifications_read():
 # ── 카탈로그 관련 헬퍼 ────────────────────────────────────────────────────────
 
 def _seed_catalog_defs(conn):
-    """CATALOG_ITEMS를 catalog_defs에 시딩 (ON CONFLICT DO NOTHING)"""
+    """CATALOG_ITEMS를 catalog_defs에 시딩.
+    DO UPDATE로 img/name/cat/sub_desc/sort_order를 갱신하되,
+    관리자가 업로드한 img_data(base64)는 보존."""
     for item in CATALOG_ITEMS:
         conn.execute(
             'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
-            'VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (code) DO NOTHING',
+            'VALUES (%s, %s, %s, %s, %s, %s) '
+            'ON CONFLICT (code) DO UPDATE SET '
+            '  img=EXCLUDED.img, name=EXCLUDED.name, '
+            '  cat=EXCLUDED.cat, sub_desc=EXCLUDED.sub_desc, '
+            '  sort_order=EXCLUDED.sort_order',
             (item['code'], item['img'], item['name'], item['cat'],
              item.get('sub_desc', ''), item.get('sort', 0))
         )
@@ -2158,9 +2171,17 @@ def _ensure_catalog_table():
                 name       TEXT NOT NULL,
                 cat        TEXT NOT NULL,
                 sub_desc   TEXT NOT NULL DEFAULT '',
-                sort_order INTEGER NOT NULL DEFAULT 0
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                img_data   TEXT NOT NULL DEFAULT ''
             )
         ''')
+        # img_data 컬럼 마이그레이션 (기존 DB 대응)
+        try:
+            conn.execute(
+                "ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS img_data TEXT NOT NULL DEFAULT ''"
+            )
+        except Exception:
+            pass
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
@@ -2298,16 +2319,34 @@ _TMP_IMG_DIR    = '/tmp/item_images'
 
 @app.route('/ci/<filename>')
 def catalog_img(filename):
-    """카탈로그 이미지 서빙: /tmp/item_images → static/item_images 순 탐색.
+    """카탈로그 이미지 서빙: /tmp → static → DB(base64) 순 탐색.
     Vercel 등 읽기전용 환경에서도 업로드된 이미지를 서빙하기 위한 라우트."""
-    import re
-    if not re.match(r'^[\w\-]+\.(?:png|jpg|jpeg|webp)$', filename, re.IGNORECASE):
+    import re as _re, base64 as _b64
+    if not _re.match(r'^[\w\-]+\.(?:png|jpg|jpeg|webp)$', filename, _re.IGNORECASE):
         return '', 404
+    # 1) /tmp 확인
     tmp_path = os.path.join(_TMP_IMG_DIR, filename)
     if os.path.isfile(tmp_path):
         return send_file(tmp_path)
-    from flask import send_from_directory
-    return send_from_directory(_STATIC_IMG_DIR, filename)
+    # 2) static 확인
+    static_path = os.path.join(_STATIC_IMG_DIR, filename)
+    if os.path.isfile(static_path):
+        from flask import send_from_directory
+        return send_from_directory(_STATIC_IMG_DIR, filename)
+    # 3) DB img_data (base64) 폴백 — Vercel cold start 후에도 서빙 가능
+    try:
+        stem = os.path.splitext(filename)[0]
+        conn = get_db()
+        row  = conn.execute(
+            'SELECT img_data FROM catalog_defs WHERE img=%s', (stem,)
+        ).fetchone()
+        conn.close()
+        if row and row['img_data']:
+            img_bytes = _b64.b64decode(row['img_data'])
+            return send_file(BytesIO(img_bytes), mimetype='image/png')
+    except Exception:
+        pass
+    return '', 404
 
 
 @app.template_global()
@@ -2387,6 +2426,14 @@ def catalog_add():
         f.stream.seek(0)
         f.save(save_path)
 
+    # 이미지를 base64로 DB에 저장 — Vercel cold start 후 /tmp가 날아가도 서빙 가능
+    import base64 as _b64
+    try:
+        with open(save_path, 'rb') as _fh:
+            img_data_b64 = _b64.b64encode(_fh.read()).decode()
+    except Exception:
+        img_data_b64 = ''
+
     code = custom_code if custom_code else f'adm_{uid}'
     # Validate code uniqueness
     conn = get_db()
@@ -2401,14 +2448,96 @@ def catalog_add():
     ).fetchone()['m']
 
     conn.execute(
-        'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
-        'VALUES (%s, %s, %s, %s, %s, %s)',
-        (code, img_stem, name, cat, sub_desc, max_sort + 10)
+        'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data) '
+        'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+        (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64)
     )
     conn.commit()
     conn.close()
     flash(f'"{name}" 아이템이 추가되었습니다.', 'success')
     return redirect(url_for('catalog_edit'))
+
+
+@app.route('/admin/catalog/update', methods=['POST'])
+@login_required
+def catalog_update():
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+    _ensure_catalog_table()
+
+    code     = request.form.get('code', '').strip()
+    name     = request.form.get('name', '').strip()
+    cat      = request.form.get('cat', '').strip()
+    sub_desc = request.form.get('sub_desc', '').strip()
+
+    if not code or not name or not cat:
+        return jsonify({'ok': False, 'msg': '필수 항목 누락'}), 400
+
+    conn = get_db()
+    existing = conn.execute(
+        'SELECT img, img_data FROM catalog_defs WHERE code=%s', (code,)
+    ).fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '아이템을 찾을 수 없습니다.'}), 404
+
+    img_stem     = existing['img']
+    img_data_b64 = existing['img_data'] or ''
+    new_img_url  = None
+
+    f = request.files.get('image')
+    if f and f.filename:
+        ext = os.path.splitext(f.filename)[1].lower()
+        if ext not in ('.png', '.jpg', '.jpeg', '.webp'):
+            conn.close()
+            return jsonify({'ok': False, 'msg': 'PNG / JPG / WEBP 형식만 허용됩니다.'}), 400
+
+        import uuid as _uuid
+        uid       = _uuid.uuid4().hex[:10]
+        img_stem  = f'adm_{uid}'
+        save_name = img_stem + '.png'
+
+        if os.path.isdir(_STATIC_IMG_DIR) and os.access(_STATIC_IMG_DIR, os.W_OK):
+            save_dir = _STATIC_IMG_DIR
+        else:
+            os.makedirs(_TMP_IMG_DIR, exist_ok=True)
+            save_dir = _TMP_IMG_DIR
+
+        save_path = os.path.join(save_dir, save_name)
+        try:
+            from PIL import Image as _PILImage
+            _img = _PILImage.open(f.stream)
+            _bg  = _PILImage.new('RGB', _img.size, (255, 255, 255))
+            if _img.mode in ('RGBA', 'LA', 'P'):
+                _img = _img.convert('RGBA')
+                _bg.paste(_img, mask=_img.split()[3])
+            else:
+                _bg.paste(_img.convert('RGB'))
+            _bg.save(save_path, 'PNG')
+        except Exception:
+            f.stream.seek(0)
+            f.save(save_path)
+
+        import base64 as _b64
+        try:
+            with open(save_path, 'rb') as _fh:
+                img_data_b64 = _b64.b64encode(_fh.read()).decode()
+        except Exception:
+            img_data_b64 = ''
+
+        new_img_url = url_for('catalog_img', filename=img_stem + '.png')
+
+    conn.execute(
+        'UPDATE catalog_defs SET name=%s, cat=%s, sub_desc=%s, img=%s, img_data=%s WHERE code=%s',
+        (name, cat, sub_desc, img_stem, img_data_b64, code)
+    )
+    conn.commit()
+    conn.close()
+
+    resp = {'ok': True, 'sub_desc': sub_desc}
+    if new_img_url:
+        resp['img_url'] = new_img_url
+    return jsonify(resp)
 
 
 @app.route('/admin/catalog/delete', methods=['POST'])
