@@ -119,6 +119,7 @@ if DATABASE_URL:
             _PG = {}
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not _PG
+_catalog_table_ready = False  # warm 인스턴스에서 DDL 재실행 방지
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
 _local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
 SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
@@ -2143,10 +2144,11 @@ def _get_catalog_items(conn):
     return items
 
 
-def _get_cat_groups(conn):
+def _get_cat_groups(conn, items=None):
     """카탈로그 아이템을 cat 별로 그룹화 (CAT_ORDER 정렬). {cat: [items]} OrderedDict 반환."""
     from collections import OrderedDict
-    items = _get_catalog_items(conn)
+    if items is None:
+        items = _get_catalog_items(conn)
     groups = OrderedDict()
     for cat in CAT_ORDER:
         groups[cat] = []
@@ -2161,7 +2163,11 @@ def _get_cat_groups(conn):
 # ── 사용자 관리 (관리자 전용) ─────────────────────────────────────────────────
 
 def _ensure_catalog_table():
-    """catalog_branch_items + catalog_defs 테이블 보장 및 시딩"""
+    """catalog_branch_items + catalog_defs 테이블 보장 및 시딩.
+    warm 인스턴스에서는 플래그로 DDL 재실행을 건너뜀."""
+    global _catalog_table_ready
+    if _catalog_table_ready:
+        return
     if USE_SQLITE:
         # SQLite는 init_db에서 이미 생성됨 — 시딩만 확인
         try:
@@ -2169,6 +2175,7 @@ def _ensure_catalog_table():
             cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
             if cnt == 0:
                 _seed_catalog_defs(conn)
+            _catalog_table_ready = True
         except Exception as _e:
             print(f'[ensure_catalog_table/sqlite] {_e}')
         return
@@ -2199,6 +2206,7 @@ def _ensure_catalog_table():
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
             _seed_catalog_defs(conn)
+        _catalog_table_ready = True
     except Exception as _e:
         print(f'[ensure_catalog_table] {_e}')
         try:
@@ -2223,7 +2231,7 @@ def catalog():
         my_items = {r['item_code']: r['quantity'] for r in rows}
 
     catalog_items = _get_catalog_items(conn)
-    cat_groups    = _get_cat_groups(conn)
+    cat_groups    = _get_cat_groups(conn, items=catalog_items)
     conn.close()
     return render_template('catalog.html',
         catalog_items=catalog_items,
@@ -2337,19 +2345,26 @@ _TMP_IMG_DIR    = '/tmp/item_images'
 @app.route('/ci/<filename>')
 def catalog_img(filename):
     """카탈로그 이미지 서빙: /tmp → static → DB(base64) 순 탐색.
-    Vercel 등 읽기전용 환경에서도 업로드된 이미지를 서빙하기 위한 라우트."""
+    DB에서 읽은 이미지는 /tmp에 캐시해 다음 요청부터 DB 조회를 건너뜀."""
     import re as _re, base64 as _b64
     if not _re.match(r'^[\w\-]+\.(?:png|jpg|jpeg|webp)$', filename, _re.IGNORECASE):
         return '', 404
+
+    _CC = 'public, max-age=86400, stale-while-revalidate=604800'
+
     # 1) /tmp 확인
     tmp_path = os.path.join(_TMP_IMG_DIR, filename)
     if os.path.isfile(tmp_path):
-        return send_file(tmp_path)
+        resp = send_file(tmp_path)
+        resp.headers['Cache-Control'] = _CC
+        return resp
     # 2) static 확인
     static_path = os.path.join(_STATIC_IMG_DIR, filename)
     if os.path.isfile(static_path):
         from flask import send_from_directory
-        return send_from_directory(_STATIC_IMG_DIR, filename)
+        resp = send_from_directory(_STATIC_IMG_DIR, filename)
+        resp.headers['Cache-Control'] = _CC
+        return resp
     # 3) DB img_data (base64) 폴백 — Vercel cold start 후에도 서빙 가능
     try:
         stem = os.path.splitext(filename)[0]
@@ -2360,7 +2375,16 @@ def catalog_img(filename):
         conn.close()
         if row and row['img_data']:
             img_bytes = _b64.b64decode(row['img_data'])
-            return send_file(BytesIO(img_bytes), mimetype='image/png')
+            # warm 인스턴스 내 /tmp 캐시 — 다음 요청부터 DB 조회 생략
+            try:
+                os.makedirs(_TMP_IMG_DIR, exist_ok=True)
+                with open(tmp_path, 'wb') as _f:
+                    _f.write(img_bytes)
+            except Exception:
+                pass
+            resp = send_file(BytesIO(img_bytes), mimetype='image/png')
+            resp.headers['Cache-Control'] = _CC
+            return resp
     except Exception:
         pass
     return '', 404
