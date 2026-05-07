@@ -120,6 +120,7 @@ if DATABASE_URL:
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not _PG
 _catalog_table_ready = False  # warm 인스턴스에서 DDL 재실행 방지
+_img_tmp_warmed      = False  # 이미지 /tmp 일괄 캐시 완료 여부
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
 _local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
 SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
@@ -2133,6 +2134,32 @@ def _seed_catalog_defs(conn):
     conn.commit()
 
 
+def _warm_img_tmp_cache(conn):
+    """DB의 img_data를 /tmp에 일괄 저장 — 인스턴스당 1회만 실행.
+    이후 /ci/*.png 요청은 DB 대신 /tmp 파일서빙으로 처리됨."""
+    global _img_tmp_warmed
+    if _img_tmp_warmed:
+        return
+    import base64 as _b64
+    try:
+        os.makedirs(_TMP_IMG_DIR, exist_ok=True)
+        rows = conn.execute(
+            "SELECT img, img_data FROM catalog_defs "
+            "WHERE img_data IS NOT NULL AND img_data != ''"
+        ).fetchall()
+        for row in rows:
+            tmp_path = os.path.join(_TMP_IMG_DIR, row['img'] + '.png')
+            if not os.path.isfile(tmp_path):
+                try:
+                    with open(tmp_path, 'wb') as _f:
+                        _f.write(_b64.b64decode(row['img_data']))
+                except Exception:
+                    pass
+        _img_tmp_warmed = True
+    except Exception as _e:
+        print(f'[warm_img_cache] {_e}')
+
+
 def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)"""
     rows = conn.execute(
@@ -2232,6 +2259,7 @@ def catalog():
 
     catalog_items = _get_catalog_items(conn)
     cat_groups    = _get_cat_groups(conn, items=catalog_items)
+    _warm_img_tmp_cache(conn)
     conn.close()
     return render_template('catalog.html',
         catalog_items=catalog_items,
