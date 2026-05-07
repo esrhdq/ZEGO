@@ -2134,16 +2134,17 @@ def _seed_catalog_defs(conn):
     conn.commit()
 
 
-def _warm_img_tmp_cache(conn):
-    """DB의 img_data를 /tmp에 일괄 저장 — 인스턴스당 1회만 실행.
-    이후 /ci/*.png 요청은 DB 대신 /tmp 파일서빙으로 처리됨."""
+def _warm_img_tmp_cache_bg():
+    """백그라운드 스레드에서 DB img_data를 /tmp에 일괄 저장.
+    페이지 응답을 블로킹하지 않고, 이미지 요청이 들어오기 전에 /tmp를 미리 채움."""
     global _img_tmp_warmed
-    if _img_tmp_warmed:
+    if _img_tmp_warmed or USE_SQLITE:
         return
-    import base64 as _b64
+    import base64 as _b64, psycopg2 as _pg2
     try:
+        _conn = _DB(_pg2.connect(**_PG))
         os.makedirs(_TMP_IMG_DIR, exist_ok=True)
-        rows = conn.execute(
+        rows = _conn.execute(
             "SELECT img, img_data FROM catalog_defs "
             "WHERE img_data IS NOT NULL AND img_data != ''"
         ).fetchall()
@@ -2155,9 +2156,10 @@ def _warm_img_tmp_cache(conn):
                         _f.write(_b64.b64decode(row['img_data']))
                 except Exception:
                     pass
+        _conn.close()
         _img_tmp_warmed = True
     except Exception as _e:
-        print(f'[warm_img_cache] {_e}')
+        print(f'[warm_img_cache_bg] {_e}')
 
 
 def _get_catalog_items(conn):
@@ -2259,8 +2261,11 @@ def catalog():
 
     catalog_items = _get_catalog_items(conn)
     cat_groups    = _get_cat_groups(conn, items=catalog_items)
-    _warm_img_tmp_cache(conn)
     conn.close()
+    # 이미지 /tmp 캐시 워밍 — 백그라운드에서 실행해 페이지 응답 지연 없음
+    if not _img_tmp_warmed and not USE_SQLITE:
+        import threading
+        threading.Thread(target=_warm_img_tmp_cache_bg, daemon=True).start()
     return render_template('catalog.html',
         catalog_items=catalog_items,
         cat_groups=cat_groups,
