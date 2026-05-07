@@ -2340,6 +2340,7 @@ def catalog():
         branches=branches,
         cart_cnt=cart_cnt,
         custom_cats=['X-Banner', '스탠션'],
+        img_ver=len(catalog_items),
     )
 
 

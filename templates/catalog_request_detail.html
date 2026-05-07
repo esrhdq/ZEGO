@@ -181,15 +181,19 @@
 {% block scripts %}
 <script>
 (function() {
-  const CACHE_KEY = 'catalog_imgs_v1';
   function apply(data) {
     document.querySelectorAll('img[data-img]').forEach(img => {
       const s = data[img.dataset.img]; if (s) img.src = s;
     });
   }
-  try { const c = sessionStorage.getItem(CACHE_KEY); if (c) { apply(JSON.parse(c)); return; } } catch(e){}
+  try {
+    const ver = JSON.parse(localStorage.getItem('ci_imgs_meta') || 'null');
+    if (ver !== null) {
+      const c = localStorage.getItem('ci_imgs_v' + ver);
+      if (c) { apply(JSON.parse(c)); return; }
+    }
+  } catch(e) {}
   fetch('{{ url_for("catalog_imgs") }}').then(r=>r.json()).then(d=>{
-    try{sessionStorage.setItem(CACHE_KEY,JSON.stringify(d));}catch(e){}
     apply(d);
   }).catch(()=>{
     document.querySelectorAll('img[data-img]').forEach(img=>{ img.src='/ci/'+img.dataset.img+'.png'; });

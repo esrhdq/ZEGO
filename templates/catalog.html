@@ -144,8 +144,18 @@
     background:rgba(0,0,0,.35); color:#fff; font-size:1.6rem;
     display:flex; align-items:center; justify-content:center;
   }
-  .cat-thumb img { max-height:100%; max-width:100%; object-fit:contain; display:block; pointer-events:none; background:#f0f0f0; transition:opacity .2s; }
+  .cat-thumb img { max-height:100%; max-width:100%; object-fit:contain; display:block; pointer-events:none; background:#f0f0f0; transition:opacity .3s; }
   .cat-thumb img[src=""] { opacity:0; }
+
+  @keyframes cat-shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
+  }
+  .cat-thumb:has(img[src=""]) {
+    background: linear-gradient(90deg, #f5f5f5 25%, #ebebeb 50%, #f5f5f5 75%);
+    background-size: 1200px 100%;
+    animation: cat-shimmer 1.4s ease-in-out infinite;
+  }
   .cat-body { padding:10px 11px; flex:1; display:flex; flex-direction:column; gap:4px; }
   .cat-title { font-size:.83rem; font-weight:700; line-height:1.4; }
   .cat-sub { font-size:.71rem; color:#888; line-height:1.5; }
@@ -658,32 +668,60 @@
 
 {% block scripts %}
 <script>
-/* ── 카탈로그 이미지 배치 로더 ── */
+/* ── 카탈로그 이미지 배치 로더 (localStorage + IntersectionObserver) ── */
 (function() {
-  const CACHE_KEY = 'catalog_imgs_v1';
+  const VER      = {{ img_ver }};          // 아이템 수 기반 버전 (추가/삭제 시 자동 갱신)
+  const LS_KEY   = 'ci_imgs_v' + VER;      // 버전별 캐시 키
+  const LS_META  = 'ci_imgs_meta';          // 마지막 저장 버전 추적용
+  const IO_MARGIN = '400px 0px';            // 뷰포트 400px 전에 미리 로드
+
+  // 전역 캐시 (lightbox에서도 사용)
+  window._catImgs = null;
 
   function applyImgs(data) {
-    document.querySelectorAll('img[data-img]').forEach(img => {
-      const src = data[img.dataset.img];
-      if (src) img.src = src;
-    });
+    window._catImgs = data;
+    const imgs = Array.from(document.querySelectorAll('img[data-img]'));
+    if (!imgs.length) return;
+
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries, obs) => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          const img = e.target;
+          const src = data[img.dataset.img];
+          if (src) img.src = src;
+          obs.unobserve(img);
+        });
+      }, { rootMargin: IO_MARGIN });
+      imgs.forEach(img => io.observe(img));
+    } else {
+      imgs.forEach(img => { const s = data[img.dataset.img]; if (s) img.src = s; });
+    }
   }
 
-  // sessionStorage 캐시 확인
+  // 이전 버전 캐시 정리 (localStorage 용량 절약)
   try {
-    const cached = sessionStorage.getItem(CACHE_KEY);
+    const prevVer = JSON.parse(localStorage.getItem(LS_META) || 'null');
+    if (prevVer !== null && prevVer !== VER) {
+      localStorage.removeItem('ci_imgs_v' + prevVer);
+    }
+    localStorage.setItem(LS_META, JSON.stringify(VER));
+  } catch(e) {}
+
+  // localStorage 캐시 확인
+  try {
+    const cached = localStorage.getItem(LS_KEY);
     if (cached) { applyImgs(JSON.parse(cached)); return; }
   } catch(e) {}
 
-  // 서버에서 일괄 수신 (DB 쿼리 1회)
+  // 캐시 미스 → 서버에서 일괄 수신
   fetch('{{ url_for("catalog_imgs") }}')
     .then(r => r.json())
     .then(data => {
-      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch(e) {}
+      try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
       applyImgs(data);
     })
     .catch(() => {
-      // 폴백: 개별 /ci/ URL
       document.querySelectorAll('img[data-img]').forEach(img => {
         img.src = '/ci/' + img.dataset.img + '.png';
       });
@@ -694,11 +732,18 @@
 const catThumbs = Array.from(document.querySelectorAll('.cat-thumb[onclick]'));
 let catIdx = 0;
 
+function catLbSrc(img) {
+  if (img.src && !img.src.endsWith('/')) return img.src;
+  // 아직 레이지 로드 안 된 경우 전역 캐시에서 직접 조회
+  return (window._catImgs && img.dataset.img && window._catImgs[img.dataset.img]) || '';
+}
 function catOpenLB(el) {
   const img = el.querySelector('img');
   if (!img) return;
   catIdx = catThumbs.indexOf(el);
-  document.getElementById('catLbImg').src = img.src;
+  const src = catLbSrc(img);
+  if (src && !img.src) img.src = src;   // 썸네일도 함께 채움
+  document.getElementById('catLbImg').src = src;
   document.getElementById('catLbTitle').textContent = el.dataset.title || '';
   document.getElementById('catLightbox').classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -710,8 +755,11 @@ function catCloseLB(e) {
 }
 function catLbNav(dir) {
   catIdx = (catIdx + dir + catThumbs.length) % catThumbs.length;
-  const el = catThumbs[catIdx];
-  document.getElementById('catLbImg').src = el.querySelector('img').src;
+  const el  = catThumbs[catIdx];
+  const img = el.querySelector('img');
+  const src = catLbSrc(img);
+  if (src && !img.src) img.src = src;
+  document.getElementById('catLbImg').src = src;
   document.getElementById('catLbTitle').textContent = el.dataset.title || '';
 }
 document.addEventListener('keydown', e => {
