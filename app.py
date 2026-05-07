@@ -2274,6 +2274,24 @@ def catalog():
     )
 
 
+@app.route('/catalog/imgs')
+@login_required
+def catalog_imgs():
+    """카탈로그 이미지 전체를 한 번에 반환 — 브라우저가 N개 개별 요청 대신 1회로 처리."""
+    import base64 as _b64
+    _ensure_catalog_table()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT img, img_data FROM catalog_defs "
+        "WHERE img_data IS NOT NULL AND img_data != ''"
+    ).fetchall()
+    conn.close()
+    data = {r['img']: 'data:image/png;base64,' + r['img_data'] for r in rows}
+    resp = jsonify(data)
+    resp.headers['Cache-Control'] = 'private, max-age=1800'
+    return resp
+
+
 @app.route('/catalog/save', methods=['POST'])
 @login_required
 def catalog_save():
