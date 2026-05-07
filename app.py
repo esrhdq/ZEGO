@@ -1350,9 +1350,7 @@ def transfer():
     form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
 
     if role == 'admin':
-        inbox = conn.execute(
-            _TR_SELECT + ' WHERE tr.status=%s ORDER BY tr.created_at DESC', ('PENDING',)
-        ).fetchall()
+        inbox = []   # 관리자는 받은신청(inbox) 미사용
     elif bid:
         inbox = conn.execute(
             _TR_SELECT + ' WHERE tr.from_branch_id=%s AND tr.status=%s ORDER BY tr.created_at DESC',
@@ -1363,7 +1361,7 @@ def transfer():
 
     if role == 'admin':
         outbox = conn.execute(
-            _TR_SELECT + ' ORDER BY tr.created_at DESC LIMIT 100'
+            _TR_SELECT + ' ORDER BY tr.created_at DESC LIMIT 200'
         ).fetchall()
     elif bid:
         outbox = conn.execute(
@@ -1374,7 +1372,8 @@ def transfer():
         outbox = []
 
     conn.close()
-    active_tab = request.args.get('tab', 'request')
+    default_tab = 'history' if role == 'admin' else 'request'
+    active_tab  = request.args.get('tab', default_tab)
     return render_template('transfer.html',
                            branches=branches, form_types=form_types,
                            inbox=inbox, outbox=outbox,

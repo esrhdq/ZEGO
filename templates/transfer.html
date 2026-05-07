@@ -6,6 +6,20 @@
 {% block content %}
 <!-- 탭 네비게이션 -->
 <ul class="nav nav-tabs mb-3" id="transferTabs">
+  {% if session.role == 'admin' %}
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='history' %}active{% endif %}"
+            data-tab="history" type="button">
+      <i class="fa-solid fa-clock-rotate-left me-1"></i>이동 내역
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='request' %}active{% endif %}"
+            data-tab="request" type="button">
+      <i class="fa-solid fa-paper-plane me-1"></i>{{ T('xfer.request_tab') }}
+    </button>
+  </li>
+  {% else %}
   <li class="nav-item">
     <button class="nav-link {% if active_tab=='request' %}active{% endif %}"
             data-tab="request" type="button">
@@ -27,7 +41,89 @@
       <i class="fa-solid fa-clock-rotate-left me-1"></i>{{ T('xfer.outbox_tab') }}
     </button>
   </li>
+  {% endif %}
 </ul>
+
+<!-- ── 관리자 전용: 이동 내역 ──────────────────────────────────── -->
+{% if session.role == 'admin' %}
+<div id="tab-history" class="tab-pane {% if active_tab=='history' %}d-block{% else %}d-none{% endif %}">
+  <div class="card">
+    <div class="card-header bg-white py-3 d-flex align-items-center gap-2 flex-wrap">
+      <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
+      <strong>전체 이동 내역</strong>
+      <span class="badge bg-secondary ms-1">{{ outbox|length }}건</span>
+      <small class="text-muted ms-1">최근 200건 · 모든 지점</small>
+      <!-- 상태 필터 -->
+      <div class="ms-auto d-flex gap-1 flex-wrap">
+        <button class="btn btn-sm btn-outline-secondary active" data-filter="ALL" onclick="filterHistory(this)">전체</button>
+        <button class="btn btn-sm btn-outline-warning" data-filter="PENDING" onclick="filterHistory(this)">대기</button>
+        <button class="btn btn-sm btn-outline-success"  data-filter="APPROVED" onclick="filterHistory(this)">승인</button>
+        <button class="btn btn-sm btn-outline-primary"  data-filter="CONFIRMED" onclick="filterHistory(this)">완료</button>
+        <button class="btn btn-sm btn-outline-danger"   data-filter="REJECTED" onclick="filterHistory(this)">반려</button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if outbox %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="historyTable">
+          <thead class="table-light">
+            <tr>
+              <th>신청일시</th>
+              <th>출발 지점</th>
+              <th>도착 지점</th>
+              <th>{{ T('common.form_name') }}</th>
+              <th class="text-center">{{ T('common.quantity') }}</th>
+              <th class="text-center">{{ T('common.status') }}</th>
+              <th>신청자 / 처리자</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in outbox %}
+            <tr data-status="{{ r.status }}">
+              <td class="small text-muted" style="white-space:nowrap">{{ r.created_at | dt }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ r.from_branch_code }}</span>
+                <span class="small ms-1">{{ r.from_branch_name }}</span>
+              </td>
+              <td>
+                <span class="badge" style="background:#dbeafe;color:#1e40af">{{ r.to_branch_code }}</span>
+                <span class="small ms-1">{{ r.to_branch_name }}</span>
+              </td>
+              <td class="small">{{ r.form_name }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center">
+                {% if r.status == 'PENDING' %}
+                  <span class="badge" style="background:#fef3c7;color:#92400e">대기</span>
+                {% elif r.status == 'APPROVED' %}
+                  <span class="badge" style="background:#d1fae5;color:#065f46">승인</span>
+                {% elif r.status == 'REJECTED' %}
+                  <span class="badge" style="background:#fee2e2;color:#991b1b">반려</span>
+                {% elif r.status == 'CONFIRMED' %}
+                  <span class="badge" style="background:#dbeafe;color:#1e40af">완료</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">
+                {{ r.requested_by }}
+                {% if r.approved_by %}<span class="text-secondary"> / {{ r.approved_by }}</span>{% endif %}
+                {% if r.status == 'REJECTED' and r.reject_reason %}
+                <div style="color:#991b1b;font-size:.72rem">{{ r.reject_reason }}</div>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="fa-solid fa-clock-rotate-left fs-2 d-block mb-2 opacity-25"></i>
+        이동 내역이 없습니다.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- ── 탭 1: 이전 신청 ───────────────────────────────────────────── -->
 <div id="tab-request" class="tab-pane {% if active_tab=='request' %}d-block{% else %}d-none{% endif %}">
@@ -226,7 +322,8 @@
   </div>
 </div>
 
-<!-- ── 탭 3: 보낸 신청 (outbox) ─────────────────────────────────── -->
+<!-- ── 탭 3: 보낸 신청 (outbox, 비관리자 전용) ───────────────────── -->
+{% if session.role != 'admin' %}
 <div id="tab-outbox" class="tab-pane {% if active_tab=='outbox' %}d-block{% else %}d-none{% endif %}">
   <div class="card">
     <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
@@ -301,6 +398,8 @@
   </div>
 </div>
 
+{% endif %}{# /if session.role != 'admin' (outbox) #}
+
 <!-- 반려 사유 모달 -->
 <div class="modal fade" id="rejectModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -340,6 +439,16 @@ document.querySelectorAll('[data-tab]').forEach(btn => {
     history.replaceState(null, '', '?tab=' + btn.dataset.tab);
   });
 });
+
+// 이동 내역 상태 필터 (관리자)
+function filterHistory(btn) {
+  document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const f = btn.dataset.filter;
+  document.querySelectorAll('#historyTable tbody tr').forEach(tr => {
+    tr.style.display = (f === 'ALL' || tr.dataset.status === f) ? '' : 'none';
+  });
+}
 
 // 재고 조회
 async function fetchFromStock() {
