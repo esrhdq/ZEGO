@@ -54,6 +54,23 @@
   .cat-req-btn:hover { background:var(--red); color:#fff; }
   .cat-req-btn.in-cart { background:var(--red); color:#fff; }
   .cat-req-btn.in-cart:hover { background:#a00; }
+  /* 신규 추가 카드 */
+  .cat-new-card {
+    display:none; background:#fff; border-radius:10px;
+    border:2px dashed #e0e0e0; overflow:hidden;
+    flex-direction:column; align-items:center; justify-content:center;
+    min-height:220px; cursor:pointer; transition:border-color .2s, background .2s;
+    color:#bbb; gap:8px; font-size:.82rem; font-weight:600;
+  }
+  body.req-mode .cat-new-card { display:flex; }
+  .cat-new-card:hover { border-color:var(--red); color:var(--red); background:#fff5f5; }
+  .cat-new-card .new-icon {
+    width:44px; height:44px; border-radius:50%;
+    border:2px dashed currentColor;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.4rem; font-weight:300; transition:background .2s, color .2s;
+  }
+  .cat-new-card:hover .new-icon { background:var(--red); color:#fff; border-color:var(--red); }
   /* 장바구니 카운트 배지 */
   .cart-badge {
     display:inline-flex; align-items:center; justify-content:center;
@@ -404,6 +421,85 @@
   </div>
 </div>
 
+<!-- 신규 추가 모달 -->
+<div class="modal fade" id="reqNewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
+        <h6 class="modal-title" style="font-size:.92rem;font-weight:700">
+          <i class="fa-solid fa-pen-ruler me-2"></i>신규 시안 제작
+          <span id="rnm-cat-badge" style="font-size:.72rem;background:rgba(255,255,255,.2);
+                border-radius:10px;padding:2px 8px;margin-left:6px;font-weight:500"></span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-2">
+        <input type="hidden" id="rnm-cat">
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            시안 이름 <span class="text-danger">*</span>
+            <span style="font-size:.72rem;font-weight:400;color:#888">(예: 인천↔방콕 X-Banner)</span>
+          </label>
+          <input type="text" id="rnm-name" class="form-control form-control-sm"
+                 placeholder="제작할 시안 이름을 입력해 주세요">
+        </div>
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">수량</label>
+          <input type="number" id="rnm-qty" class="form-control form-control-sm"
+                 min="1" max="99" value="1" style="width:100px">
+        </div>
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:4px;display:block">
+            디자인 방법 선택
+          </label>
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button" id="rnm-editor-btn"
+                    class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2"
+                    style="font-size:.8rem;padding:7px 14px" onclick="rnmOpenEditor()">
+              <i class="fa-solid fa-pen-ruler"></i>
+              <span>편집기로 직접 제작</span>
+            </button>
+            <label class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
+                   style="font-size:.8rem;padding:7px 14px;cursor:pointer" for="rnm-image">
+              <i class="fa-solid fa-image"></i>
+              <span id="rnm-file-label">파일 업로드</span>
+            </label>
+            <input type="file" id="rnm-image" class="d-none"
+                   accept=".png,.jpg,.jpeg,.webp,.pdf" onchange="rnmImgChange(this)">
+          </div>
+          <div id="rnm-editor-preview" style="display:none;margin-top:10px"
+               class="d-flex align-items-center gap-3">
+            <img id="rnm-editor-img" src="" alt=""
+                 style="max-height:80px;max-width:150px;object-fit:contain;
+                        border:1px solid #ddd;border-radius:6px">
+            <div>
+              <div style="font-size:.75rem;color:#16a34a;font-weight:700;margin-bottom:3px">
+                <i class="fa-solid fa-check me-1"></i>시안 적용됨
+              </div>
+              <button type="button" onclick="rnmClearImg()"
+                      style="font-size:.72rem;color:#991b1b;background:none;border:none;
+                             cursor:pointer;padding:0;text-decoration:underline">취소</button>
+            </div>
+          </div>
+        </div>
+        <div class="mb-1">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            요청사항 <span style="font-size:.75rem;font-weight:400;color:#888">(선택)</span>
+          </label>
+          <textarea id="rnm-text" class="form-control form-control-sm" rows="2"
+                    placeholder="추가 요청사항이 있으면 입력해 주세요."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="rnmSubmit()">
+          <i class="fa-solid fa-cart-plus me-1"></i>장바구니에 담기
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 플로팅 저장 바 -->
 <div id="catSaveBar">
   <div>
@@ -529,6 +625,11 @@
   </div>
   <div class="cat-grid">
     {% for item in items %}{{ cat_card(item) }}{% endfor %}
+    <div class="cat-new-card" onclick="reqOpenNew('{{ cat|e }}')">
+      <div class="new-icon">+</div>
+      <span>신규 추가</span>
+      <span style="font-size:.68rem;font-weight:400;color:inherit;opacity:.7">직접 시안 제작</span>
+    </div>
   </div>
 </section>
 {% endfor %}
@@ -830,29 +931,120 @@ function rcmClearEditorImg() {
   btn.style.cssText = '';
 }
 
+
+/* ── 신규 추가 ── */
+let rnmImgData = '';
+
+function reqOpenNew(cat) {
+  document.getElementById('rnm-cat').value = cat;
+  document.getElementById('rnm-cat-badge').textContent = cat;
+  document.getElementById('rnm-name').value = '';
+  document.getElementById('rnm-qty').value = 1;
+  document.getElementById('rnm-text').value = '';
+  document.getElementById('rnm-image').value = '';
+  document.getElementById('rnm-file-label').textContent = '파일 업로드';
+  rnmClearImg();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('reqNewModal')).show();
+}
+
+function rnmOpenEditor() {
+  const cat  = document.getElementById('rnm-cat').value;
+  const name = document.getElementById('rnm-name').value.trim() || ('신규 ' + cat);
+  const code = '_new_' + Date.now();
+  const url  = '/catalog/banner-editor?item_code=' + encodeURIComponent(code)
+             + '&item_name=' + encodeURIComponent(name)
+             + '&item_cat='  + encodeURIComponent(cat);
+  window.open(url, '_blank');
+}
+
+function rnmImgChange(input) {
+  if (input.files && input.files[0]) {
+    document.getElementById('rnm-file-label').textContent = input.files[0].name;
+    const r = new FileReader();
+    r.onload = e => {
+      rnmImgData = e.target.result;
+      document.getElementById('rnm-editor-img').src = rnmImgData;
+      document.getElementById('rnm-editor-preview').style.display = 'flex';
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+
+function rnmSetEditorImg(dataUrl) {
+  rnmImgData = dataUrl;
+  document.getElementById('rnm-editor-img').src = dataUrl;
+  document.getElementById('rnm-editor-preview').style.display = 'flex';
+  const btn = document.getElementById('rnm-editor-btn');
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i><span>편집기 다시 열기</span>';
+  btn.classList.remove('btn-outline-danger');
+  btn.classList.add('btn-danger');
+}
+
+function rnmClearImg() {
+  rnmImgData = '';
+  document.getElementById('rnm-editor-preview').style.display = 'none';
+  document.getElementById('rnm-editor-img').src = '';
+  document.getElementById('rnm-image').value = '';
+  document.getElementById('rnm-file-label').textContent = '파일 업로드';
+  const btn = document.getElementById('rnm-editor-btn');
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i><span>편집기로 직접 제작</span>';
+  btn.classList.remove('btn-danger');
+  btn.classList.add('btn-outline-danger');
+}
+
+async function rnmSubmit() {
+  const name = document.getElementById('rnm-name').value.trim();
+  if (!name) {
+    document.getElementById('rnm-name').focus();
+    document.getElementById('rnm-name').classList.add('is-invalid');
+    return;
+  }
+  document.getElementById('rnm-name').classList.remove('is-invalid');
+  const cat  = document.getElementById('rnm-cat').value;
+  const qty  = parseInt(document.getElementById('rnm-qty').value) || 1;
+  const text = document.getElementById('rnm-text').value.trim();
+  const code = '_new_' + Date.now();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('reqNewModal')).hide();
+  await reqCartUpdate(code, qty, rnmImgData, text, name, cat);
+}
+
+// storage 이벤트: 신규 모달과 기존 커스텀 모달 공통 수신
 window.addEventListener('storage', e => {
   if (e.key !== 'banner_editor_result' || !e.newValue) return;
   try {
     const result = JSON.parse(e.newValue);
-    if (result && result.dataUrl) {
+    if (!result || !result.dataUrl) return;
+    localStorage.removeItem('banner_editor_result');
+    // 신규 추가 모달이 열려 있으면 rnm에 적용, 아니면 rcm에 적용
+    const rnmEl = document.getElementById('reqNewModal');
+    if (rnmEl.classList.contains('show')) {
+      rnmSetEditorImg(result.dataUrl);
+    } else {
       rcmSetEditorImg(result.dataUrl);
-      localStorage.removeItem('banner_editor_result');
     }
   } catch(err) {}
 });
 
 window.addEventListener('message', e => {
-  if (e.data && e.data.type === 'bannerEditorDone' && e.data.dataUrl) {
+  if (!e.data || e.data.type !== 'bannerEditorDone' || !e.data.dataUrl) return;
+  const rnmEl = document.getElementById('reqNewModal');
+  if (rnmEl.classList.contains('show')) {
+    rnmSetEditorImg(e.data.dataUrl);
+  } else {
     rcmSetEditorImg(e.data.dataUrl);
   }
 });
 
-async function reqCartUpdate(code, qty, customImg, customText) {
+async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat) {
   try {
     const res = await fetch('{{ url_for("catalog_cart_update") }}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({item_code:code, quantity:qty, custom_img_data:customImg, custom_text:customText})
+      body: JSON.stringify({
+        item_code: code, quantity: qty,
+        custom_img_data: customImg, custom_text: customText,
+        item_name: itemName || '', item_cat: itemCat || ''
+      })
     });
     const json = await res.json();
     if (json.ok) {

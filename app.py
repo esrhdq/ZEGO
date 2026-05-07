@@ -2290,9 +2290,13 @@ def _ensure_catalog_table():
                 quantity        INTEGER DEFAULT 1,
                 custom_img_data TEXT DEFAULT '',
                 custom_text     TEXT DEFAULT '',
+                item_name       TEXT DEFAULT '',
+                item_cat        TEXT DEFAULT '',
                 UNIQUE(request_id, item_code)
             )
         ''')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_name TEXT DEFAULT \'\'')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_cat  TEXT DEFAULT \'\'')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
@@ -2420,6 +2424,8 @@ def catalog_cart_update():
     qty         = max(0, int(data.get('quantity', 1) or 1))
     custom_img  = (data.get('custom_img_data') or '').strip()
     custom_text = (data.get('custom_text') or '').strip()
+    item_name   = (data.get('item_name') or '').strip()
+    item_cat    = (data.get('item_cat') or '').strip()
     action      = data.get('action', 'add')   # add | remove | clear
 
     conn = get_db()
@@ -2456,21 +2462,24 @@ def catalog_cart_update():
         req_id = _get_or_create_draft(conn, target_bid)
         if USE_SQLITE:
             conn.execute('''
-                INSERT INTO catalog_request_items (request_id,item_code,quantity,custom_img_data,custom_text)
-                VALUES (?,?,?,?,?)
+                INSERT INTO catalog_request_items
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat)
+                VALUES (?,?,?,?,?,?,?)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=excluded.quantity, custom_img_data=excluded.custom_img_data,
-                    custom_text=excluded.custom_text
-            ''', (req_id, item_code, qty, custom_img, custom_text))
+                    custom_text=excluded.custom_text, item_name=excluded.item_name,
+                    item_cat=excluded.item_cat
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat))
         else:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text)
-                VALUES (%s,%s,%s,%s,%s)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=EXCLUDED.quantity, custom_img_data=EXCLUDED.custom_img_data,
-                    custom_text=EXCLUDED.custom_text
-            ''', (req_id, item_code, qty, custom_img, custom_text))
+                    custom_text=EXCLUDED.custom_text, item_name=EXCLUDED.item_name,
+                    item_cat=EXCLUDED.item_cat
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat))
         conn.commit()
 
     cnt = _cart_count(conn, target_bid)
@@ -2502,8 +2511,10 @@ def catalog_cart():
     cart_items = []
     if req_row:
         rows = conn.execute(
-            f'SELECT ri.*, cd.name, cd.cat, cd.img FROM catalog_request_items ri '
-            f'JOIN catalog_defs cd ON cd.code=ri.item_code '
+            f'SELECT ri.*, COALESCE(cd.name, ri.item_name) AS name, '
+            f'COALESCE(cd.cat, ri.item_cat) AS cat, cd.img '
+            f'FROM catalog_request_items ri '
+            f'LEFT JOIN catalog_defs cd ON cd.code=ri.item_code '
             f'WHERE ri.request_id={ph}',
             (req_row['id'],)
         ).fetchall()
@@ -2639,8 +2650,10 @@ def catalog_request_detail(req_id):
         return redirect(url_for('catalog_requests_branch'))
 
     items = conn.execute(
-        f'SELECT ri.*, cd.name item_name, cd.cat, cd.img FROM catalog_request_items ri '
-        f'JOIN catalog_defs cd ON cd.code=ri.item_code '
+        f'SELECT ri.*, COALESCE(cd.name, ri.item_name) item_name, '
+        f'COALESCE(cd.cat, ri.item_cat) cat, cd.img '
+        f'FROM catalog_request_items ri '
+        f'LEFT JOIN catalog_defs cd ON cd.code=ri.item_code '
         f'WHERE ri.request_id={ph}', (req_id,)
     ).fetchall()
     conn.close()
