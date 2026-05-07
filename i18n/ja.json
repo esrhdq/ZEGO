@@ -20,7 +20,6 @@
   "nav.brand_sub": "イースター航空 輸送本部",
   "nav.role_admin": "管理者",
   "nav.open_menu": "メニューを開く",
-
   "common.branch": "支店",
   "common.branch_all": "全支店",
   "common.select_branch": "-- 支店を選択 --",
@@ -59,7 +58,6 @@
   "common.qty_placeholder": "数量を入力",
   "common.register": "登録",
   "common.col_type": "区分",
-
   "login.system_name": "輸送本部 在庫管理システム",
   "login.username": "ユーザーID",
   "login.username_placeholder": "IDを入力",
@@ -68,7 +66,6 @@
   "login.submit": "ログイン",
   "login.submitting": "ログイン中...",
   "login.contact": "問い合わせ: 輸送本部 IT担当",
-
   "dash.title": "ダッシュボード",
   "dash.operating_branches": "運営支店",
   "dash.form_types": "帳票種類",
@@ -90,7 +87,6 @@
   "dash.col_to": "到着支店",
   "dash.col_minimum": "最小",
   "dash.col_current": "現在",
-
   "inv.title": "在庫状況",
   "inv.tab_detail": "支店別詳細",
   "inv.tab_summary": "帳票別累計",
@@ -114,7 +110,6 @@
   "inv.legend_low": "不足（最小基準以下）",
   "inv.legend_note": "最小基準セルを直接編集後",
   "inv.branch_detail": "支店",
-
   "inb.title": "入庫処理",
   "inb.bulk_upload": "Excelー括入庫",
   "inb.usage": "使用方法",
@@ -128,14 +123,12 @@
   "inb.inbound_date": "入庫日",
   "inb.date_helper": "実際に帳票を受け取った日を選択してください。",
   "inb.register": "入庫登録",
-
   "out.title": "出庫処理",
   "out.form_title": "帳票出庫登録",
   "out.subtitle": "実際の使用数量を差し引きます。",
   "out.outbound_date": "出庫日",
   "out.date_helper": "実際に帳票が使用された日を選択してください。",
   "out.register": "出庫登録",
-
   "xfer.title": "支店間移転",
   "xfer.request_tab": "移転申請",
   "xfer.inbox_tab": "受信申請",
@@ -169,7 +162,6 @@
   "xfer.col_sent_date": "申請日時",
   "xfer.col_requester": "要請者",
   "xfer.col_action": "処理",
-
   "hist.title": "入出庫履歴",
   "hist.type_all": "全て",
   "hist.month": "月選択",
@@ -180,7 +172,6 @@
   "hist.col_to": "到着支店",
   "hist.max_rows": "件（最大300件）",
   "hist.no_data": "該当する履歴がありません。",
-
   "rep.title": "レポート",
   "rep.normal_items": "正常品目",
   "rep.low_items": "不足品目",
@@ -210,7 +201,6 @@
   "rep.no_form": "帳票在庫データなし",
   "rep.chart_flight": "月別運航便数（直近6ヶ月）",
   "rep.no_flight": "運航便数データがありません。",
-
   "usr.title": "ユーザー管理",
   "usr.account_list": "全アカウント一覧",
   "usr.col_username": "ユーザーID",
@@ -241,7 +231,6 @@
   "usr.pw_mismatch": "パスワードが一致しません。",
   "usr.confirm_delete": "このアカウントを削除しますか？",
   "usr.pw_reset_btn": "リセット",
-
   "chpw.title": "パスワード変更",
   "chpw.form_title": "パスワード変更",
   "chpw.current_pw": "現在のパスワード",
@@ -257,7 +246,6 @@
   "chpw.match_error": "パスワードが一致しません。",
   "chpw.submit": "変更",
   "chpw.toggle_show": "表示",
-
   "upl.title": "Excelアップロード結果",
   "upl.success": "成功",
   "upl.error": "エラー",
@@ -277,7 +265,6 @@
   "upl.no_data": "処理するデータがありません。",
   "upl.error_hint": "エラー解決方法:",
   "upl.form_name_match": "参考シートのリストと完全に一致",
-
   "fcast.title": "四半期発注予測",
   "fcast.cur_quarter": "現在四半期",
   "fcast.next_quarter": "次四半期",
@@ -307,7 +294,6 @@
   "fcast.recommend": "発注推奨",
   "fcast.sufficient_badge": "在庫十分",
   "fcast.trend_legend": "トレンド — ↑ 増加 / → 安定 / ↓ 減少",
-
   "flt.title": "運航便数管理",
   "flt.info": "月別運航便数を入力すると四半期発注予測に自動反映されます。",
   "flt.info2": "過去6ヶ月平均に対する次四半期平均便数の比率で補正されます。",
@@ -318,7 +304,6 @@
   "flt.flights": "運航便数",
   "flt.save": "保存",
   "flt.view_forecast": "四半期発注予測を見る",
-
   "cat.prev": "前へ",
   "cat.next": "次へ",
   "cat.edit_mode": "保有状況を編集",
@@ -327,7 +312,16 @@
   "cat.owned_count": "保有アイテム",
   "cat.view_inventory": "支店別現況",
   "cat.inv_back": "カタログへ",
-
   "err.403_msg": "許可されていないIPアドレスからのアクセスです。",
-  "err.403_helper": "許可されたネットワークから接続してください。"
+  "err.403_helper": "許可されたネットワークから接続してください。",
+  "cat.req_mode": "申請モード",
+  "cat.req_cancel": "申請キャンセル",
+  "cat.cart": "カート",
+  "cat.add_to_cart": "追加",
+  "cat.request_list": "申請履歴",
+  "cat.submit_request": "申請する",
+  "cat.req_status.pending": "審査中",
+  "cat.req_status.approved": "承認",
+  "cat.req_status.rejected": "却下",
+  "cat.req_status.on_hold": "保留"
 }

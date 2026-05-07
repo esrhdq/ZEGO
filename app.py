@@ -517,6 +517,28 @@ def init_db():
                     img_data   TEXT NOT NULL DEFAULT ''
                 )
             ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_requests (
+                    id            INTEGER PRIMARY KEY,
+                    branch_id     INTEGER NOT NULL REFERENCES branches(id),
+                    status        TEXT NOT NULL DEFAULT 'draft',
+                    notes         TEXT DEFAULT '',
+                    reject_reason TEXT DEFAULT '',
+                    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_request_items (
+                    id              INTEGER PRIMARY KEY,
+                    request_id      INTEGER NOT NULL REFERENCES catalog_requests(id),
+                    item_code       TEXT NOT NULL,
+                    quantity        INTEGER DEFAULT 1,
+                    custom_img_data TEXT DEFAULT '',
+                    custom_text     TEXT DEFAULT '',
+                    UNIQUE(request_id, item_code)
+                )
+            ''')
         else:
             # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
             conn.execute('''
@@ -617,6 +639,24 @@ def init_db():
                     cat        TEXT NOT NULL,
                     sub_desc   TEXT NOT NULL DEFAULT '',
                     sort_order INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS catalog_requests (
+                    id            SERIAL PRIMARY KEY,
+                    branch_id     INTEGER NOT NULL REFERENCES branches(id),
+                    status        TEXT NOT NULL DEFAULT 'draft',
+                    notes         TEXT DEFAULT '',
+                    reject_reason TEXT DEFAULT '',
+                    created_at    TIMESTAMP DEFAULT NOW(),
+                    updated_at    TIMESTAMP DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS catalog_request_items (
+                    id              SERIAL PRIMARY KEY,
+                    request_id      INTEGER NOT NULL REFERENCES catalog_requests(id),
+                    item_code       TEXT NOT NULL,
+                    quantity        INTEGER DEFAULT 1,
+                    custom_img_data TEXT DEFAULT '',
+                    custom_text     TEXT DEFAULT '',
+                    UNIQUE(request_id, item_code)
                 );
             ''')
 
@@ -2231,6 +2271,28 @@ def _ensure_catalog_table():
                 img_data   TEXT DEFAULT ''
             )
         ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_requests (
+                id            SERIAL PRIMARY KEY,
+                branch_id     INTEGER NOT NULL REFERENCES branches(id),
+                status        TEXT NOT NULL DEFAULT 'draft',
+                notes         TEXT DEFAULT '',
+                reject_reason TEXT DEFAULT '',
+                created_at    TIMESTAMP DEFAULT NOW(),
+                updated_at    TIMESTAMP DEFAULT NOW()
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_request_items (
+                id              SERIAL PRIMARY KEY,
+                request_id      INTEGER NOT NULL REFERENCES catalog_requests(id),
+                item_code       TEXT NOT NULL,
+                quantity        INTEGER DEFAULT 1,
+                custom_img_data TEXT DEFAULT '',
+                custom_text     TEXT DEFAULT '',
+                UNIQUE(request_id, item_code)
+            )
+        ''')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
@@ -2261,6 +2323,7 @@ def catalog():
 
     catalog_items = _get_catalog_items(conn)
     cat_groups    = _get_cat_groups(conn, items=catalog_items)
+    cart_cnt      = _cart_count(conn, bid) if bid else 0
     conn.close()
     # 이미지 /tmp 캐시 워밍 — 백그라운드에서 실행해 페이지 응답 지연 없음
     if not _img_tmp_warmed and not USE_SQLITE:
@@ -2271,6 +2334,8 @@ def catalog():
         cat_groups=cat_groups,
         my_items=my_items,
         branches=branches,
+        cart_cnt=cart_cnt,
+        custom_cats=['X-Banner', '스탠션'],
     )
 
 
@@ -2290,6 +2355,335 @@ def catalog_imgs():
     resp = jsonify(data)
     resp.headers['Cache-Control'] = 'private, max-age=1800'
     return resp
+
+
+# ── 카탈로그 신청 헬퍼 ────────────────────────────────────────────────────────
+
+def _get_or_create_draft(conn, branch_id):
+    """branch_id의 현재 draft 요청을 반환하거나 새로 생성."""
+    ph = '%s' if not USE_SQLITE else '?'
+    row = conn.execute(
+        f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+        (branch_id, 'draft')
+    ).fetchone()
+    if row:
+        return row['id']
+    conn.execute(
+        f'INSERT INTO catalog_requests (branch_id, status) VALUES ({ph},{ph})',
+        (branch_id, 'draft')
+    )
+    conn.commit()
+    return conn.execute(
+        f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+        (branch_id, 'draft')
+    ).fetchone()['id']
+
+
+def _cart_count(conn, branch_id):
+    """현재 draft 장바구니 아이템 수."""
+    ph = '%s' if not USE_SQLITE else '?'
+    row = conn.execute(
+        f'SELECT COUNT(*) AS cnt FROM catalog_request_items ri '
+        f'JOIN catalog_requests r ON r.id=ri.request_id '
+        f'WHERE r.branch_id={ph} AND r.status={ph}',
+        (branch_id, 'draft')
+    ).fetchone()
+    return row['cnt'] if row else 0
+
+
+# ── 카탈로그 신청: 장바구니 업데이트 (AJAX) ──────────────────────────────────
+
+@app.route('/catalog/cart/update', methods=['POST'])
+@login_required
+def catalog_cart_update():
+    _ensure_catalog_table()
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    data = request.get_json(silent=True) or {}
+
+    target_bid = int(data.get('branch_id', bid or 0)) if role == 'admin' else bid
+    if not target_bid:
+        return jsonify({'ok': False, 'msg': '지점 정보 없음'}), 400
+
+    item_code   = (data.get('item_code') or '').strip()
+    qty         = max(0, int(data.get('quantity', 1) or 1))
+    custom_img  = (data.get('custom_img_data') or '').strip()
+    custom_text = (data.get('custom_text') or '').strip()
+    action      = data.get('action', 'add')   # add | remove | clear
+
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+
+    if action == 'clear':
+        req_row = conn.execute(
+            f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+            (target_bid, 'draft')
+        ).fetchone()
+        if req_row:
+            conn.execute(f'DELETE FROM catalog_request_items WHERE request_id={ph}', (req_row['id'],))
+            conn.execute(f'DELETE FROM catalog_requests WHERE id={ph}', (req_row['id'],))
+            conn.commit()
+        conn.close()
+        return jsonify({'ok': True, 'cart_count': 0})
+
+    if not item_code:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '아이템 코드 없음'}), 400
+
+    if action == 'remove' or qty == 0:
+        req_row = conn.execute(
+            f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+            (target_bid, 'draft')
+        ).fetchone()
+        if req_row:
+            conn.execute(
+                f'DELETE FROM catalog_request_items WHERE request_id={ph} AND item_code={ph}',
+                (req_row['id'], item_code)
+            )
+            conn.commit()
+    else:
+        req_id = _get_or_create_draft(conn, target_bid)
+        if USE_SQLITE:
+            conn.execute('''
+                INSERT INTO catalog_request_items (request_id,item_code,quantity,custom_img_data,custom_text)
+                VALUES (?,?,?,?,?)
+                ON CONFLICT(request_id,item_code) DO UPDATE
+                SET quantity=excluded.quantity, custom_img_data=excluded.custom_img_data,
+                    custom_text=excluded.custom_text
+            ''', (req_id, item_code, qty, custom_img, custom_text))
+        else:
+            conn.execute('''
+                INSERT INTO catalog_request_items
+                    (request_id,item_code,quantity,custom_img_data,custom_text)
+                VALUES (%s,%s,%s,%s,%s)
+                ON CONFLICT(request_id,item_code) DO UPDATE
+                SET quantity=EXCLUDED.quantity, custom_img_data=EXCLUDED.custom_img_data,
+                    custom_text=EXCLUDED.custom_text
+            ''', (req_id, item_code, qty, custom_img, custom_text))
+        conn.commit()
+
+    cnt = _cart_count(conn, target_bid)
+    conn.close()
+    return jsonify({'ok': True, 'cart_count': cnt})
+
+
+# ── 카탈로그 신청: 장바구니 조회 ──────────────────────────────────────────────
+
+@app.route('/catalog/cart')
+@login_required
+def catalog_cart():
+    _ensure_catalog_table()
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    target_bid = int(request.args.get('branch_id', bid or 0)) if role == 'admin' else bid
+    if not target_bid:
+        return render_template('catalog_request.html',
+            cart_items=[], branches=[], target_bid=None,
+            catalog_items=[], custom_cats=['X-Banner','스탠션'])
+
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    req_row = conn.execute(
+        f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+        (target_bid, 'draft')
+    ).fetchone()
+
+    cart_items = []
+    if req_row:
+        rows = conn.execute(
+            f'SELECT ri.*, cd.name, cd.cat, cd.img FROM catalog_request_items ri '
+            f'JOIN catalog_defs cd ON cd.code=ri.item_code '
+            f'WHERE ri.request_id={ph}',
+            (req_row['id'],)
+        ).fetchall()
+        cart_items = [dict(r) for r in rows]
+
+    branches = conn.execute('SELECT id,code,name FROM branches ORDER BY type,code').fetchall()
+    catalog_items = _get_catalog_items(conn)
+    conn.close()
+
+    return render_template('catalog_request.html',
+        cart_items=cart_items,
+        branches=branches,
+        target_bid=target_bid,
+        catalog_items=catalog_items,
+        custom_cats=['X-Banner', '스탠션'],
+    )
+
+
+# ── 카탈로그 신청: 제출 ────────────────────────────────────────────────────────
+
+@app.route('/catalog/request/submit', methods=['POST'])
+@login_required
+def catalog_request_submit():
+    _ensure_catalog_table()
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    data = request.get_json(silent=True) or {}
+    target_bid = int(data.get('branch_id', bid or 0)) if role == 'admin' else bid
+    notes = (data.get('notes') or '').strip()
+
+    if not target_bid:
+        return jsonify({'ok': False, 'msg': '지점 정보 없음'}), 400
+
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    req_row = conn.execute(
+        f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+        (target_bid, 'draft')
+    ).fetchone()
+    if not req_row:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '장바구니가 비어있습니다.'}), 400
+
+    cnt = conn.execute(
+        f'SELECT COUNT(*) AS cnt FROM catalog_request_items WHERE request_id={ph}',
+        (req_row['id'],)
+    ).fetchone()['cnt']
+    if cnt == 0:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '장바구니에 아이템이 없습니다.'}), 400
+
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+    conn.execute(
+        f"UPDATE catalog_requests SET status={ph}, notes={ph}, updated_at={now_sql} WHERE id={ph}",
+        ('pending', notes, req_row['id'])
+    )
+    # 관리자에게 알림
+    admin_rows = conn.execute(
+        f"SELECT id FROM branches WHERE code='관리자' UNION "
+        f"SELECT DISTINCT branch_id FROM users WHERE role='admin'"
+    ).fetchall() if not USE_SQLITE else conn.execute(
+        "SELECT DISTINCT branch_id id FROM users WHERE role='admin'"
+    ).fetchall()
+    branch_name_row = conn.execute(
+        f'SELECT name FROM branches WHERE id={ph}', (target_bid,)
+    ).fetchone()
+    branch_name = branch_name_row['name'] if branch_name_row else str(target_bid)
+    for ar in admin_rows:
+        try:
+            conn.execute(
+                f'INSERT INTO notifications (branch_id, message) VALUES ({ph},{ph})',
+                (ar['id'], f'[카탈로그 신청] {branch_name} 지점에서 신청서가 접수되었습니다.')
+            )
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'msg': '신청이 접수되었습니다.'})
+
+
+# ── 카탈로그 신청: 내역 조회 (지점) ──────────────────────────────────────────
+
+@app.route('/catalog/requests')
+@login_required
+def catalog_requests_branch():
+    _ensure_catalog_table()
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    if not bid and role != 'admin':
+        return redirect(url_for('catalog'))
+
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    if role == 'admin':
+        reqs = conn.execute(
+            'SELECT r.*, b.name branch_name, b.code branch_code '
+            'FROM catalog_requests r JOIN branches b ON b.id=r.branch_id '
+            "WHERE r.status != 'draft' ORDER BY r.updated_at DESC"
+        ).fetchall()
+    else:
+        reqs = conn.execute(
+            f'SELECT r.*, b.name branch_name, b.code branch_code '
+            f'FROM catalog_requests r JOIN branches b ON b.id=r.branch_id '
+            f"WHERE r.branch_id={ph} AND r.status!='draft' ORDER BY r.updated_at DESC",
+            (bid,)
+        ).fetchall()
+    conn.close()
+    return render_template('catalog_requests_list.html', requests=reqs)
+
+
+# ── 카탈로그 신청: 상세 조회 ──────────────────────────────────────────────────
+
+@app.route('/catalog/requests/<int:req_id>')
+@login_required
+def catalog_request_detail(req_id):
+    _ensure_catalog_table()
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    req  = conn.execute(
+        f'SELECT r.*, b.name branch_name, b.code branch_code '
+        f'FROM catalog_requests r JOIN branches b ON b.id=r.branch_id '
+        f'WHERE r.id={ph}', (req_id,)
+    ).fetchone()
+    if not req:
+        conn.close()
+        flash('신청서를 찾을 수 없습니다.', 'danger')
+        return redirect(url_for('catalog_requests_branch'))
+    if role != 'admin' and req['branch_id'] != bid:
+        conn.close()
+        flash('권한이 없습니다.', 'danger')
+        return redirect(url_for('catalog_requests_branch'))
+
+    items = conn.execute(
+        f'SELECT ri.*, cd.name item_name, cd.cat, cd.img FROM catalog_request_items ri '
+        f'JOIN catalog_defs cd ON cd.code=ri.item_code '
+        f'WHERE ri.request_id={ph}', (req_id,)
+    ).fetchall()
+    conn.close()
+    return render_template('catalog_request_detail.html',
+        req=dict(req), items=[dict(i) for i in items])
+
+
+# ── 카탈로그 신청: 관리자 액션 (승인/반려/대기) ───────────────────────────────
+
+@app.route('/catalog/requests/<int:req_id>/action', methods=['POST'])
+@login_required
+def catalog_request_action(req_id):
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+    _ensure_catalog_table()
+    data   = request.get_json(silent=True) or {}
+    action = data.get('action', '')           # approved | rejected | on_hold | pending
+    reason = (data.get('reason') or '').strip()
+
+    if action not in ('approved', 'rejected', 'on_hold', 'pending'):
+        return jsonify({'ok': False, 'msg': '유효하지 않은 액션'}), 400
+    if action == 'rejected' and not reason:
+        return jsonify({'ok': False, 'msg': '반려 사유를 입력해 주세요.'}), 400
+
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    req  = conn.execute(
+        f'SELECT * FROM catalog_requests WHERE id={ph}', (req_id,)
+    ).fetchone()
+    if not req:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '신청서 없음'}), 404
+
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+    conn.execute(
+        f"UPDATE catalog_requests SET status={ph}, reject_reason={ph}, updated_at={now_sql} WHERE id={ph}",
+        (action, reason if action == 'rejected' else '', req_id)
+    )
+
+    # 지점에 알림
+    status_kr = {'approved':'승인','rejected':'반려','on_hold':'보류','pending':'검토중'}
+    msg = f'[카탈로그 신청] 신청서가 {status_kr.get(action, action)} 처리되었습니다.'
+    if action == 'rejected' and reason:
+        msg += f' 사유: {reason}'
+    try:
+        conn.execute(
+            f'INSERT INTO notifications (branch_id, message) VALUES ({ph},{ph})',
+            (req['branch_id'], msg)
+        )
+    except Exception:
+        pass
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'status': action})
 
 
 @app.route('/catalog/save', methods=['POST'])

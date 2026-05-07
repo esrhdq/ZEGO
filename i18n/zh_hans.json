@@ -20,7 +20,6 @@
   "nav.brand_sub": "易斯达航空 运输部",
   "nav.role_admin": "管理员",
   "nav.open_menu": "打开菜单",
-
   "common.branch": "站点",
   "common.branch_all": "所有站点",
   "common.select_branch": "-- 选择站点 --",
@@ -59,7 +58,6 @@
   "common.qty_placeholder": "输入数量",
   "common.register": "登记",
   "common.col_type": "类型",
-
   "login.system_name": "运输部库存管理系统",
   "login.username": "用户名",
   "login.username_placeholder": "输入用户名",
@@ -68,7 +66,6 @@
   "login.submit": "登录",
   "login.submitting": "登录中...",
   "login.contact": "联系: 运输部IT负责人",
-
   "dash.title": "仪表盘",
   "dash.operating_branches": "运营站点",
   "dash.form_types": "表单种类",
@@ -90,7 +87,6 @@
   "dash.col_to": "到达站点",
   "dash.col_minimum": "最低",
   "dash.col_current": "当前",
-
   "inv.title": "库存状况",
   "inv.tab_detail": "按站点详情",
   "inv.tab_summary": "按表单汇总",
@@ -114,7 +110,6 @@
   "inv.legend_low": "不足（低于最低基准）",
   "inv.legend_note": "直接编辑基准单元格后",
   "inv.branch_detail": "个站点",
-
   "inb.title": "入库处理",
   "inb.bulk_upload": "Excel批量入库",
   "inb.usage": "使用方法",
@@ -128,14 +123,12 @@
   "inb.inbound_date": "入库日期",
   "inb.date_helper": "请选择实际收到表单的日期。",
   "inb.register": "入库登记",
-
   "out.title": "出库处理",
   "out.form_title": "表单出库登记",
   "out.subtitle": "扣减实际使用数量。",
   "out.outbound_date": "出库日期",
   "out.date_helper": "请选择表单实际使用的日期。",
   "out.register": "出库登记",
-
   "xfer.title": "站点间调拨",
   "xfer.request_tab": "调拨申请",
   "xfer.inbox_tab": "收到的申请",
@@ -169,7 +162,6 @@
   "xfer.col_sent_date": "发送日期",
   "xfer.col_requester": "申请人",
   "xfer.col_action": "操作",
-
   "hist.title": "入出库历史",
   "hist.type_all": "全部",
   "hist.month": "选择月份",
@@ -180,7 +172,6 @@
   "hist.col_to": "到达站点",
   "hist.max_rows": "条（最多300条）",
   "hist.no_data": "没有符合条件的记录。",
-
   "rep.title": "报表",
   "rep.normal_items": "正常品目",
   "rep.low_items": "不足品目",
@@ -210,7 +201,6 @@
   "rep.no_form": "无表单库存数据",
   "rep.chart_flight": "月度航班次数（近6个月）",
   "rep.no_flight": "暂无航班次数数据。",
-
   "usr.title": "用户管理",
   "usr.account_list": "全部账户列表",
   "usr.col_username": "用户名",
@@ -241,7 +231,6 @@
   "usr.pw_mismatch": "密码不匹配。",
   "usr.confirm_delete": "确认删除此账户？",
   "usr.pw_reset_btn": "重置",
-
   "chpw.title": "修改密码",
   "chpw.form_title": "修改我的密码",
   "chpw.current_pw": "当前密码",
@@ -257,7 +246,6 @@
   "chpw.match_error": "密码不匹配。",
   "chpw.submit": "修改",
   "chpw.toggle_show": "显示",
-
   "upl.title": "Excel上传结果",
   "upl.success": "成功",
   "upl.error": "错误",
@@ -277,7 +265,6 @@
   "upl.no_data": "没有需要处理的数据。",
   "upl.error_hint": "错误解决方法:",
   "upl.form_name_match": "必须与参考表中的列表完全匹配",
-
   "fcast.title": "季度申请预测",
   "fcast.cur_quarter": "当前季度",
   "fcast.next_quarter": "下一季度",
@@ -307,7 +294,6 @@
   "fcast.recommend": "建议申请",
   "fcast.sufficient_badge": "库存充足",
   "fcast.trend_legend": "趋势 — ↑ 增加 / → 稳定 / ↓ 减少",
-
   "flt.title": "航班数管理",
   "flt.info": "输入月度航班数后将自动反映在季度申请预测中。",
   "flt.info2": "以过去6个月平均与下季度平均航班数的比率进行修正。",
@@ -318,7 +304,6 @@
   "flt.flights": "航班数",
   "flt.save": "保存",
   "flt.view_forecast": "查看季度申请预测",
-
   "cat.prev": "上一张",
   "cat.next": "下一张",
   "cat.edit_mode": "编辑保有情况",
@@ -327,7 +312,16 @@
   "cat.owned_count": "保有物品",
   "cat.view_inventory": "支点库存",
   "cat.inv_back": "返回目录",
-
   "err.403_msg": "您的IP地址不在允许范围内。",
-  "err.403_helper": "请从授权网络连接。"
+  "err.403_helper": "请从授权网络连接。",
+  "cat.req_mode": "申请模式",
+  "cat.req_cancel": "取消申请",
+  "cat.cart": "购物车",
+  "cat.add_to_cart": "加入",
+  "cat.request_list": "申请记录",
+  "cat.submit_request": "提交申请",
+  "cat.req_status.pending": "待处理",
+  "cat.req_status.approved": "已批准",
+  "cat.req_status.rejected": "已拒绝",
+  "cat.req_status.on_hold": "暂缓"
 }

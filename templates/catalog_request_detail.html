@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block title %}신청서 상세{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-file-lines"></i>{% endblock %}
+{% block page_title %}카탈로그 신청서{% endblock %}
+
+{% block content %}
+<style>
+  .req-detail-card { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+  .req-detail-header { background:var(--red); color:#fff; padding:11px 16px; font-size:.92rem; font-weight:700; }
+  .req-info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; padding:16px; }
+  .req-info-item { background:#f9f9f9; border-radius:8px; padding:10px 14px; }
+  .req-info-label { font-size:.68rem; color:#888; margin-bottom:2px; }
+  .req-info-value { font-size:.88rem; font-weight:700; }
+
+  .status-badge { font-size:.78rem; padding:4px 14px; border-radius:20px; font-weight:700; }
+  .status-pending   { background:#fff3cd; color:#856404; }
+  .status-approved  { background:#d1fae5; color:#065f46; }
+  .status-rejected  { background:#fee2e2; color:#991b1b; }
+  .status-on_hold   { background:#e0e7ff; color:#3730a3; }
+
+  .items-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .items-table thead tr { background:#f7f7f7; }
+  .items-table thead th { padding:8px 12px; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; }
+  .items-table tbody tr { border-bottom:1px solid #eee; }
+  .items-table tbody td { padding:9px 12px; vertical-align:middle; }
+  .item-thumb { width:52px; height:42px; object-fit:contain; border:1px solid #e0e0e0; border-radius:4px; background:#f5f5f5; }
+  .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:#fff3e0; color:#e65100; }
+  .custom-img-preview { max-width:120px; max-height:80px; object-fit:contain; border:1px solid #ddd; border-radius:4px; cursor:zoom-in; }
+
+  .reject-box { background:#fff0f0; border:1px solid #fca5a5; border-radius:8px; padding:12px 16px; }
+</style>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('catalog_requests_branch') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>목록으로
+  </a>
+  <span class="text-muted small ms-2">신청서 #{{ req.id }}</span>
+  <span class="ms-2
+    {% if req.status=='pending' %}status-badge status-pending
+    {% elif req.status=='approved' %}status-badge status-approved
+    {% elif req.status=='rejected' %}status-badge status-rejected
+    {% else %}status-badge status-on_hold{% endif %}">
+    {% if req.status=='pending' %}<i class="fa-solid fa-clock me-1"></i>대기중
+    {% elif req.status=='approved' %}<i class="fa-solid fa-check me-1"></i>승인
+    {% elif req.status=='rejected' %}<i class="fa-solid fa-xmark me-1"></i>반려
+    {% else %}<i class="fa-solid fa-pause me-1"></i>보류{% endif %}
+  </span>
+</div>
+
+<!-- 신청 정보 요약 -->
+<div class="req-detail-card">
+  <div class="req-detail-header"><i class="fa-solid fa-circle-info me-2"></i>신청 정보</div>
+  <div class="req-info-grid">
+    <div class="req-info-item">
+      <div class="req-info-label">지점</div>
+      <div class="req-info-value">{{ req.branch_code }} {{ req.branch_name }}</div>
+    </div>
+    <div class="req-info-item">
+      <div class="req-info-label">신청일</div>
+      <div class="req-info-value" style="font-size:.8rem">{{ req.created_at|string|truncate(16,true,'') }}</div>
+    </div>
+    <div class="req-info-item">
+      <div class="req-info-label">처리일</div>
+      <div class="req-info-value" style="font-size:.8rem">
+        {{ req.updated_at|string|truncate(16,true,'') if req.status != 'pending' else '—' }}
+      </div>
+    </div>
+    <div class="req-info-item">
+      <div class="req-info-label">아이템 수</div>
+      <div class="req-info-value">{{ items|length }}종</div>
+    </div>
+  </div>
+  {% if req.notes %}
+  <div class="px-4 pb-3">
+    <div style="font-size:.78rem;color:#888;margin-bottom:3px">요청사항</div>
+    <div style="font-size:.85rem;background:#f5f5f5;border-radius:8px;padding:10px 14px">{{ req.notes }}</div>
+  </div>
+  {% endif %}
+  {% if req.status == 'rejected' and req.reject_reason %}
+  <div class="px-4 pb-3">
+    <div class="reject-box">
+      <div style="font-size:.78rem;color:#991b1b;font-weight:700;margin-bottom:4px">
+        <i class="fa-solid fa-xmark me-1"></i>반려 사유
+      </div>
+      <div style="font-size:.85rem">{{ req.reject_reason }}</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- 아이템 목록 -->
+<div class="req-detail-card">
+  <div class="req-detail-header"><i class="fa-solid fa-list me-2"></i>신청 아이템 목록</div>
+  <div class="table-responsive">
+    <table class="items-table">
+      <thead>
+        <tr><th>이미지</th><th>구분</th><th>아이템명</th><th>수량</th><th>커스텀 요청</th></tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td><img class="item-thumb" data-img="{{ it.img }}" src="" alt="{{ it.item_name }}"></td>
+          <td><span class="cat-badge-sm">{{ it.cat }}</span></td>
+          <td><strong>{{ it.item_name }}</strong></td>
+          <td><strong>{{ it.quantity }}</strong>개</td>
+          <td>
+            {% if it.custom_img_data %}
+            <img class="custom-img-preview" src="{{ it.custom_img_data }}" alt="커스텀 이미지"
+                 onclick="document.getElementById('fullImg').src=this.src; bootstrap.Modal.getOrCreateInstance(document.getElementById('imgModal')).show()">
+            {% endif %}
+            {% if it.custom_text %}
+            <div style="font-size:.78rem;color:#444;margin-top:4px;background:#f5f5f5;border-radius:6px;padding:6px 10px;max-width:300px">
+              {{ it.custom_text }}
+            </div>
+            {% endif %}
+            {% if not it.custom_img_data and not it.custom_text %}
+            <span style="color:#ccc;font-size:.8rem">기본 시안</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if session.role == 'admin' and req.status == 'pending' %}
+<!-- 관리자 액션 버튼 -->
+<div class="d-flex gap-2 justify-content-end mt-2">
+  <button class="btn btn-sm btn-outline-secondary" onclick="doAction('on_hold','')">
+    <i class="fa-solid fa-pause me-1"></i>보류
+  </button>
+  <button class="btn btn-sm btn-danger" onclick="openReject()">
+    <i class="fa-solid fa-xmark me-1"></i>반려
+  </button>
+  <button class="btn btn-sm btn-success px-4" onclick="doAction('approved','')">
+    <i class="fa-solid fa-check me-1"></i>승인
+  </button>
+</div>
+
+<!-- 반려 사유 모달 -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
+        <h6 class="modal-title" style="font-size:.9rem;font-weight:700"><i class="fa-solid fa-xmark me-2"></i>반려 사유 입력</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:4px">반려 사유 <span class="text-danger">*</span></label>
+        <textarea id="rejectReason" class="form-control form-control-sm" rows="3" placeholder="반려 사유를 입력해 주세요."></textarea>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="submitReject()">
+          <i class="fa-solid fa-xmark me-1"></i>반려 처리
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 커스텀 이미지 전체보기 모달 -->
+<div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title" style="font-size:.88rem">커스텀 이미지</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center p-2">
+        <img id="fullImg" src="" alt="" style="max-width:100%;max-height:80vh;object-fit:contain">
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const CACHE_KEY = 'catalog_imgs_v1';
+  function apply(data) {
+    document.querySelectorAll('img[data-img]').forEach(img => {
+      const s = data[img.dataset.img]; if (s) img.src = s;
+    });
+  }
+  try { const c = sessionStorage.getItem(CACHE_KEY); if (c) { apply(JSON.parse(c)); return; } } catch(e){}
+  fetch('{{ url_for("catalog_imgs") }}').then(r=>r.json()).then(d=>{
+    try{sessionStorage.setItem(CACHE_KEY,JSON.stringify(d));}catch(e){}
+    apply(d);
+  }).catch(()=>{
+    document.querySelectorAll('img[data-img]').forEach(img=>{ img.src='/ci/'+img.dataset.img+'.png'; });
+  });
+})();
+
+{% if session.role == 'admin' and req.status == 'pending' %}
+function openReject() {
+  document.getElementById('rejectReason').value = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).show();
+}
+async function submitReject() {
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { alert('반려 사유를 입력해 주세요.'); return; }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).hide();
+  await doAction('rejected', reason);
+}
+async function doAction(action, reason) {
+  const res = await fetch('/catalog/requests/{{ req.id }}/action', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action, reason})
+  });
+  const json = await res.json();
+  if (json.ok) location.reload();
+  else alert(json.msg || '오류');
+}
+{% endif %}
+</script>
+{% endblock %}

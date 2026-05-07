@@ -20,7 +20,6 @@
   "nav.brand_sub": "Eastar Jet Ground Services",
   "nav.role_admin": "Admin",
   "nav.open_menu": "Open Menu",
-
   "common.branch": "Branch",
   "common.branch_all": "All Branches",
   "common.select_branch": "-- Select Branch --",
@@ -59,7 +58,6 @@
   "common.qty_placeholder": "Enter quantity",
   "common.register": "Register",
   "common.col_type": "Type",
-
   "login.system_name": "Ground Services Inventory System",
   "login.username": "Username",
   "login.username_placeholder": "Enter username",
@@ -68,7 +66,6 @@
   "login.submit": "Sign In",
   "login.submitting": "Signing in...",
   "login.contact": "Contact: Ground Services IT",
-
   "dash.title": "Dashboard",
   "dash.operating_branches": "Active Branches",
   "dash.form_types": "Form Types",
@@ -90,7 +87,6 @@
   "dash.col_to": "To Branch",
   "dash.col_minimum": "Min",
   "dash.col_current": "Current",
-
   "inv.title": "Inventory",
   "inv.tab_detail": "By Branch",
   "inv.tab_summary": "By Form",
@@ -114,7 +110,6 @@
   "inv.legend_low": "Low (below minimum threshold)",
   "inv.legend_note": "Edit threshold cell, then",
   "inv.branch_detail": "branch(es)",
-
   "inb.title": "Inbound",
   "inb.bulk_upload": "Bulk Excel Upload",
   "inb.usage": "Instructions",
@@ -128,14 +123,12 @@
   "inb.inbound_date": "Inbound Date",
   "inb.date_helper": "Select the actual date the forms were received.",
   "inb.register": "Register Inbound",
-
   "out.title": "Outbound",
   "out.form_title": "Register Outbound",
   "out.subtitle": "Deducts from current stock.",
   "out.outbound_date": "Outbound Date",
   "out.date_helper": "Select the actual date the forms were used.",
   "out.register": "Register Outbound",
-
   "xfer.title": "Branch Transfer",
   "xfer.request_tab": "New Request",
   "xfer.inbox_tab": "Incoming",
@@ -169,7 +162,6 @@
   "xfer.col_sent_date": "Sent Date",
   "xfer.col_requester": "Requester",
   "xfer.col_action": "Action",
-
   "hist.title": "Transaction History",
   "hist.type_all": "All",
   "hist.month": "Month",
@@ -180,7 +172,6 @@
   "hist.col_to": "To Branch",
   "hist.max_rows": "records (max 300)",
   "hist.no_data": "No matching records found.",
-
   "rep.title": "Reports",
   "rep.normal_items": "Normal Items",
   "rep.low_items": "Low Items",
@@ -210,7 +201,6 @@
   "rep.no_form": "No form stock data",
   "rep.chart_flight": "Monthly Flight Count (Last 6 Months)",
   "rep.no_flight": "No flight schedule data available.",
-
   "usr.title": "User Management",
   "usr.account_list": "All Accounts",
   "usr.col_username": "Username",
@@ -241,7 +231,6 @@
   "usr.pw_mismatch": "Passwords do not match.",
   "usr.confirm_delete": "Delete this account?",
   "usr.pw_reset_btn": "Reset",
-
   "chpw.title": "Change Password",
   "chpw.form_title": "Change My Password",
   "chpw.current_pw": "Current Password",
@@ -257,7 +246,6 @@
   "chpw.match_error": "Passwords do not match.",
   "chpw.submit": "Change",
   "chpw.toggle_show": "Show",
-
   "upl.title": "Excel Upload Result",
   "upl.success": "Success",
   "upl.error": "Error",
@@ -277,7 +265,6 @@
   "upl.no_data": "No data to process.",
   "upl.error_hint": "How to fix errors:",
   "upl.form_name_match": "must exactly match the Reference sheet list",
-
   "fcast.title": "Quarterly Forecast",
   "fcast.cur_quarter": "Current Quarter",
   "fcast.next_quarter": "Next Quarter",
@@ -307,7 +294,6 @@
   "fcast.recommend": "Recommended",
   "fcast.sufficient_badge": "Sufficient",
   "fcast.trend_legend": "Trend — ↑ Up / → Stable / ↓ Down",
-
   "flt.title": "Flight Schedule",
   "flt.info": "Monthly flight counts are automatically applied to the Quarterly Forecast.",
   "flt.info2": "Adjusts based on ratio of next quarter avg flights vs. past 6-month avg.",
@@ -318,7 +304,6 @@
   "flt.flights": "Flights",
   "flt.save": "Save",
   "flt.view_forecast": "View Quarterly Forecast",
-
   "cat.prev": "Prev",
   "cat.next": "Next",
   "cat.edit_mode": "Edit Holdings",
@@ -327,7 +312,16 @@
   "cat.owned_count": "Owned Items",
   "cat.view_inventory": "Branch Inventory",
   "cat.inv_back": "Catalog",
-
   "err.403_msg": "Access denied: your IP address is not allowed.",
-  "err.403_helper": "Please connect from an authorized network."
+  "err.403_helper": "Please connect from an authorized network.",
+  "cat.req_mode": "Request Mode",
+  "cat.req_cancel": "Cancel Request",
+  "cat.cart": "Cart",
+  "cat.add_to_cart": "Add",
+  "cat.request_list": "Request History",
+  "cat.submit_request": "Submit Request",
+  "cat.req_status.pending": "Pending",
+  "cat.req_status.approved": "Approved",
+  "cat.req_status.rejected": "Rejected",
+  "cat.req_status.on_hold": "On Hold"
 }

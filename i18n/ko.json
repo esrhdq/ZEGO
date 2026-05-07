@@ -327,6 +327,16 @@
   "cat.owned_count": "보유 아이템",
   "cat.view_inventory": "지점별 현황",
   "cat.inv_back": "카탈로그로",
+  "cat.req_mode": "신청 모드",
+  "cat.req_cancel": "신청 취소",
+  "cat.cart": "장바구니",
+  "cat.add_to_cart": "담기",
+  "cat.request_list": "신청 내역",
+  "cat.submit_request": "신청하기",
+  "cat.req_status.pending": "대기중",
+  "cat.req_status.approved": "승인",
+  "cat.req_status.rejected": "반려",
+  "cat.req_status.on_hold": "보류",
 
   "err.403_msg": "접근이 허용되지 않은 IP입니다.",
   "err.403_helper": "허가된 네트워크에서 접속하세요."

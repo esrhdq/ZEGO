@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}카탈로그 신청 내역{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-clock-rotate-left"></i>{% endblock %}
+{% block page_title %}카탈로그 신청 내역{% endblock %}
+
+{% block content %}
+<style>
+  .req-list-wrap { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .req-list-header {
+    background:var(--red); color:#fff; padding:11px 16px;
+    font-size:.92rem; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .req-list-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .req-list-table thead tr { background:#f7f7f7; }
+  .req-list-table thead th { padding:9px 12px; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; white-space:nowrap; }
+  .req-list-table tbody tr { border-bottom:1px solid #eee; cursor:pointer; }
+  .req-list-table tbody tr:hover { background:#fef9f9; }
+  .req-list-table tbody td { padding:9px 12px; vertical-align:middle; }
+
+  .status-badge { font-size:.72rem; padding:3px 10px; border-radius:20px; font-weight:700; white-space:nowrap; }
+  .status-pending   { background:#fff3cd; color:#856404; }
+  .status-approved  { background:#d1fae5; color:#065f46; }
+  .status-rejected  { background:#fee2e2; color:#991b1b; }
+  .status-on_hold   { background:#e0e7ff; color:#3730a3; }
+
+  .filter-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .filter-btn { font-size:.72rem; padding:3px 12px; border-radius:20px; border:1.5px solid #dee2e6;
+                background:#fff; color:#555; cursor:pointer; transition:all .15s; }
+  .filter-btn.active { background:var(--red); color:#fff; border-color:var(--red); }
+</style>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>카탈로그로
+  </a>
+  <a href="{{ url_for('catalog_cart') }}" class="btn btn-sm btn-outline-danger ms-auto">
+    <i class="fa-solid fa-cart-shopping me-1"></i>장바구니
+  </a>
+</div>
+
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filterReqs('all',this)">전체</button>
+  <button class="filter-btn" onclick="filterReqs('pending',this)">대기중</button>
+  <button class="filter-btn" onclick="filterReqs('approved',this)">승인</button>
+  <button class="filter-btn" onclick="filterReqs('rejected',this)">반려</button>
+  <button class="filter-btn" onclick="filterReqs('on_hold',this)">보류</button>
+</div>
+
+<div class="req-list-wrap">
+  <div class="req-list-header">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+    신청 내역
+    <span class="ms-auto badge bg-light text-danger">{{ requests|length }}건</span>
+  </div>
+  {% if requests %}
+  <div class="table-responsive">
+    <table class="req-list-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          {% if session.role == 'admin' %}<th>지점</th>{% endif %}
+          <th>상태</th>
+          <th>신청일</th>
+          <th>처리일</th>
+          <th>요청사항</th>
+          {% if session.role == 'admin' %}<th style="width:80px;text-align:center">액션</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr data-status="{{ r.status }}" onclick="location.href='{{ url_for('catalog_request_detail', req_id=r.id) }}'">
+          <td style="color:#aaa;font-size:.75rem">{{ r.id }}</td>
+          {% if session.role == 'admin' %}
+          <td><strong>{{ r.branch_code }}</strong> <span style="color:#888;font-size:.75rem">{{ r.branch_name }}</span></td>
+          {% endif %}
+          <td>
+            {% if r.status == 'pending' %}
+            <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i>대기중</span>
+            {% elif r.status == 'approved' %}
+            <span class="status-badge status-approved"><i class="fa-solid fa-check me-1"></i>승인</span>
+            {% elif r.status == 'rejected' %}
+            <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>반려</span>
+            {% elif r.status == 'on_hold' %}
+            <span class="status-badge status-on_hold"><i class="fa-solid fa-pause me-1"></i>보류</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.78rem;color:#666">{{ r.created_at|string|truncate(16,true,'') }}</td>
+          <td style="font-size:.78rem;color:#666">{{ r.updated_at|string|truncate(16,true,'') if r.status != 'pending' else '—' }}</td>
+          <td style="font-size:.78rem;color:#555;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            {{ r.notes or '—' }}
+          </td>
+          {% if session.role == 'admin' %}
+          <td style="text-align:center" onclick="event.stopPropagation()">
+            {% if r.status == 'pending' %}
+            <button class="btn btn-xs btn-success me-1" style="font-size:.68rem;padding:2px 7px"
+                    onclick="adminAction({{ r.id }},'approved','')">승인</button>
+            <button class="btn btn-xs btn-danger" style="font-size:.68rem;padding:2px 7px"
+                    onclick="openReject({{ r.id }})">반려</button>
+            {% else %}—{% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center text-muted py-5">
+    <i class="fa-solid fa-inbox fa-2x mb-3" style="opacity:.3"></i><br>
+    신청 내역이 없습니다.
+  </div>
+  {% endif %}
+</div>
+
+<!-- 반려 사유 모달 -->
+{% if session.role == 'admin' %}
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
+        <h6 class="modal-title" style="font-size:.9rem;font-weight:700"><i class="fa-solid fa-xmark me-2"></i>반려 사유 입력</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rejectReqId">
+        <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:4px">
+          반려 사유 <span class="text-danger">*</span>
+        </label>
+        <textarea id="rejectReason" class="form-control form-control-sm" rows="3"
+                  placeholder="반려 사유를 입력해 주세요."></textarea>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="submitReject()">
+          <i class="fa-solid fa-xmark me-1"></i>반려 처리
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterReqs(status, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('tbody tr[data-status]').forEach(tr => {
+    tr.style.display = (status === 'all' || tr.dataset.status === status) ? '' : 'none';
+  });
+}
+
+{% if session.role == 'admin' %}
+function openReject(id) {
+  document.getElementById('rejectReqId').value = id;
+  document.getElementById('rejectReason').value = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).show();
+}
+
+async function submitReject() {
+  const id     = document.getElementById('rejectReqId').value;
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { alert('반려 사유를 입력해 주세요.'); return; }
+  await adminAction(id, 'rejected', reason);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).hide();
+}
+
+async function adminAction(id, action, reason) {
+  const res = await fetch(`/catalog/requests/${id}/action`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action, reason})
+  });
+  const json = await res.json();
+  if (json.ok) { location.reload(); }
+  else { alert(json.msg || '오류'); }
+}
+{% endif %}
+</script>
+{% endblock %}

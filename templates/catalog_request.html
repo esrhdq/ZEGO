@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}카탈로그 신청 장바구니{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-cart-shopping"></i>{% endblock %}
+{% block page_title %}카탈로그 신청 장바구니{% endblock %}
+
+{% block content %}
+<style>
+  .req-section { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+  .req-section-header {
+    background:var(--red); color:#fff; padding:11px 16px;
+    font-size:.92rem; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .req-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .req-table thead tr { background:#f7f7f7; }
+  .req-table thead th { padding:8px 12px; text-align:left; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; }
+  .req-table tbody tr { border-bottom:1px solid #eee; }
+  .req-table tbody tr:hover { background:#fef9f9; }
+  .req-table tbody td { padding:8px 12px; vertical-align:middle; }
+  .req-thumb { width:48px; height:38px; object-fit:contain; border:1px solid #e0e0e0; border-radius:4px; background:#f5f5f5; }
+  .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:#fff3e0; color:#e65100; }
+  .custom-flag { font-size:.68rem; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:8px; font-weight:600; }
+  .qty-input { width:64px; border:1px solid #ddd; border-radius:6px; padding:3px 6px; font-size:.82rem; text-align:center; }
+  .empty-cart { text-align:center; padding:60px 20px; color:#aaa; }
+  .empty-cart i { font-size:2.5rem; opacity:.3; display:block; margin-bottom:12px; }
+</style>
+
+<!-- 상단 버튼 -->
+<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+  <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>카탈로그로 돌아가기
+  </a>
+  <a href="{{ url_for('catalog_requests_branch') }}" class="btn btn-sm btn-outline-primary ms-auto">
+    <i class="fa-solid fa-clock-rotate-left me-1"></i>신청 내역 보기
+  </a>
+</div>
+
+{% if session.role == 'admin' %}
+<div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.83rem">
+  <i class="fa-solid fa-user-tie me-1"></i>관리자 모드 — 지점 선택 후 장바구니를 확인합니다.
+  <select id="branchSel" class="form-select form-select-sm d-inline-block ms-2" style="width:auto"
+          onchange="location.href='?branch_id='+this.value">
+    {% for b in branches %}
+    <option value="{{ b.id }}" {% if b.id == target_bid %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endif %}
+
+{% if cart_items %}
+<div class="req-section">
+  <div class="req-section-header">
+    <i class="fa-solid fa-cart-shopping"></i>
+    담긴 아이템 <span class="ms-1 badge bg-light text-danger">{{ cart_items|length }}종</span>
+  </div>
+  <div class="table-responsive">
+    <table class="req-table">
+      <thead>
+        <tr>
+          <th>이미지</th><th>구분</th><th>아이템명</th><th>수량</th><th>커스텀</th><th style="width:60px;text-align:center">삭제</th>
+        </tr>
+      </thead>
+      <tbody id="cartBody">
+        {% for it in cart_items %}
+        <tr id="crow-{{ it.item_code }}">
+          <td>
+            <img class="req-thumb" data-img="{{ it.img }}" src="" alt="{{ it.item_name }}">
+          </td>
+          <td><span class="cat-badge-sm">{{ it.cat }}</span></td>
+          <td>
+            <strong>{{ it.item_name }}</strong>
+            {% if it.custom_text %}
+            <div style="font-size:.72rem;color:#555;margin-top:2px">
+              <i class="fa-solid fa-quote-left me-1" style="opacity:.4"></i>{{ it.custom_text[:60] }}{% if it.custom_text|length > 60 %}…{% endif %}
+            </div>
+            {% endif %}
+            {% if it.custom_img_data %}
+            <span class="custom-flag ms-1"><i class="fa-solid fa-image me-1"></i>커스텀 이미지</span>
+            {% endif %}
+          </td>
+          <td>
+            <input type="number" class="qty-input" value="{{ it.quantity }}" min="1" max="99"
+                   onchange="updateQty('{{ it.item_code }}', this.value)">
+          </td>
+          <td>
+            {% if it.custom_img_data or it.custom_text %}
+            <span class="badge bg-success" style="font-size:.65rem">커스텀</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="text-align:center">
+            <button class="btn btn-sm btn-outline-danger" style="font-size:.72rem;padding:3px 8px"
+                    onclick="removeItem('{{ it.item_code }}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 요청사항 입력 -->
+<div class="req-section">
+  <div class="req-section-header"><i class="fa-solid fa-pen-to-square"></i> 전체 요청사항 (선택)</div>
+  <div class="p-3">
+    <textarea id="reqNotes" class="form-control form-control-sm" rows="3"
+              placeholder="전체적인 요청사항이나 납기 희망일 등을 입력하세요."></textarea>
+  </div>
+</div>
+
+<div class="d-flex gap-2 justify-content-end">
+  <button class="btn btn-outline-danger btn-sm" onclick="clearCart()">
+    <i class="fa-solid fa-trash me-1"></i>장바구니 비우기
+  </button>
+  <button class="btn btn-danger btn-sm px-4" onclick="submitRequest()">
+    <i class="fa-solid fa-paper-plane me-1"></i>신청하기
+  </button>
+</div>
+
+{% else %}
+<div class="req-section">
+  <div class="empty-cart">
+    <i class="fa-solid fa-cart-shopping"></i>
+    장바구니가 비어있습니다.<br>
+    <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-danger mt-3">
+      <i class="fa-solid fa-clipboard-list me-1"></i>카탈로그에서 신청 모드로 담기
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 배치 이미지 로드
+(function() {
+  const CACHE_KEY = 'catalog_imgs_v1';
+  function apply(data) {
+    document.querySelectorAll('img[data-img]').forEach(img => {
+      const s = data[img.dataset.img]; if (s) img.src = s;
+    });
+  }
+  try { const c = sessionStorage.getItem(CACHE_KEY); if (c) { apply(JSON.parse(c)); return; } } catch(e){}
+  fetch('{{ url_for("catalog_imgs") }}').then(r=>r.json()).then(d=>{
+    try{sessionStorage.setItem(CACHE_KEY,JSON.stringify(d));}catch(e){}
+    apply(d);
+  }).catch(()=>{
+    document.querySelectorAll('img[data-img]').forEach(img=>{ img.src='/ci/'+img.dataset.img+'.png'; });
+  });
+})();
+
+const TARGET_BID = {{ target_bid or 'null' }};
+
+async function cartApi(payload) {
+  if (TARGET_BID) payload.branch_id = TARGET_BID;
+  const res = await fetch('{{ url_for("catalog_cart_update") }}', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+async function updateQty(code, val) {
+  const qty = parseInt(val) || 1;
+  await cartApi({item_code: code, quantity: qty});
+}
+
+async function removeItem(code) {
+  const row = document.getElementById('crow-' + code);
+  if (row) row.style.opacity = '.4';
+  const json = await cartApi({item_code: code, action: 'remove'});
+  if (json.ok) {
+    if (row) row.remove();
+    if (!document.querySelector('#cartBody tr')) location.reload();
+  } else {
+    if (row) row.style.opacity = '';
+    alert(json.msg || '오류');
+  }
+}
+
+async function clearCart() {
+  if (!confirm('장바구니를 비우시겠습니까?')) return;
+  const json = await cartApi({action: 'clear'});
+  if (json.ok) location.reload();
+}
+
+async function submitRequest() {
+  const notes = document.getElementById('reqNotes')?.value.trim() || '';
+  const payload = {notes};
+  if (TARGET_BID) payload.branch_id = TARGET_BID;
+  const res = await fetch('{{ url_for("catalog_request_submit") }}', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+  });
+  const json = await res.json();
+  if (json.ok) {
+    alert('신청이 접수되었습니다!');
+    location.href = '{{ url_for("catalog_requests_branch") }}';
+  } else {
+    alert(json.msg || '오류가 발생했습니다.');
+  }
+}
+</script>
+{% endblock %}

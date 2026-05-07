@@ -43,6 +43,24 @@
     margin-left:auto; background:#f5f5f5; border:1px solid #e0e0e0;
     border-radius:12px; padding:2px 10px; font-size:.72rem; color:#666;
   }
+  /* 신청 모드 담기 버튼 */
+  .cat-req-btn {
+    display:none; width:100%; padding:5px 0; font-size:.72rem; font-weight:700;
+    background:#fff; border:1.5px solid var(--red); color:var(--red);
+    border-radius:0 0 9px 9px; cursor:pointer; transition:background .15s,color .15s;
+    align-items:center; justify-content:center; gap:4px;
+  }
+  body.req-mode .cat-req-btn { display:flex; }
+  .cat-req-btn:hover { background:var(--red); color:#fff; }
+  .cat-req-btn.in-cart { background:var(--red); color:#fff; }
+  .cat-req-btn.in-cart:hover { background:#a00; }
+  /* 장바구니 카운트 배지 */
+  .cart-badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--red); color:#fff; border-radius:50%;
+    width:18px; height:18px; font-size:.65rem; font-weight:800;
+    position:absolute; top:-6px; right:-6px;
+  }
   /* 관리자 카테고리 '+' 추가 버튼 */
   .cat-add-btn {
     width:26px; height:26px; border-radius:50%; border:none;
@@ -316,6 +334,53 @@
 </div>
 {% endif %}
 
+<!-- 신청 커스텀 모달 (X-Banner / 스탠션) -->
+<div class="modal fade" id="reqCustomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
+        <h6 class="modal-title" style="font-size:.92rem;font-weight:700">
+          <i class="fa-solid fa-cart-plus me-2"></i><span id="rcm-title">아이템 담기</span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-2">
+        <input type="hidden" id="rcm-code">
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">수량</label>
+          <input type="number" id="rcm-qty" class="form-control form-control-sm"
+                 min="1" max="99" value="1" style="width:100px">
+        </div>
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            커스텀 이미지 <span style="font-size:.75rem;font-weight:400;color:#888">(선택 — 원하는 디자인 파일 첨부)</span>
+          </label>
+          <label style="display:inline-block;padding:5px 12px;background:#f5f5f5;border:1.5px dashed #ccc;
+                        border-radius:6px;cursor:pointer;font-size:.78rem;color:#555" id="rcm-img-label" for="rcm-image">
+            <i class="fa-solid fa-image me-1"></i>파일 선택
+          </label>
+          <input type="file" id="rcm-image" class="d-none" accept=".png,.jpg,.jpeg,.webp,.pdf"
+                 onchange="rcmImgChange(this)">
+          <span id="rcm-img-name" class="ms-2 text-muted" style="font-size:.75rem"></span>
+        </div>
+        <div class="mb-1">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            요청사항 / 텍스트 <span style="font-size:.75rem;font-weight:400;color:#888">(선택 — 넣고 싶은 내용, 노선 등)</span>
+          </label>
+          <textarea id="rcm-text" class="form-control form-control-sm" rows="3"
+                    placeholder="예) 인천 ↕ 방콕 노선, 운영시간: 09:00~18:00, 로고 교체 필요"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="rcmSubmit()">
+          <i class="fa-solid fa-cart-plus me-1"></i>장바구니에 담기
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 플로팅 저장 바 -->
 <div id="catSaveBar">
   <div>
@@ -351,6 +416,13 @@
     <button id="catEditBtn" class="btn btn-sm btn-outline-success" onclick="catToggleEdit()">
       <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.edit_mode') }}
     </button>
+    <button id="catReqBtn" class="btn btn-sm btn-outline-warning" onclick="catToggleReq()">
+      <i class="fa-solid fa-clipboard-list me-1"></i>신청 모드
+    </button>
+    <a href="{{ url_for('catalog_cart') }}" class="btn btn-sm btn-outline-danger position-relative" id="cartLink">
+      <i class="fa-solid fa-cart-shopping me-1"></i>장바구니
+      {% if cart_cnt > 0 %}<span class="cart-badge">{{ cart_cnt }}</span>{% endif %}
+    </a>
     <a href="{{ url_for('catalog_inventory') }}" class="btn btn-sm btn-outline-primary">
       <i class="fa-solid fa-table-cells me-1"></i>{{ T('cat.view_inventory') }}
     </a>
@@ -410,6 +482,12 @@
            {% if not owned %}disabled{% endif %}
            oninput="catMarkDirty()">
   </div>
+  <button class="cat-req-btn" id="reqbtn-{{ item.code }}"
+          data-code="{{ item.code }}" data-name="{{ item.name|e }}"
+          data-cat="{{ item.cat|e }}"
+          onclick="reqAddItem('{{ item.code }}','{{ item.name|e }}','{{ item.cat|e }}')">
+    <i class="fa-solid fa-cart-plus"></i> 담기
+  </button>
 </div>
 {% endmacro %}
 
@@ -630,6 +708,96 @@ async function catSave() {
 }
 
 updateSaveCount();
+
+/* ── 신청 모드 ── */
+const CUSTOM_CATS = {{ custom_cats | tojson }};
+let reqMode = false;
+let cartCount = {{ cart_cnt }};
+
+function catToggleReq() {
+  reqMode = !reqMode;
+  document.body.classList.toggle('req-mode', reqMode);
+  const btn = document.getElementById('catReqBtn');
+  btn.innerHTML = reqMode
+    ? '<i class="fa-solid fa-xmark me-1"></i>신청 취소'
+    : '<i class="fa-solid fa-clipboard-list me-1"></i>신청 모드';
+  btn.className = reqMode ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-warning';
+  if (reqMode && editMode) catToggleEdit();
+}
+
+function reqAddItem(code, name, cat) {
+  if (CUSTOM_CATS.includes(cat)) {
+    document.getElementById('rcm-code').value = code;
+    document.getElementById('rcm-title').textContent = name;
+    document.getElementById('rcm-qty').value = 1;
+    document.getElementById('rcm-text').value = '';
+    document.getElementById('rcm-image').value = '';
+    document.getElementById('rcm-img-name').textContent = '';
+    document.getElementById('rcm-img-label').innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    document.getElementById('rcm-img-label').style.cssText = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).show();
+  } else {
+    reqCartUpdate(code, 1, '', '');
+  }
+}
+
+function rcmImgChange(input) {
+  const lbl = document.getElementById('rcm-img-label');
+  if (input.files && input.files[0]) {
+    document.getElementById('rcm-img-name').textContent = input.files[0].name;
+    lbl.innerHTML = '<i class="fa-solid fa-check me-1"></i>선택됨';
+    lbl.style.borderColor = 'var(--red)'; lbl.style.color = 'var(--red)';
+  } else {
+    document.getElementById('rcm-img-name').textContent = '';
+    lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    lbl.style.cssText = '';
+  }
+}
+
+async function rcmSubmit() {
+  const code = document.getElementById('rcm-code').value;
+  const qty  = parseInt(document.getElementById('rcm-qty').value) || 1;
+  const text = document.getElementById('rcm-text').value.trim();
+  const file = document.getElementById('rcm-image').files[0];
+  let imgData = '';
+  if (file) {
+    imgData = await new Promise(res => {
+      const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file);
+    });
+  }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).hide();
+  reqCartUpdate(code, qty, imgData, text);
+}
+
+async function reqCartUpdate(code, qty, customImg, customText) {
+  try {
+    const res = await fetch('{{ url_for("catalog_cart_update") }}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({item_code:code, quantity:qty, custom_img_data:customImg, custom_text:customText})
+    });
+    const json = await res.json();
+    if (json.ok) {
+      cartCount = json.cart_count;
+      updateCartBadge();
+      const btn = document.getElementById('reqbtn-' + code);
+      if (btn) btn.classList.add('in-cart');
+      catToast('장바구니에 담았습니다.', 'success');
+    } else {
+      catToast(json.msg || '오류', 'danger');
+    }
+  } catch(e) { catToast('오류: ' + e.message, 'danger'); }
+}
+
+function updateCartBadge() {
+  const link = document.getElementById('cartLink');
+  if (!link) return;
+  let badge = link.querySelector('.cart-badge');
+  if (cartCount > 0) {
+    if (!badge) { badge = document.createElement('span'); badge.className = 'cart-badge'; link.appendChild(badge); }
+    badge.textContent = cartCount;
+  } else if (badge) { badge.remove(); }
+}
 
 /* ── 관리자: 아이템 수정 ── */
 {% if session.role == 'admin' %}
