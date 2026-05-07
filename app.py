@@ -2357,6 +2357,17 @@ def catalog_imgs():
     return resp
 
 
+@app.route('/catalog/banner-editor')
+@login_required
+def catalog_banner_editor():
+    """배너/스탠션 디자인 편집기 — 새 탭에서 열리고 결과를 localStorage로 전달."""
+    item_code = request.args.get('item_code', '')
+    item_name = request.args.get('item_name', '')
+    item_cat  = request.args.get('item_cat', '')
+    return render_template('catalog_banner_editor.html',
+        item_code=item_code, item_name=item_name, item_cat=item_cat)
+
+
 # ── 카탈로그 신청 헬퍼 ────────────────────────────────────────────────────────
 
 def _get_or_create_draft(conn, branch_id):

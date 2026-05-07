@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배너 편집기 — {{ item_name or '디자인 편집' }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --red:#E31837; --navy:#0D1B3E;
+    --bg:#f0f2f5; --panel:#fff; --border:#dee2e6;
+    --toolbar-h:52px; --props-h:64px;
+  }
+  body { background:var(--bg); font-family:'Segoe UI',sans-serif; font-size:13px;
+         display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+  /* ── Top toolbar ── */
+  #topbar {
+    height:var(--toolbar-h); background:var(--navy); color:#fff;
+    display:flex; align-items:center; gap:6px; padding:0 12px;
+    flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,.3);
+  }
+  #topbar .brand { font-weight:800; font-size:.92rem; color:#fff;
+                   display:flex; align-items:center; gap:6px; margin-right:8px; }
+  #topbar .brand i { color:var(--red); }
+  .tb-sep { width:1px; height:28px; background:rgba(255,255,255,.15); margin:0 4px; }
+
+  .tb-btn {
+    height:32px; padding:0 10px; border:none; border-radius:6px; cursor:pointer;
+    background:rgba(255,255,255,.1); color:#fff; font-size:.78rem;
+    display:flex; align-items:center; gap:5px; transition:background .15s; white-space:nowrap;
+  }
+  .tb-btn:hover { background:rgba(255,255,255,.22); }
+  .tb-btn.active { background:var(--red); }
+  .tb-btn.green { background:#16a34a; }
+  .tb-btn.green:hover { background:#15803d; }
+  .tb-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+  select.tb-sel {
+    height:32px; padding:0 8px; border:none; border-radius:6px;
+    background:rgba(255,255,255,.12); color:#fff; font-size:.78rem; cursor:pointer;
+    outline:none;
+  }
+  select.tb-sel option { background:var(--navy); color:#fff; }
+
+  #zoomLabel { font-size:.75rem; color:rgba(255,255,255,.7); min-width:38px; text-align:center; }
+
+  /* ── Main area ── */
+  #main { flex:1; display:flex; overflow:hidden; }
+
+  /* ── Left toolbox ── */
+  #toolbox {
+    width:52px; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 0;
+    flex-shrink:0;
+  }
+  .tool-btn {
+    width:38px; height:38px; border-radius:8px; border:none; cursor:pointer;
+    background:transparent; color:#555; font-size:.88rem;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1px; transition:background .15s, color .15s;
+  }
+  .tool-btn span { font-size:.52rem; font-weight:600; }
+  .tool-btn:hover { background:#f5f5f5; color:var(--red); }
+  .tool-btn.active { background:var(--red); color:#fff; }
+  .tool-sep { width:30px; height:1px; background:var(--border); margin:2px 0; }
+
+  /* ── Canvas wrap ── */
+  #canvasArea {
+    flex:1; overflow:auto; display:flex; align-items:flex-start; justify-content:center;
+    padding:20px; background:var(--bg);
+  }
+  #canvasWrap {
+    position:relative; box-shadow:0 4px 24px rgba(0,0,0,.18);
+    transform-origin:top center;
+  }
+  #canvasWrap canvas { display:block; }
+
+  /* ── Right properties panel ── */
+  #propPanel {
+    width:220px; background:var(--panel); border-left:1px solid var(--border);
+    overflow-y:auto; flex-shrink:0; padding:10px;
+  }
+  #propPanel.hidden { display:none; }
+  .prop-section { margin-bottom:12px; }
+  .prop-title {
+    font-size:.68rem; font-weight:700; color:#888; text-transform:uppercase;
+    letter-spacing:.05em; margin-bottom:6px; padding-bottom:4px;
+    border-bottom:1px solid var(--border);
+  }
+  .prop-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+  .prop-label { font-size:.72rem; color:#666; min-width:44px; }
+  .prop-input {
+    flex:1; height:28px; border:1px solid var(--border); border-radius:5px;
+    padding:0 6px; font-size:.78rem; outline:none;
+  }
+  .prop-input:focus { border-color:var(--red); }
+  .prop-color { width:36px; height:28px; padding:2px; border-radius:5px; cursor:pointer; flex-shrink:0; }
+  .prop-btn-row { display:flex; gap:4px; flex-wrap:wrap; }
+  .prop-btn {
+    flex:1; min-width:0; height:28px; border:1px solid var(--border); border-radius:5px;
+    background:#fff; cursor:pointer; font-size:.75rem; color:#444;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .12s;
+  }
+  .prop-btn:hover { background:#f5f5f5; }
+  .prop-btn.on { background:var(--red); color:#fff; border-color:var(--red); }
+  select.prop-sel {
+    flex:1; height:28px; border:1px solid var(--border); border-radius:5px;
+    padding:0 4px; font-size:.75rem; outline:none;
+  }
+
+  .no-sel {
+    text-align:center; color:#bbb; padding:30px 10px; font-size:.8rem; line-height:1.8;
+  }
+
+  /* ── Bottom status ── */
+  #statusbar {
+    height:26px; background:var(--navy); color:rgba(255,255,255,.5);
+    font-size:.68rem; display:flex; align-items:center; gap:16px; padding:0 12px;
+    flex-shrink:0;
+  }
+
+  /* ── Scrollbar styling ── */
+  #canvasArea::-webkit-scrollbar { width:8px; height:8px; }
+  #canvasArea::-webkit-scrollbar-track { background:#e8eaf0; }
+  #canvasArea::-webkit-scrollbar-thumb { background:#bbb; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<!-- TOP TOOLBAR -->
+<div id="topbar">
+  <div class="brand"><i class="fa-solid fa-pen-ruler"></i>배너 편집기</div>
+  {% if item_name %}
+  <span style="font-size:.75rem;color:rgba(255,255,255,.6);margin-right:4px">{{ item_name }}</span>
+  {% endif %}
+  <div class="tb-sep"></div>
+
+  <!-- 템플릿 선택 -->
+  <select class="tb-sel" id="tmplSel" onchange="changeTemplate(this.value)" title="캔버스 크기">
+    <option value="xbanner">X-Banner (600×1600)</option>
+    <option value="xbanner_h">X-Banner 가로 (1600×600)</option>
+    <option value="st_a4_v">스탠션 A4 세로 (210×297)</option>
+    <option value="st_a4_h">스탠션 A4 가로 (297×210)</option>
+    <option value="st_half">스탠션 하프 (148×210)</option>
+    <option value="custom">직접 입력...</option>
+  </select>
+
+  <div class="tb-sep"></div>
+
+  <!-- Undo / Redo -->
+  <button class="tb-btn" id="undoBtn" onclick="doUndo()" title="실행 취소 (Ctrl+Z)" disabled>
+    <i class="fa-solid fa-rotate-left"></i>
+  </button>
+  <button class="tb-btn" id="redoBtn" onclick="doRedo()" title="다시 실행 (Ctrl+Y)" disabled>
+    <i class="fa-solid fa-rotate-right"></i>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Zoom -->
+  <button class="tb-btn" onclick="zoom(-0.1)" title="축소"><i class="fa-solid fa-minus"></i></button>
+  <span id="zoomLabel">100%</span>
+  <button class="tb-btn" onclick="zoom(+0.1)" title="확대"><i class="fa-solid fa-plus"></i></button>
+  <button class="tb-btn" onclick="zoomFit()" title="화면에 맞춤" style="font-size:.7rem">맞춤</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Background color -->
+  <label class="tb-btn" title="배경색" style="cursor:pointer">
+    <i class="fa-solid fa-fill-drip"></i>
+    <input type="color" id="bgColor" value="#ffffff" oninput="setBg(this.value)"
+           style="width:0;height:0;opacity:0;position:absolute">
+  </label>
+
+  <div style="flex:1"></div>
+
+  <!-- Export -->
+  <button class="tb-btn green" onclick="exportDesign()" title="디자인 완료 후 장바구니에 적용">
+    <i class="fa-solid fa-check me-1"></i>디자인 완료
+  </button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- LEFT TOOLBOX -->
+  <div id="toolbox">
+    <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="선택">
+      <i class="fa-solid fa-arrow-pointer"></i><span>선택</span>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" onclick="addText()" title="텍스트 추가">
+      <i class="fa-solid fa-t"></i><span>텍스트</span>
+    </button>
+    <button class="tool-btn" onclick="triggerImgUpload()" title="이미지 추가">
+      <i class="fa-solid fa-image"></i><span>이미지</span>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" onclick="addRect()" title="사각형">
+      <i class="fa-regular fa-square"></i><span>박스</span>
+    </button>
+    <button class="tool-btn" onclick="addLine()" title="선">
+      <i class="fa-solid fa-minus"></i><span>선</span>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" onclick="deleteSelected()" title="삭제 (Del)" style="color:#e53e3e">
+      <i class="fa-solid fa-trash"></i><span>삭제</span>
+    </button>
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div id="canvasArea">
+    <div id="canvasWrap">
+      <canvas id="designCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT PROPERTIES PANEL -->
+  <div id="propPanel">
+    <div class="no-sel" id="noSelMsg">
+      <i class="fa-solid fa-arrow-pointer fa-lg" style="display:block;margin-bottom:8px;opacity:.3"></i>
+      객체를 선택하면<br>속성이 표시됩니다
+    </div>
+
+    <!-- Text properties -->
+    <div id="textProps" style="display:none">
+      <div class="prop-section">
+        <div class="prop-title">텍스트</div>
+        <div class="prop-row">
+          <span class="prop-label">폰트</span>
+          <select class="prop-sel" id="pp-font" onchange="applyProp('fontFamily',this.value)">
+            <option value="Arial">Arial</option>
+            <option value="'Noto Sans KR'">Noto Sans KR</option>
+            <option value="'Malgun Gothic'">맑은 고딕</option>
+            <option value="'Nanum Gothic'">나눔고딕</option>
+            <option value="Georgia">Georgia</option>
+            <option value="'Times New Roman'">Times New Roman</option>
+            <option value="'Courier New'">Courier New</option>
+          </select>
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">크기</span>
+          <input type="number" class="prop-input" id="pp-size" min="6" max="300" value="40"
+                 onchange="applyProp('fontSize',+this.value)">
+          <input type="color" class="prop-color" id="pp-color" value="#000000"
+                 oninput="applyProp('fill',this.value)">
+        </div>
+        <div class="prop-row prop-btn-row">
+          <button class="prop-btn" id="pp-bold" onclick="toggleStyle('bold')" title="굵게">
+            <i class="fa-solid fa-bold"></i>
+          </button>
+          <button class="prop-btn" id="pp-italic" onclick="toggleStyle('italic')" title="기울임">
+            <i class="fa-solid fa-italic"></i>
+          </button>
+          <button class="prop-btn" id="pp-under" onclick="toggleStyle('underline')" title="밑줄">
+            <i class="fa-solid fa-underline"></i>
+          </button>
+        </div>
+        <div class="prop-row prop-btn-row">
+          <button class="prop-btn" id="pp-al-l" onclick="applyProp('textAlign','left')" title="왼쪽">
+            <i class="fa-solid fa-align-left"></i>
+          </button>
+          <button class="prop-btn" id="pp-al-c" onclick="applyProp('textAlign','center')" title="가운데">
+            <i class="fa-solid fa-align-center"></i>
+          </button>
+          <button class="prop-btn" id="pp-al-r" onclick="applyProp('textAlign','right')" title="오른쪽">
+            <i class="fa-solid fa-align-right"></i>
+          </button>
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">줄간격</span>
+          <input type="number" class="prop-input" id="pp-lh" min="0.5" max="4" step="0.1" value="1.2"
+                 onchange="applyProp('lineHeight',+this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Shape properties -->
+    <div id="shapeProps" style="display:none">
+      <div class="prop-section">
+        <div class="prop-title">도형</div>
+        <div class="prop-row">
+          <span class="prop-label">채우기</span>
+          <input type="color" class="prop-color" id="pp-fill" value="#cccccc"
+                 oninput="applyProp('fill',this.value)">
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">테두리</span>
+          <input type="color" class="prop-color" id="pp-stroke" value="#000000"
+                 oninput="applyProp('stroke',this.value)">
+          <input type="number" class="prop-input" id="pp-sw" min="0" max="20" value="0" placeholder="두께"
+                 onchange="applyProp('strokeWidth',+this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Common properties (always shown when selected) -->
+    <div id="commonProps" style="display:none">
+      <div class="prop-section">
+        <div class="prop-title">위치 / 크기</div>
+        <div class="prop-row">
+          <span class="prop-label">X</span>
+          <input type="number" class="prop-input" id="pp-x" onchange="applyPos()">
+          <span class="prop-label" style="min-width:16px">Y</span>
+          <input type="number" class="prop-input" id="pp-y" onchange="applyPos()">
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">W</span>
+          <input type="number" class="prop-input" id="pp-w" onchange="applySize()">
+          <span class="prop-label" style="min-width:16px">H</span>
+          <input type="number" class="prop-input" id="pp-h" onchange="applySize()">
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">회전</span>
+          <input type="number" class="prop-input" id="pp-angle" min="-360" max="360"
+                 onchange="applyProp('angle',+this.value)">
+          <span style="font-size:.7rem;color:#888">°</span>
+        </div>
+        <div class="prop-row">
+          <span class="prop-label">투명도</span>
+          <input type="range" style="flex:1" id="pp-opacity" min="0" max="1" step="0.05" value="1"
+                 oninput="applyProp('opacity',+this.value)">
+        </div>
+      </div>
+      <div class="prop-section">
+        <div class="prop-title">레이어</div>
+        <div class="prop-btn-row" style="display:flex;gap:4px">
+          <button class="prop-btn" onclick="doLayer('front')" title="맨 앞으로">
+            <i class="fa-solid fa-angles-up"></i>
+          </button>
+          <button class="prop-btn" onclick="doLayer('fwd')" title="앞으로">
+            <i class="fa-solid fa-angle-up"></i>
+          </button>
+          <button class="prop-btn" onclick="doLayer('bwd')" title="뒤로">
+            <i class="fa-solid fa-angle-down"></i>
+          </button>
+          <button class="prop-btn" onclick="doLayer('back')" title="맨 뒤로">
+            <i class="fa-solid fa-angles-down"></i>
+          </button>
+        </div>
+      </div>
+      <div class="prop-section">
+        <div class="prop-title">반전 / 복제</div>
+        <div class="prop-btn-row" style="display:flex;gap:4px">
+          <button class="prop-btn" onclick="flipObj('x')" title="좌우 반전">
+            ↔
+          </button>
+          <button class="prop-btn" onclick="flipObj('y')" title="상하 반전">
+            ↕
+          </button>
+          <button class="prop-btn" onclick="duplicateObj()" title="복제">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+          <button class="prop-btn" onclick="deleteSelected()" title="삭제" style="color:#e53e3e">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /propPanel -->
+
+</div><!-- /main -->
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <span id="sb-tmpl">X-Banner (600×1600)</span>
+  <span id="sb-pos">x:— y:—</span>
+  <span id="sb-objs">객체 0개</span>
+  <span style="margin-left:auto">Ctrl+Z 취소 &nbsp;|&nbsp; Del 삭제 &nbsp;|&nbsp; Ctrl+D 복제</span>
+</div>
+
+<!-- Hidden image input -->
+<input type="file" id="imgInput" accept=".png,.jpg,.jpeg,.webp,.svg" style="display:none" onchange="loadImgFile(this)">
+
+<script>
+/* ═══════════════════════════════════════════════
+   TEMPLATES
+═══════════════════════════════════════════════ */
+const TEMPLATES = {
+  xbanner:  { label:'X-Banner (600×1600)',       w:600,  h:1600 },
+  xbanner_h:{ label:'X-Banner 가로 (1600×600)', w:1600, h:600  },
+  st_a4_v:  { label:'스탠션 A4 세로 (210×297)',  w:630,  h:890  },
+  st_a4_h:  { label:'스탠션 A4 가로 (297×210)',  w:890,  h:630  },
+  st_half:  { label:'스탠션 하프 (148×210)',      w:444,  h:630  },
+  custom:   { label:'직접 입력',                  w:600,  h:800  },
+};
+
+/* ═══════════════════════════════════════════════
+   FABRIC CANVAS INIT
+═══════════════════════════════════════════════ */
+let currentTmpl = 'xbanner';
+let zoomLevel = 1;
+let historyStack = [];
+let historyIdx   = -1;
+let _ignoreHistory = false;
+
+// Auto-select template based on item category
+const ITEM_CAT = '{{ item_cat }}';
+if (ITEM_CAT === '스탠션') {
+  currentTmpl = 'st_a4_v';
+  document.getElementById('tmplSel').value = 'st_a4_v';
+}
+
+const canvas = new fabric.Canvas('designCanvas', {
+  backgroundColor: '#ffffff',
+  selection: true,
+  preserveObjectStacking: true,
+});
+
+function initCanvas(tmplKey) {
+  const t = TEMPLATES[tmplKey] || TEMPLATES.xbanner;
+  canvas.setWidth(t.w);
+  canvas.setHeight(t.h);
+  zoomFit();
+  document.getElementById('sb-tmpl').textContent = t.label;
+}
+
+initCanvas(currentTmpl);
+saveHistory();
+
+/* ═══════════════════════════════════════════════
+   ZOOM
+═══════════════════════════════════════════════ */
+function zoom(delta) {
+  zoomLevel = Math.max(0.1, Math.min(3, zoomLevel + delta));
+  applyZoom();
+}
+function zoomFit() {
+  const area   = document.getElementById('canvasArea');
+  const pad    = 40;
+  const avW    = area.clientWidth  - pad * 2;
+  const avH    = area.clientHeight - pad * 2;
+  const tmpl   = TEMPLATES[currentTmpl];
+  zoomLevel = Math.min(avW / tmpl.w, avH / tmpl.h, 1);
+  applyZoom();
+}
+function applyZoom() {
+  const wrap = document.getElementById('canvasWrap');
+  wrap.style.transform = `scale(${zoomLevel})`;
+  wrap.style.width  = canvas.width  + 'px';
+  wrap.style.height = canvas.height + 'px';
+  document.getElementById('canvasArea').style.minHeight =
+    (canvas.height * zoomLevel + 40) + 'px';
+  document.getElementById('zoomLabel').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+/* ═══════════════════════════════════════════════
+   TEMPLATE CHANGE
+═══════════════════════════════════════════════ */
+function changeTemplate(key) {
+  if (key === 'custom') {
+    const w = parseInt(prompt('가로 크기 (px):', '600') || '600');
+    const h = parseInt(prompt('세로 크기 (px):', '800') || '800');
+    TEMPLATES.custom.w = w; TEMPLATES.custom.h = h;
+    TEMPLATES.custom.label = `직접 입력 (${w}×${h})`;
+  }
+  currentTmpl = key;
+  canvas.setWidth(TEMPLATES[key].w);
+  canvas.setHeight(TEMPLATES[key].h);
+  zoomFit();
+  document.getElementById('sb-tmpl').textContent = TEMPLATES[key].label;
+  saveHistory();
+}
+
+/* ═══════════════════════════════════════════════
+   BACKGROUND
+═══════════════════════════════════════════════ */
+function setBg(color) {
+  canvas.setBackgroundColor(color, () => { canvas.renderAll(); saveHistory(); });
+}
+
+/* ═══════════════════════════════════════════════
+   ADD OBJECTS
+═══════════════════════════════════════════════ */
+function addText() {
+  const t = new fabric.IText('텍스트를 입력하세요', {
+    left: canvas.width / 2, top: canvas.height / 4,
+    originX: 'center', originY: 'center',
+    fontSize: Math.round(canvas.width * 0.07),
+    fontFamily: 'Arial', fill: '#000000',
+    lineHeight: 1.3,
+  });
+  canvas.add(t);
+  canvas.setActiveObject(t);
+  canvas.renderAll();
+  saveHistory();
+}
+
+function triggerImgUpload() {
+  document.getElementById('imgInput').value = '';
+  document.getElementById('imgInput').click();
+}
+
+function loadImgFile(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    fabric.Image.fromURL(e.target.result, img => {
+      const maxW = canvas.width  * 0.7;
+      const maxH = canvas.height * 0.5;
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      img.set({
+        left: canvas.width / 2, top: canvas.height / 3,
+        originX: 'center', originY: 'center',
+        scaleX: scale, scaleY: scale,
+      });
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      canvas.renderAll();
+      saveHistory();
+    });
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function addRect() {
+  const r = new fabric.Rect({
+    left: 80, top: 80, width: Math.round(canvas.width * .4), height: Math.round(canvas.height * .1),
+    fill: '#E31837', stroke: null, strokeWidth: 0, rx: 0, ry: 0,
+  });
+  canvas.add(r);
+  canvas.setActiveObject(r);
+  canvas.renderAll();
+  saveHistory();
+}
+
+function addLine() {
+  const l = new fabric.Line([80, canvas.height/2, canvas.width-80, canvas.height/2], {
+    stroke: '#000000', strokeWidth: 3,
+  });
+  canvas.add(l);
+  canvas.setActiveObject(l);
+  canvas.renderAll();
+  saveHistory();
+}
+
+/* ═══════════════════════════════════════════════
+   TOOLS
+═══════════════════════════════════════════════ */
+function setTool(name) {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tool-' + name)?.classList.add('active');
+}
+
+function deleteSelected() {
+  const objs = canvas.getActiveObjects();
+  if (!objs.length) return;
+  canvas.discardActiveObject();
+  objs.forEach(o => canvas.remove(o));
+  canvas.renderAll();
+  saveHistory();
+}
+
+function duplicateObj() {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  obj.clone(clone => {
+    clone.set({ left: obj.left + 20, top: obj.top + 20, evented: true });
+    if (clone.type === 'activeSelection') {
+      clone.canvas = canvas;
+      clone.forEachObject(o => canvas.add(o));
+      clone.setCoords();
+    } else {
+      canvas.add(clone);
+    }
+    canvas.setActiveObject(clone);
+    canvas.renderAll();
+    saveHistory();
+  });
+}
+
+function flipObj(axis) {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  if (axis === 'x') obj.set('flipX', !obj.flipX);
+  else              obj.set('flipY', !obj.flipY);
+  canvas.renderAll();
+  saveHistory();
+}
+
+function doLayer(dir) {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  if (dir === 'front') canvas.bringToFront(obj);
+  else if (dir === 'fwd')  canvas.bringForward(obj);
+  else if (dir === 'bwd')  canvas.sendBackwards(obj);
+  else if (dir === 'back') canvas.sendToBack(obj);
+  canvas.renderAll();
+  saveHistory();
+}
+
+/* ═══════════════════════════════════════════════
+   PROPERTIES PANEL
+═══════════════════════════════════════════════ */
+function applyProp(prop, val) {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  obj.set(prop, val);
+  canvas.renderAll();
+  saveHistory();
+}
+
+function applyPos() {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  const x = parseFloat(document.getElementById('pp-x').value);
+  const y = parseFloat(document.getElementById('pp-y').value);
+  obj.set({ left: x, top: y });
+  obj.setCoords();
+  canvas.renderAll();
+  saveHistory();
+}
+
+function applySize() {
+  const obj = canvas.getActiveObject();
+  if (!obj || obj.type === 'activeSelection') return;
+  const w = parseFloat(document.getElementById('pp-w').value);
+  const h = parseFloat(document.getElementById('pp-h').value);
+  if (obj.type === 'image') {
+    obj.set({ scaleX: w / obj.width, scaleY: h / obj.height });
+  } else if (obj.type === 'rect') {
+    obj.set({ width: w, height: h });
+  } else if (obj.type === 'line') {
+    obj.set({ x2: obj.x1 + w });
+  } else if (obj.type === 'i-text' || obj.type === 'textbox') {
+    obj.set({ width: w });
+  }
+  obj.setCoords();
+  canvas.renderAll();
+  saveHistory();
+}
+
+function toggleStyle(style) {
+  const obj = canvas.getActiveObject();
+  if (!obj || (obj.type !== 'i-text' && obj.type !== 'textbox')) return;
+  if (style === 'bold')      obj.set('fontWeight',     obj.fontWeight === 'bold'   ? 'normal' : 'bold');
+  if (style === 'italic')    obj.set('fontStyle',      obj.fontStyle === 'italic'  ? 'normal' : 'italic');
+  if (style === 'underline') obj.set('underline',     !obj.underline);
+  canvas.renderAll();
+  updatePropPanel(obj);
+  saveHistory();
+}
+
+function updatePropPanel(obj) {
+  const noSel    = document.getElementById('noSelMsg');
+  const textPrp  = document.getElementById('textProps');
+  const shapePrp = document.getElementById('shapeProps');
+  const commonPrp= document.getElementById('commonProps');
+
+  if (!obj) {
+    noSel.style.display    = '';
+    textPrp.style.display  = 'none';
+    shapePrp.style.display = 'none';
+    commonPrp.style.display= 'none';
+    return;
+  }
+  noSel.style.display = 'none';
+  commonPrp.style.display = '';
+
+  const isText  = obj.type === 'i-text' || obj.type === 'textbox';
+  const isShape = obj.type === 'rect' || obj.type === 'circle' || obj.type === 'line';
+
+  textPrp.style.display  = isText  ? '' : 'none';
+  shapePrp.style.display = isShape ? '' : 'none';
+
+  if (isText) {
+    document.getElementById('pp-font').value  = obj.fontFamily || 'Arial';
+    document.getElementById('pp-size').value  = obj.fontSize   || 40;
+    document.getElementById('pp-color').value = obj.fill       || '#000000';
+    document.getElementById('pp-lh').value    = obj.lineHeight || 1.2;
+    document.getElementById('pp-bold').classList.toggle('on',   obj.fontWeight === 'bold');
+    document.getElementById('pp-italic').classList.toggle('on', obj.fontStyle  === 'italic');
+    document.getElementById('pp-under').classList.toggle('on',  !!obj.underline);
+    ['l','c','r'].forEach(a => {
+      const al = {l:'left',c:'center',r:'right'}[a];
+      document.getElementById('pp-al-' + a).classList.toggle('on', obj.textAlign === al);
+    });
+  }
+  if (isShape) {
+    document.getElementById('pp-fill').value   = obj.fill   || '#cccccc';
+    document.getElementById('pp-stroke').value = obj.stroke || '#000000';
+    document.getElementById('pp-sw').value     = obj.strokeWidth || 0;
+  }
+
+  const bounds = obj.getBoundingRect();
+  document.getElementById('pp-x').value     = Math.round(obj.left);
+  document.getElementById('pp-y').value     = Math.round(obj.top);
+  document.getElementById('pp-w').value     = Math.round(bounds.width);
+  document.getElementById('pp-h').value     = Math.round(bounds.height);
+  document.getElementById('pp-angle').value = Math.round(obj.angle || 0);
+  document.getElementById('pp-opacity').value = obj.opacity ?? 1;
+}
+
+canvas.on('selection:created',  e => updatePropPanel(e.selected?.[0] || canvas.getActiveObject()));
+canvas.on('selection:updated',  e => updatePropPanel(e.selected?.[0] || canvas.getActiveObject()));
+canvas.on('selection:cleared',  () => updatePropPanel(null));
+canvas.on('object:modified',    e => { updatePropPanel(canvas.getActiveObject()); saveHistory(); });
+canvas.on('mouse:move', e => {
+  const p = canvas.getPointer(e.e);
+  document.getElementById('sb-pos').textContent =
+    `x:${Math.round(p.x)} y:${Math.round(p.y)}`;
+});
+canvas.on('object:added',   updateObjCount);
+canvas.on('object:removed', updateObjCount);
+
+function updateObjCount() {
+  document.getElementById('sb-objs').textContent = `객체 ${canvas.getObjects().length}개`;
+}
+
+/* ═══════════════════════════════════════════════
+   HISTORY (UNDO / REDO)
+═══════════════════════════════════════════════ */
+function saveHistory() {
+  if (_ignoreHistory) return;
+  historyStack.splice(historyIdx + 1);
+  historyStack.push(JSON.stringify(canvas));
+  historyIdx = historyStack.length - 1;
+  if (historyStack.length > 50) { historyStack.shift(); historyIdx--; }
+  document.getElementById('undoBtn').disabled = historyIdx <= 0;
+  document.getElementById('redoBtn').disabled = historyIdx >= historyStack.length - 1;
+}
+
+function doUndo() {
+  if (historyIdx <= 0) return;
+  historyIdx--;
+  _ignoreHistory = true;
+  canvas.loadFromJSON(historyStack[historyIdx], () => {
+    canvas.renderAll(); _ignoreHistory = false;
+    updateObjCount();
+    document.getElementById('undoBtn').disabled = historyIdx <= 0;
+    document.getElementById('redoBtn').disabled = historyIdx >= historyStack.length - 1;
+  });
+}
+
+function doRedo() {
+  if (historyIdx >= historyStack.length - 1) return;
+  historyIdx++;
+  _ignoreHistory = true;
+  canvas.loadFromJSON(historyStack[historyIdx], () => {
+    canvas.renderAll(); _ignoreHistory = false;
+    updateObjCount();
+    document.getElementById('undoBtn').disabled = historyIdx <= 0;
+    document.getElementById('redoBtn').disabled = historyIdx >= historyStack.length - 1;
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); doUndo(); }
+  if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); doRedo(); }
+  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateObj(); }
+  // Arrow keys for nudge
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  const step = e.shiftKey ? 10 : 1;
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); obj.set('left', obj.left - step); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); obj.set('left', obj.left + step); }
+  if (e.key === 'ArrowUp')    { e.preventDefault(); obj.set('top',  obj.top  - step); }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); obj.set('top',  obj.top  + step); }
+  obj.setCoords();
+  canvas.renderAll();
+});
+
+/* ═══════════════════════════════════════════════
+   EXPORT — localStorage → 부모 탭으로 전달
+═══════════════════════════════════════════════ */
+function exportDesign() {
+  canvas.discardActiveObject();
+  canvas.renderAll();
+
+  // High quality export (2x)
+  const dataUrl = canvas.toDataURL({ format:'png', quality:1, multiplier:2 });
+
+  const result = {
+    itemCode:  '{{ item_code }}',
+    itemName:  '{{ item_name }}',
+    dataUrl,
+    timestamp: Date.now(),
+  };
+  localStorage.setItem('banner_editor_result', JSON.stringify(result));
+
+  // Notify opener if available
+  if (window.opener) {
+    try { window.opener.postMessage({type:'bannerEditorDone', ...result}, '*'); } catch(e){}
+  }
+
+  const btn = document.querySelector('.tb-btn.green');
+  btn.innerHTML = '<i class="fa-solid fa-check"></i> 완료! 탭을 닫아도 됩니다';
+  btn.style.background = '#059669';
+  setTimeout(() => {
+    if (window.opener) window.close();
+  }, 800);
+}
+
+window.addEventListener('resize', () => { zoomFit(); });
+</script>
+</body>
+</html>

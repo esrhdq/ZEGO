@@ -355,13 +355,36 @@
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
             커스텀 이미지 <span style="font-size:.75rem;font-weight:400;color:#888">(선택 — 원하는 디자인 파일 첨부)</span>
           </label>
-          <label style="display:inline-block;padding:5px 12px;background:#f5f5f5;border:1.5px dashed #ccc;
-                        border-radius:6px;cursor:pointer;font-size:.78rem;color:#555" id="rcm-img-label" for="rcm-image">
-            <i class="fa-solid fa-image me-1"></i>파일 선택
-          </label>
-          <input type="file" id="rcm-image" class="d-none" accept=".png,.jpg,.jpeg,.webp,.pdf"
-                 onchange="rcmImgChange(this)">
-          <span id="rcm-img-name" class="ms-2 text-muted" style="font-size:.75rem"></span>
+          <div class="d-flex align-items-center flex-wrap gap-2">
+            <label style="display:inline-block;padding:5px 12px;background:#f5f5f5;border:1.5px dashed #ccc;
+                          border-radius:6px;cursor:pointer;font-size:.78rem;color:#555" id="rcm-img-label" for="rcm-image">
+              <i class="fa-solid fa-image me-1"></i>파일 선택
+            </label>
+            <input type="file" id="rcm-image" class="d-none" accept=".png,.jpg,.jpeg,.webp,.pdf"
+                   onchange="rcmImgChange(this)">
+            <span id="rcm-img-name" class="text-muted" style="font-size:.75rem"></span>
+            <span style="font-size:.72rem;color:#aaa">또는</span>
+            <button type="button" id="rcm-editor-btn"
+                    style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;
+                           background:#f5f5f5;border:1.5px solid #ccc;border-radius:6px;
+                           font-size:.78rem;color:#555;cursor:pointer;transition:all .15s"
+                    onclick="rcmOpenEditor()">
+              <i class="fa-solid fa-pen-ruler"></i>편집기 열기
+            </button>
+          </div>
+          <div id="rcm-editor-preview" style="display:none;margin-top:8px;align-items:center;gap:8px" class="d-flex">
+            <img id="rcm-editor-img" src="" alt=""
+                 style="max-height:72px;max-width:140px;object-fit:contain;border:1px solid #ddd;border-radius:4px">
+            <div>
+              <div style="font-size:.72rem;color:#16a34a;font-weight:600;margin-bottom:2px">
+                <i class="fa-solid fa-check me-1"></i>편집기 시안 적용됨
+              </div>
+              <button type="button" onclick="rcmClearEditorImg()"
+                      style="font-size:.72rem;color:#991b1b;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">
+                취소
+              </button>
+            </div>
+          </div>
         </div>
         <div class="mb-1">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
@@ -735,6 +758,11 @@ function reqAddItem(code, name, cat) {
     document.getElementById('rcm-img-name').textContent = '';
     document.getElementById('rcm-img-label').innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
     document.getElementById('rcm-img-label').style.cssText = '';
+    const editorBtn = document.getElementById('rcm-editor-btn');
+    editorBtn.dataset.code = code;
+    editorBtn.dataset.name = name;
+    editorBtn.dataset.cat  = cat;
+    rcmClearEditorImg();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).show();
   } else {
     reqCartUpdate(code, 1, '', '');
@@ -759,8 +787,8 @@ async function rcmSubmit() {
   const qty  = parseInt(document.getElementById('rcm-qty').value) || 1;
   const text = document.getElementById('rcm-text').value.trim();
   const file = document.getElementById('rcm-image').files[0];
-  let imgData = '';
-  if (file) {
+  let imgData = rcmEditorImgData;
+  if (!imgData && file) {
     imgData = await new Promise(res => {
       const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file);
     });
@@ -768,6 +796,56 @@ async function rcmSubmit() {
   bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).hide();
   reqCartUpdate(code, qty, imgData, text);
 }
+
+let rcmEditorImgData = '';
+
+function rcmOpenEditor() {
+  const btn  = document.getElementById('rcm-editor-btn');
+  const code = btn.dataset.code || document.getElementById('rcm-code').value;
+  const name = btn.dataset.name || document.getElementById('rcm-title').textContent;
+  const cat  = btn.dataset.cat  || '';
+  const url  = '/catalog/banner-editor?item_code=' + encodeURIComponent(code)
+             + '&item_name=' + encodeURIComponent(name)
+             + '&item_cat='  + encodeURIComponent(cat);
+  window.open(url, '_blank');
+}
+
+function rcmSetEditorImg(dataUrl) {
+  rcmEditorImgData = dataUrl;
+  document.getElementById('rcm-editor-img').src = dataUrl;
+  document.getElementById('rcm-editor-preview').style.display = 'flex';
+  const btn = document.getElementById('rcm-editor-btn');
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i>편집기 다시 열기';
+  btn.style.borderColor = 'var(--red)';
+  btn.style.color = 'var(--red)';
+  btn.style.background = '#fff0f0';
+}
+
+function rcmClearEditorImg() {
+  rcmEditorImgData = '';
+  document.getElementById('rcm-editor-preview').style.display = 'none';
+  document.getElementById('rcm-editor-img').src = '';
+  const btn = document.getElementById('rcm-editor-btn');
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i>편집기 열기';
+  btn.style.cssText = '';
+}
+
+window.addEventListener('storage', e => {
+  if (e.key !== 'banner_editor_result' || !e.newValue) return;
+  try {
+    const result = JSON.parse(e.newValue);
+    if (result && result.dataUrl) {
+      rcmSetEditorImg(result.dataUrl);
+      localStorage.removeItem('banner_editor_result');
+    }
+  } catch(err) {}
+});
+
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'bannerEditorDone' && e.data.dataUrl) {
+    rcmSetEditorImg(e.data.dataUrl);
+  }
+});
 
 async function reqCartUpdate(code, qty, customImg, customText) {
   try {
