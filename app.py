@@ -1595,6 +1595,70 @@ def transactions():
                            date_from=date_from, date_to=date_to)
 
 
+@app.route('/transactions/<int:tx_id>/edit', methods=['POST'])
+@login_required
+def transaction_edit(tx_id):
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    data = request.get_json(silent=True) or {}
+
+    tx = conn.execute(
+        f'SELECT * FROM transactions WHERE id={ph}', (tx_id,)
+    ).fetchone()
+    if not tx:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '기록을 찾을 수 없습니다.'}), 404
+    if tx['type'] != 'OUT':
+        conn.close()
+        return jsonify({'ok': False, 'msg': '출고 기록만 수정할 수 있습니다.'}), 400
+    if role != 'admin' and tx['from_branch_id'] != bid:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '권한이 없습니다.'}), 403
+
+    try:
+        new_qty = int(data.get('quantity', tx['quantity']))
+    except (TypeError, ValueError):
+        conn.close()
+        return jsonify({'ok': False, 'msg': '수량이 올바르지 않습니다.'}), 400
+    if new_qty <= 0:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '수량은 1 이상이어야 합니다.'}), 400
+
+    from datetime import date as _date
+    new_date  = (data.get('transaction_date') or str(tx['transaction_date'] or _date.today().isoformat()))[:10]
+    new_notes = (data.get('notes') or '').strip()
+
+    old_qty  = tx['quantity']
+    qty_diff = new_qty - old_qty   # 양수: 더 차감, 음수: 재고 복원
+
+    if qty_diff != 0:
+        inv = conn.execute(
+            f'SELECT quantity FROM inventory WHERE branch_id={ph} AND form_type_id={ph}',
+            (tx['from_branch_id'], tx['form_type_id'])
+        ).fetchone()
+        cur_inv = inv['quantity'] if inv else 0
+        new_inv = cur_inv - qty_diff
+        if new_inv < 0:
+            conn.close()
+            return jsonify({'ok': False, 'msg': f'재고가 부족합니다. (현재 재고: {cur_inv}, 추가 차감 필요: {qty_diff})'}), 400
+        conn.execute(
+            f'UPDATE inventory SET quantity={ph}, last_updated=NOW() '
+            f'WHERE branch_id={ph} AND form_type_id={ph}',
+            (new_inv, tx['from_branch_id'], tx['form_type_id'])
+        )
+
+    conn.execute(
+        f'UPDATE transactions SET quantity={ph}, transaction_date={ph}, period_month={ph}, notes={ph} '
+        f'WHERE id={ph}',
+        (new_qty, new_date, new_date[:7], new_notes, tx_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'new_qty': new_qty, 'new_date': new_date, 'new_notes': new_notes})
+
+
 @app.route('/report')
 @login_required
 def report():

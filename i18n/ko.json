@@ -20,7 +20,6 @@
   "nav.brand_sub": "이스타항공 운송본부",
   "nav.role_admin": "관리자",
   "nav.open_menu": "메뉴 열기",
-
   "common.branch": "지점",
   "common.branch_all": "전체 지점",
   "common.select_branch": "-- 지점 선택 --",
@@ -59,7 +58,6 @@
   "common.qty_placeholder": "수량 입력",
   "common.register": "등록",
   "common.col_type": "구분",
-
   "login.system_name": "운송본부 재고관리 시스템",
   "login.username": "아이디",
   "login.username_placeholder": "아이디 입력",
@@ -68,7 +66,6 @@
   "login.submit": "로그인",
   "login.submitting": "로그인 중...",
   "login.contact": "문의: 운송본부 IT 담당자",
-
   "dash.title": "대시보드",
   "dash.operating_branches": "운영 지점",
   "dash.form_types": "양식 종류",
@@ -90,7 +87,6 @@
   "dash.col_to": "도착지점",
   "dash.col_minimum": "최소",
   "dash.col_current": "현재",
-
   "inv.title": "재고 현황",
   "inv.tab_detail": "지점별 상세",
   "inv.tab_summary": "양식별 누적 합계",
@@ -114,7 +110,6 @@
   "inv.legend_low": "부족 (최소기준 이하)",
   "inv.legend_note": "최소기준 셀 직접 수정 후",
   "inv.branch_detail": "곳",
-
   "inb.title": "입고 처리",
   "inb.bulk_upload": "엑셀 일괄 입고",
   "inb.usage": "사용 방법",
@@ -128,14 +123,12 @@
   "inb.inbound_date": "입고 일자",
   "inb.date_helper": "실제 양식을 수령한 날짜를 선택하세요.",
   "inb.register": "입고 등록",
-
   "out.title": "출고 처리",
   "out.form_title": "양식 출고 등록",
   "out.subtitle": "실제 사용 수량을 차감합니다.",
   "out.outbound_date": "출고 일자",
   "out.date_helper": "실제 양식이 사용된 날짜를 선택하세요.",
   "out.register": "출고 등록",
-
   "xfer.title": "지점 간 이전",
   "xfer.request_tab": "이전 신청",
   "xfer.inbox_tab": "받은 신청",
@@ -169,7 +162,6 @@
   "xfer.col_sent_date": "신청일시",
   "xfer.col_requester": "요청자",
   "xfer.col_action": "처리",
-
   "hist.title": "입출고 이력",
   "hist.type_all": "전체",
   "hist.month": "월 선택",
@@ -180,7 +172,6 @@
   "hist.col_to": "도착 지점",
   "hist.max_rows": "건 (최대 300건)",
   "hist.no_data": "조건에 맞는 이력이 없습니다.",
-
   "rep.title": "리포트",
   "rep.normal_items": "정상 품목",
   "rep.low_items": "부족 품목",
@@ -210,7 +201,6 @@
   "rep.no_form": "양식 재고 데이터 없음",
   "rep.chart_flight": "월별 운항편수 (최근 6개월)",
   "rep.no_flight": "운항편수 데이터가 없습니다.",
-
   "usr.title": "사용자 관리",
   "usr.account_list": "전체 계정 목록",
   "usr.col_username": "아이디",
@@ -241,7 +231,6 @@
   "usr.pw_mismatch": "비밀번호가 일치하지 않습니다.",
   "usr.confirm_delete": "계정을 삭제하시겠습니까?",
   "usr.pw_reset_btn": "초기화",
-
   "chpw.title": "비밀번호 변경",
   "chpw.form_title": "내 비밀번호 변경",
   "chpw.current_pw": "현재 비밀번호",
@@ -257,7 +246,6 @@
   "chpw.match_error": "비밀번호가 일치하지 않습니다.",
   "chpw.submit": "변경",
   "chpw.toggle_show": "보기",
-
   "upl.title": "엑셀 업로드 결과",
   "upl.success": "처리 성공",
   "upl.error": "오류",
@@ -277,7 +265,6 @@
   "upl.no_data": "처리할 데이터가 없습니다.",
   "upl.error_hint": "오류 해결 방법:",
   "upl.form_name_match": "참고 시트의 목록과 정확히 일치",
-
   "fcast.title": "분기 신청 추정",
   "fcast.cur_quarter": "현재 분기",
   "fcast.next_quarter": "다음 분기",
@@ -307,7 +294,6 @@
   "fcast.recommend": "신청 권장",
   "fcast.sufficient_badge": "재고 충분",
   "fcast.trend_legend": "추세 — ↑ 증가 / → 안정 / ↓ 감소",
-
   "flt.title": "운항편수 관리",
   "flt.info": "월별 운항편수를 입력하면 분기 신청 추정에 자동 반영됩니다.",
   "flt.info2": "과거 6개월 평균 대비 다음 분기 평균 편수 비율로 보정됩니다.",
@@ -318,7 +304,6 @@
   "flt.flights": "운항편수",
   "flt.save": "저장",
   "flt.view_forecast": "분기 신청 추정 보기",
-
   "cat.prev": "이전",
   "cat.next": "다음",
   "cat.edit_mode": "보유현황 편집",
@@ -337,7 +322,8 @@
   "cat.req_status.approved": "승인",
   "cat.req_status.rejected": "반려",
   "cat.req_status.on_hold": "보류",
-
   "err.403_msg": "접근이 허용되지 않은 IP입니다.",
-  "err.403_helper": "허가된 네트워크에서 접속하세요."
+  "err.403_helper": "허가된 네트워크에서 접속하세요.",
+  "hist.edit_btn": "수정",
+  "hist.edit_title": "출고 기록 수정"
 }

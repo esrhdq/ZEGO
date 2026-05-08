@@ -95,13 +95,14 @@
             <th class="text-center">{{ T('common.quantity') }}</th>
             <th>{{ T('common.notes') }}</th>
             <th>{{ T('common.processor') }}</th>
+            <th style="width:48px"></th>
           </tr>
         </thead>
         <tbody>
           {% for t in rows %}
-          <tr>
+          <tr id="txrow-{{ t.id }}">
             <td>
-              <span class="fw-semibold">{{ t.transaction_date or (t.created_at | dt)[:10] }}</span>
+              <span class="fw-semibold tx-date">{{ t.transaction_date or (t.created_at | dt)[:10] }}</span>
               <div class="text-muted" style="font-size:.72rem">{{ t.created_at | dt }}</div>
             </td>
             <td class="text-center">
@@ -124,9 +125,18 @@
                 <span class="badge bg-secondary">{{ t.to_branch_code }}</span> {{ t.to_branch_name }}
               {% else %}—{% endif %}
             </td>
-            <td class="text-center fw-semibold">{{ t.quantity }} <small class="text-muted">{{ t.unit }}</small></td>
-            <td class="small text-muted">{{ t.notes or '' }}</td>
+            <td class="text-center fw-semibold tx-qty">{{ t.quantity }} <small class="text-muted">{{ t.unit }}</small></td>
+            <td class="small text-muted tx-notes">{{ t.notes or '' }}</td>
             <td class="small text-muted">{{ t.created_by }}</td>
+            <td class="text-center">
+              {% if t.type == 'OUT' and (session.role == 'admin' or t.from_branch_id == session.branch_id) %}
+              <button class="btn btn-sm btn-outline-secondary" style="font-size:.7rem;padding:3px 7px"
+                      title="{{ T('hist.edit_btn') }}"
+                      onclick="openTxEdit({{ t.id }},'{{ t.transaction_date or '' }}',{{ t.quantity }},'{{ t.notes|default('')|replace("'","\\'") }}','{{ t.form_name|e }}','{{ (t.from_branch_code or '') + ' ' + (t.from_branch_name or '') }}')">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -141,6 +151,51 @@
     {% endif %}
   </div>
 </div>
+<!-- 출고 기록 수정 모달 -->
+<div class="modal fade" id="txEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--red,#E31837);color:#fff;padding:10px 16px">
+        <h6 class="modal-title" style="font-size:.92rem;font-weight:700">
+          <i class="fa-solid fa-pen me-2"></i>{{ T('hist.edit_title') }}
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-2">
+        <input type="hidden" id="txEditId">
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">{{ T('common.form_name') }}</label>
+          <div id="txEditFormName" class="form-control form-control-sm bg-light" style="cursor:default"></div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">{{ T('common.branch') }}</label>
+          <div id="txEditBranch" class="form-control form-control-sm bg-light" style="cursor:default"></div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">{{ T('out.outbound_date') }} <span class="text-danger">*</span></label>
+          <input type="date" id="txEditDate" class="form-control form-control-sm">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
+          <input type="number" id="txEditQty" class="form-control form-control-sm" min="1">
+          <div class="form-text text-muted" style="font-size:.72rem">수량 변경 시 재고가 자동으로 조정됩니다.</div>
+        </div>
+        <div class="mb-1">
+          <label class="form-label small fw-semibold mb-1">{{ T('common.notes') }}</label>
+          <input type="text" id="txEditNotes" class="form-control form-control-sm"
+                 placeholder="{{ T('common.notes_optional') }}">
+        </div>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+        <button type="button" class="btn btn-danger btn-sm" id="txEditSaveBtn" onclick="submitTxEdit()">
+          <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('common.save') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -167,5 +222,58 @@ document.getElementById('filterForm')?.addEventListener('change', () => {
   document.getElementById('downloadBtn').href =
     '{{ url_for("transactions_download") }}?' + params.toString();
 });
+
+// 출고 기록 수정
+function openTxEdit(id, date, qty, notes, formName, branch) {
+  document.getElementById('txEditId').value       = id;
+  document.getElementById('txEditDate').value     = date;
+  document.getElementById('txEditQty').value      = qty;
+  document.getElementById('txEditNotes').value    = notes;
+  document.getElementById('txEditFormName').textContent = formName;
+  document.getElementById('txEditBranch').textContent   = branch.trim();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('txEditModal')).show();
+}
+
+async function submitTxEdit() {
+  const id    = document.getElementById('txEditId').value;
+  const date  = document.getElementById('txEditDate').value;
+  const qty   = parseInt(document.getElementById('txEditQty').value);
+  const notes = document.getElementById('txEditNotes').value.trim();
+  if (!date) { alert('출고 일자를 선택해 주세요.'); return; }
+  if (!qty || qty <= 0) { alert('수량을 올바르게 입력해 주세요.'); return; }
+
+  const btn = document.getElementById('txEditSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
+  try {
+    const res  = await fetch(`/transactions/${id}/edit`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({transaction_date: date, quantity: qty, notes})
+    });
+    const json = await res.json();
+    if (json.ok) {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('txEditModal')).hide();
+      const row = document.getElementById('txrow-' + id);
+      if (row) {
+        row.querySelector('.tx-date').textContent  = json.new_date;
+        row.querySelector('.tx-qty').innerHTML     = json.new_qty + ' <small class="text-muted">' +
+          row.querySelector('.tx-qty small').textContent + '</small>';
+        row.querySelector('.tx-notes').textContent = json.new_notes;
+        row.style.background = '#f0fdf4';
+        setTimeout(() => row.style.background = '', 1800);
+      } else {
+        location.reload();
+      }
+    } else {
+      alert(json.msg || '저장 중 오류가 발생했습니다.');
+    }
+  } catch(e) {
+    alert('오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>{{ T("common.save") }}';
+  }
+}
 </script>
 {% endblock %}

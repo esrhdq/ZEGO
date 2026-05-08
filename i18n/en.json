@@ -323,5 +323,7 @@
   "cat.req_status.pending": "Pending",
   "cat.req_status.approved": "Approved",
   "cat.req_status.rejected": "Rejected",
-  "cat.req_status.on_hold": "On Hold"
+  "cat.req_status.on_hold": "On Hold",
+  "hist.edit_btn": "Edit",
+  "hist.edit_title": "Edit Outbound Record"
 }

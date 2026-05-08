@@ -323,5 +323,7 @@
   "cat.req_status.pending": "待處理",
   "cat.req_status.approved": "已批准",
   "cat.req_status.rejected": "已拒絕",
-  "cat.req_status.on_hold": "暫緩"
+  "cat.req_status.on_hold": "暫緩",
+  "hist.edit_btn": "編輯",
+  "hist.edit_title": "編輯出庫記錄"
 }
