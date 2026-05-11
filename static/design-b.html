@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design B — 스플릿 히어로 (Split Hero)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    background: #fff;
+    overflow-x: hidden;
+  }
+
+  /* 왼쪽 브랜드 패널 */
+  .left-panel {
+    width: 44%;
+    min-height: 100vh;
+    background: #CC1625;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 52px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* 배경 패턴 */
+  .left-panel::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.07);
+    pointer-events: none;
+  }
+  .left-panel::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.05);
+    pointer-events: none;
+  }
+  .left-dots {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: radial-gradient(rgba(255,255,255,.1) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  .left-content { position: relative; z-index: 1; }
+
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 12px;
+    padding: 8px 14px;
+    margin-bottom: 36px;
+    backdrop-filter: blur(8px);
+  }
+  .brand-badge-icon {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,.2);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; color: #fff;
+  }
+  .brand-badge-text {
+    font-size: .78rem; font-weight: 700;
+    color: rgba(255,255,255,.9); letter-spacing: .06em;
+  }
+
+  .hero-title {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.12;
+    margin-bottom: 18px;
+    letter-spacing: -.02em;
+  }
+  .hero-title span { opacity: .6; }
+
+  .hero-desc {
+    font-size: .9rem;
+    color: rgba(255,255,255,.7);
+    line-height: 1.7;
+    margin-bottom: 40px;
+    font-weight: 500;
+  }
+
+  .hero-stats {
+    display: flex; gap: 28px;
+  }
+  .hero-stat .num {
+    font-size: 1.6rem; font-weight: 900;
+    color: #fff; line-height: 1;
+  }
+  .hero-stat .lbl {
+    font-size: .72rem;
+    color: rgba(255,255,255,.6);
+    font-weight: 500; margin-top: 3px;
+  }
+  .stat-divider {
+    width: 1px;
+    background: rgba(255,255,255,.15);
+    margin: 4px 0;
+  }
+
+  /* 오른쪽 로그인 */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px;
+    background: #FFFCFC;
+  }
+
+  .login-box { width: 100%; max-width: 360px; }
+
+  .login-greeting {
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #1C1917;
+    margin-bottom: 6px;
+    letter-spacing: -.02em;
+  }
+  .login-sub {
+    font-size: .84rem;
+    color: #A8A29E;
+    margin-bottom: 32px;
+    font-weight: 500;
+  }
+
+  .form-label {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #57534E;
+    margin-bottom: 6px;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+  }
+  .form-control {
+    border: 1.5px solid #E7E5E4;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: .9rem;
+    color: #1C1917;
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+    width: 100%;
+  }
+  .form-control:focus {
+    border-color: #CC1625;
+    box-shadow: 0 0 0 3px rgba(204,22,37,.1);
+    outline: none;
+  }
+  .form-control::placeholder { color: #C7C3C0; }
+
+  .btn-login {
+    width: 100%;
+    background: #CC1625;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s, transform .1s, box-shadow .15s;
+    box-shadow: 0 4px 14px rgba(204,22,37,.28);
+    letter-spacing: .02em;
+    margin-top: 8px;
+  }
+  .btn-login:hover {
+    background: #A8101D;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(204,22,37,.35);
+  }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0;
+  }
+  .divider hr { flex: 1; border-color: #E7E5E4; }
+  .divider span { font-size: .74rem; color: #C7C3C0; font-weight: 600; }
+
+  .mb-3 { margin-bottom: 16px; }
+  .mb-4 { margin-bottom: 20px; }
+
+  /* 하단 장식 */
+  .login-footer {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #F5F5F4;
+    text-align: center;
+    font-size: .76rem;
+    color: #C7C3C0;
+    font-weight: 500;
+  }
+
+  .feature-pills {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 32px;
+  }
+  .feature-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: .72rem;
+    color: rgba(255,255,255,.8);
+    font-weight: 600;
+  }
+  .feature-pill i { font-size: .65rem; }
+
+  /* 대시보드 미리보기 (하단) */
+  .preview-bar {
+    margin-top: 40px;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #F0EFED;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    overflow: hidden;
+  }
+  .preview-header {
+    background: #FAFAF8;
+    border-bottom: 1px solid #F0EFED;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #78716C;
+  }
+  .preview-row {
+    display: flex; align-items: center;
+    padding: 9px 16px;
+    border-bottom: 1px solid #F5F5F4;
+    gap: 10px;
+    font-size: .74rem;
+  }
+  .preview-row:last-child { border-bottom: none; }
+  .pbadge {
+    font-size: .62rem; padding: 2px 7px;
+    border-radius: 20px; font-weight: 700;
+  }
+  .pbadge-in  { background: #D1FAE5; color: #065F46; }
+  .pbadge-out { background: #FEE2E2; color: #991B1B; }
+  .pbadge-tr  { background: #DBEAFE; color: #1E40AF; }
+</style>
+</head>
+<body>
+  <!-- 왼쪽 브랜드 패널 -->
+  <div class="left-panel">
+    <div class="left-dots"></div>
+    <div class="left-content">
+      <div class="brand-badge">
+        <div class="brand-badge-icon"><i class="fa-solid fa-plane-departure"></i></div>
+        <div class="brand-badge-text">ZEGO</div>
+      </div>
+      <div class="hero-title">
+        항공 재고,<br>
+        <span>더 스마트하게</span><br>
+        관리하세요.
+      </div>
+      <div class="hero-desc">
+        이스타항공 전 지점의 기내 용품<br>
+        재고를 실시간으로 추적하고 관리합니다.
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="num">24</div>
+          <div class="lbl">운영 지점</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="hero-stat">
+          <div class="num">100+</div>
+          <div class="lbl">양식 종류</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="hero-stat">
+          <div class="num">99%</div>
+          <div class="lbl">정확도</div>
+        </div>
+      </div>
+      <div class="feature-pills">
+        <div class="feature-pill"><i class="fa-solid fa-chart-line"></i> 실시간 차트</div>
+        <div class="feature-pill"><i class="fa-solid fa-file-excel"></i> 엑셀 업로드</div>
+        <div class="feature-pill"><i class="fa-solid fa-bell"></i> 재고 알림</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽 로그인 -->
+  <div class="right-panel">
+    <div class="login-box">
+      <div class="login-greeting">안녕하세요!</div>
+      <div class="login-sub">계속하려면 로그인해 주세요</div>
+
+      <div class="mb-3">
+        <label class="form-label">아이디</label>
+        <input type="text" class="form-control" placeholder="아이디 입력" value="admin">
+      </div>
+      <div class="mb-4">
+        <label class="form-label">비밀번호</label>
+        <input type="password" class="form-control" placeholder="비밀번호 입력" value="••••••••">
+      </div>
+      <button class="btn-login"><i class="fa-solid fa-arrow-right-to-bracket" style="margin-right:8px"></i>로그인</button>
+
+      <div class="preview-bar">
+        <div class="preview-header">
+          <span style="color:#CC1625"><i class="fa-solid fa-receipt"></i></span>
+          최근 거래 현황
+        </div>
+        <div class="preview-row">
+          <span class="pbadge pbadge-in">입고</span>
+          <span style="font-weight:600;color:#1C1917">안전벨트 연장</span>
+          <span style="margin-left:auto;color:#A8A29E;font-size:.68rem">ICN · 오늘</span>
+        </div>
+        <div class="preview-row">
+          <span class="pbadge pbadge-out">출고</span>
+          <span style="font-weight:600;color:#1C1917">구명조끼</span>
+          <span style="margin-left:auto;color:#A8A29E;font-size:.68rem">GMP · 오늘</span>
+        </div>
+        <div class="preview-row">
+          <span class="pbadge pbadge-tr">이전</span>
+          <span style="font-weight:600;color:#1C1917">헤드셋</span>
+          <span style="margin-left:auto;color:#A8A29E;font-size:.68rem">PUS → ICN</span>
+        </div>
+      </div>
+
+      <div class="login-footer">© 2025 ZEGO · 이스타항공 재고관리 시스템</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design C — 유리 카드 (Glassmorphism)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: #0F0A1A;
+  }
+
+  /* 그라디언트 배경 */
+  .bg-gradient {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 800px 600px at 20% 30%, rgba(204,22,37,.35) 0%, transparent 60%),
+      radial-gradient(ellipse 600px 500px at 80% 70%, rgba(99,42,130,.4) 0%, transparent 60%),
+      radial-gradient(ellipse 400px 400px at 50% 50%, rgba(30,15,50,.8) 0%, transparent 80%),
+      linear-gradient(135deg, #0F0A1A 0%, #1A0A2E 50%, #0A0A1A 100%);
+    pointer-events: none;
+  }
+
+  /* 흐릿한 블롭들 */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    opacity: .6;
+  }
+  .blob-1 {
+    width: 500px; height: 400px;
+    background: rgba(204,22,37,.25);
+    top: -100px; left: -100px;
+    animation: blobFloat1 8s ease-in-out infinite;
+  }
+  .blob-2 {
+    width: 400px; height: 350px;
+    background: rgba(120,40,160,.3);
+    bottom: -80px; right: -80px;
+    animation: blobFloat2 10s ease-in-out infinite;
+  }
+  .blob-3 {
+    width: 280px; height: 260px;
+    background: rgba(37,99,235,.2);
+    top: 50%; left: 60%;
+    transform: translate(-50%, -50%);
+    animation: blobFloat3 12s ease-in-out infinite;
+  }
+
+  @keyframes blobFloat1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%       { transform: translate(40px, 30px) scale(1.08); }
+  }
+  @keyframes blobFloat2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%       { transform: translate(-30px, -20px) scale(1.05); }
+  }
+  @keyframes blobFloat3 {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50%       { transform: translate(-50%, -50%) scale(1.12) rotate(20deg); }
+  }
+
+  /* 격자 패턴 */
+  .grid-pattern {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* 중앙 컨텐츠 */
+  .center-wrap {
+    position: relative; z-index: 10;
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+  }
+
+  /* 브랜드 헤더 */
+  .brand-top {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .brand-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 14px;
+    padding: 10px 18px;
+    backdrop-filter: blur(12px);
+  }
+  .brand-logo-icon {
+    width: 30px; height: 30px;
+    background: #CC1625;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .78rem; color: #fff;
+    box-shadow: 0 0 16px rgba(204,22,37,.5);
+  }
+  .brand-logo-name {
+    font-size: .95rem; font-weight: 800;
+    color: #fff; letter-spacing: .08em;
+  }
+  .brand-logo-sub {
+    font-size: .64rem; color: rgba(255,255,255,.4);
+    font-weight: 500;
+  }
+
+  /* 유리 카드 */
+  .glass-card {
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 24px;
+    padding: 36px 32px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.04) inset,
+      0 24px 60px rgba(0,0,0,.4),
+      0 0 120px rgba(204,22,37,.08);
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .card-sub {
+    font-size: .8rem;
+    color: rgba(255,255,255,.4);
+    margin-bottom: 28px;
+    font-weight: 500;
+  }
+
+  .form-label-g {
+    font-size: .74rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.5);
+    margin-bottom: 7px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    display: block;
+  }
+  .form-input-g {
+    width: 100%;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: .9rem;
+    color: #fff;
+    font-family: 'Pretendard', sans-serif;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+    outline: none;
+  }
+  .form-input-g:focus {
+    border-color: rgba(204,22,37,.6);
+    background: rgba(255,255,255,.09);
+    box-shadow: 0 0 0 3px rgba(204,22,37,.15), 0 0 20px rgba(204,22,37,.08);
+  }
+  .form-input-g::placeholder { color: rgba(255,255,255,.2); }
+
+  .mb-g { margin-bottom: 18px; }
+  .mb-g-lg { margin-bottom: 24px; }
+
+  .btn-login-g {
+    width: 100%;
+    background: linear-gradient(135deg, #CC1625 0%, #E8273A 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s, box-shadow .15s;
+    box-shadow: 0 4px 20px rgba(204,22,37,.4), 0 0 40px rgba(204,22,37,.15);
+    letter-spacing: .02em;
+    font-family: 'Pretendard', sans-serif;
+  }
+  .btn-login-g:hover {
+    opacity: .92;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(204,22,37,.5), 0 0 60px rgba(204,22,37,.2);
+  }
+
+  /* 하단 장식 정보 */
+  .glass-footer {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .glass-stat {
+    text-align: center;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 10px 16px;
+    backdrop-filter: blur(8px);
+    flex: 1;
+  }
+  .glass-stat .num {
+    font-size: 1.1rem; font-weight: 800;
+    color: #fff; line-height: 1;
+  }
+  .glass-stat .lbl {
+    font-size: .62rem;
+    color: rgba(255,255,255,.35);
+    font-weight: 600;
+    margin-top: 3px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .glow-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4ADE80;
+    box-shadow: 0 0 8px rgba(74,222,128,.6);
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  /* 사이드바+내용 미리보기 */
+  .layout-preview {
+    display: flex;
+    gap: 0;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    margin-top: 20px;
+    height: 200px;
+  }
+  .sb-g {
+    width: 160px;
+    background: rgba(0,0,0,.3);
+    border-right: 1px solid rgba(255,255,255,.06);
+    padding: 12px 8px;
+    flex-shrink: 0;
+  }
+  .sb-g-brand {
+    display: flex; align-items: center; gap: 7px;
+    padding: 2px 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    margin-bottom: 8px;
+  }
+  .sb-g-icon {
+    width: 22px; height: 22px;
+    background: #CC1625;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .58rem; color: #fff;
+    box-shadow: 0 0 8px rgba(204,22,37,.4);
+  }
+  .sb-g-name { font-size: .72rem; font-weight: 800; color: rgba(255,255,255,.85); letter-spacing: .06em; }
+  .sb-g-item {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 8px; border-radius: 6px;
+    font-size: .68rem; font-weight: 500;
+    color: rgba(255,255,255,.35);
+    margin: 1px 0; cursor: pointer;
+  }
+  .sb-g-item i { width: 12px; text-align: center; font-size: .65rem; }
+  .sb-g-item.active {
+    background: rgba(204,22,37,.2);
+    color: rgba(255,120,130,.9);
+    border: 1px solid rgba(204,22,37,.25);
+  }
+
+  .main-g {
+    flex: 1;
+    padding: 12px;
+    overflow: hidden;
+  }
+  .mg-top {
+    height: 28px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    font-size: .64rem; font-weight: 700;
+    color: rgba(255,255,255,.5);
+    gap: 6px;
+  }
+  .mg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .mg-card {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .mg-card .num { font-size: 1rem; font-weight: 800; color: #fff; }
+  .mg-card .lbl { font-size: .56rem; color: rgba(255,255,255,.35); }
+  .mg-table {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 8px;
+    margin-top: 6px; overflow: hidden;
+  }
+  .mg-row {
+    display: flex; align-items: center;
+    padding: 5px 10px;
+    font-size: .62rem;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    gap: 7px;
+    color: rgba(255,255,255,.6);
+  }
+  .mg-row:last-child { border-bottom: none; }
+  .mb-g { margin-bottom: 16px; }
+</style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="grid-pattern"></div>
+
+  <div class="center-wrap">
+    <div class="brand-top">
+      <div class="brand-logo">
+        <div class="brand-logo-icon"><i class="fa-solid fa-plane-departure"></i></div>
+        <div>
+          <div class="brand-logo-name">ZEGO</div>
+          <div class="brand-logo-sub">항공 재고관리 시스템</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="card-title">로그인</div>
+      <div class="card-sub"><span class="glow-dot"></span> 시스템 운영 중</div>
+
+      <div class="mb-g">
+        <label class="form-label-g">아이디</label>
+        <input type="text" class="form-input-g" placeholder="아이디를 입력하세요" value="admin">
+      </div>
+      <div class="mb-g-lg">
+        <label class="form-label-g">비밀번호</label>
+        <input type="password" class="form-input-g" placeholder="비밀번호를 입력하세요" value="••••••••">
+      </div>
+      <button class="btn-login-g"><i class="fa-solid fa-arrow-right-to-bracket" style="margin-right:8px"></i>로그인</button>
+    </div>
+
+    <div class="glass-footer">
+      <div class="glass-stat"><div class="num">24</div><div class="lbl">지점</div></div>
+      <div class="glass-stat"><div class="num">100+</div><div class="lbl">양식</div></div>
+      <div class="glass-stat"><div class="num">99%</div><div class="lbl">정확도</div></div>
+    </div>
+
+    <div class="layout-preview">
+      <div class="sb-g">
+        <div class="sb-g-brand">
+          <div class="sb-g-icon"><i class="fa-solid fa-plane-departure"></i></div>
+          <div class="sb-g-name">ZEGO</div>
+        </div>
+        <div class="sb-g-item active"><i class="fa-solid fa-gauge"></i> 대시보드</div>
+        <div class="sb-g-item"><i class="fa-solid fa-boxes-stacked"></i> 재고 현황</div>
+        <div class="sb-g-item"><i class="fa-solid fa-truck-ramp-box"></i> 입고</div>
+        <div class="sb-g-item"><i class="fa-solid fa-dolly"></i> 출고</div>
+        <div class="sb-g-item"><i class="fa-solid fa-truck-moving"></i> 이전</div>
+      </div>
+      <div class="main-g">
+        <div class="mg-top"><span style="color:#f87171"><i class="fa-solid fa-gauge"></i></span> 대시보드</div>
+        <div class="mg-grid">
+          <div class="mg-card"><div class="num" style="color:#60A5FA">12</div><div class="lbl">운영 지점</div></div>
+          <div class="mg-card"><div class="num" style="color:#F87171">3</div><div class="lbl">재고 부족</div></div>
+        </div>
+        <div class="mg-table">
+          <div class="mg-row" style="color:rgba(255,255,255,.3);font-weight:700;font-size:.58rem">최근 거래</div>
+          <div class="mg-row"><span style="font-size:.58rem;padding:1px 5px;border-radius:20px;background:rgba(74,222,128,.15);color:#4ADE80;font-weight:700">입고</span> 안전벨트 연장</div>
+          <div class="mg-row"><span style="font-size:.58rem;padding:1px 5px;border-radius:20px;background:rgba(248,113,113,.15);color:#F87171;font-weight:700">출고</span> 구명조끼</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

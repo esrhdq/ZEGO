@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design A — 따뜻한 미니멀 (Warm Minimal)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; }
+  body {
+    background: #FAF9F7;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 배경 장식 */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -120px; right: -120px;
+    width: 480px; height: 480px;
+    background: radial-gradient(circle, rgba(204,22,37,.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -100px; left: -80px;
+    width: 360px; height: 360px;
+    background: radial-gradient(circle, rgba(251,191,36,.06) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .login-wrap {
+    width: 100%;
+    max-width: 420px;
+    padding: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 브랜드 헤더 */
+  .brand-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .brand-icon {
+    width: 52px; height: 52px;
+    background: #CC1625;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem; color: #fff;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 16px rgba(204,22,37,.28);
+  }
+  .brand-name {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #1C1917;
+    letter-spacing: .06em;
+    margin: 0;
+    line-height: 1;
+  }
+  .brand-sub {
+    font-size: .78rem;
+    color: #A8A29E;
+    font-weight: 500;
+    margin-top: 5px;
+    letter-spacing: .04em;
+  }
+
+  /* 카드 */
+  .login-card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    padding: 36px 32px 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04),
+                0 8px 32px rgba(0,0,0,.07),
+                0 0 0 1px rgba(0,0,0,.04);
+  }
+  .login-card h5 {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #1C1917;
+    margin-bottom: 22px;
+  }
+
+  /* 입력 */
+  .form-label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: #57534E;
+    margin-bottom: 6px;
+  }
+  .form-control {
+    border: 1.5px solid #E7E5E4;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: .9rem;
+    color: #1C1917;
+    background: #FAFAF9;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-control:focus {
+    border-color: #CC1625;
+    box-shadow: 0 0 0 3px rgba(204,22,37,.1);
+    background: #fff;
+    outline: none;
+  }
+  .form-control::placeholder { color: #C7C3C0; }
+
+  .input-icon-wrap { position: relative; }
+  .input-icon-wrap .form-control { padding-left: 38px; }
+  .input-icon-wrap .input-icon {
+    position: absolute;
+    left: 13px; top: 50%;
+    transform: translateY(-50%);
+    color: #A8A29E; font-size: .82rem;
+  }
+
+  /* 버튼 */
+  .btn-login {
+    width: 100%;
+    background: #CC1625;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 11px;
+    font-size: .9rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: background .15s, box-shadow .15s, transform .1s;
+    box-shadow: 0 2px 8px rgba(204,22,37,.25);
+    margin-top: 6px;
+  }
+  .btn-login:hover {
+    background: #A8101D;
+    box-shadow: 0 4px 16px rgba(204,22,37,.32);
+    transform: translateY(-1px);
+  }
+
+  /* 도움말 */
+  .login-help {
+    text-align: center;
+    margin-top: 18px;
+    font-size: .78rem;
+    color: #A8A29E;
+  }
+
+  /* 사이드바 미리보기 */
+  .sidebar-preview {
+    display: flex;
+    gap: 0;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 8px 32px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.04);
+    margin-top: 24px;
+    height: 220px;
+  }
+  .sb {
+    width: 190px;
+    background: #FAFAF8;
+    border-right: 1px solid #F0EFED;
+    padding: 16px 10px;
+    flex-shrink: 0;
+  }
+  .sb-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 12px;
+    border-bottom: 1px solid #F0EFED;
+    margin-bottom: 10px;
+  }
+  .sb-brand-icon {
+    width: 28px; height: 28px;
+    background: #CC1625;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; color: #fff;
+  }
+  .sb-brand-name { font-size: .82rem; font-weight: 800; color: #1C1917; letter-spacing: .06em; }
+  .sb-label { font-size: .55rem; font-weight: 700; color: #C7C3C0; letter-spacing: .12em; text-transform: uppercase; padding: 8px 10px 3px; }
+  .sb-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 7px;
+    font-size: .76rem; font-weight: 500; color: #78716C;
+    margin: 1px 0;
+    cursor: pointer;
+  }
+  .sb-item i { width: 14px; text-align: center; font-size: .72rem; }
+  .sb-item.active { background: #FFF1F2; color: #CC1625; font-weight: 700; }
+  .sb-item:not(.active):hover { background: #F5F5F4; }
+
+  .main-preview {
+    flex: 1;
+    padding: 16px;
+    background: #FAF9F7;
+    overflow: hidden;
+  }
+  .mp-top {
+    height: 36px;
+    background: rgba(255,255,255,.9);
+    border-radius: 8px;
+    border: 1px solid #F0EFED;
+    margin-bottom: 12px;
+    display: flex; align-items: center;
+    padding: 0 12px;
+    font-size: .72rem; font-weight: 700; color: #1C1917;
+    gap: 8px;
+  }
+  .mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mp-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid #F0EFED;
+    box-shadow: 0 1px 4px rgba(0,0,0,.03);
+  }
+  .mp-card .num { font-size: 1.2rem; font-weight: 800; color: #1C1917; }
+  .mp-card .lbl { font-size: .62rem; color: #A8A29E; font-weight: 500; }
+  .mp-table {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #F0EFED;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .mp-table-row {
+    display: flex; align-items: center;
+    padding: 6px 12px;
+    font-size: .65rem;
+    border-bottom: 1px solid #F5F5F4;
+    gap: 8px;
+  }
+  .mp-table-row:last-child { border-bottom: none; }
+  .mp-badge {
+    font-size: .58rem; padding: 2px 6px;
+    border-radius: 20px; font-weight: 600;
+  }
+  .badge-in  { background: #D1FAE5; color: #065F46; }
+  .badge-out { background: #FEE2E2; color: #991B1B; }
+
+  .design-label {
+    text-align: center;
+    margin-bottom: 16px;
+    padding: 8px 16px;
+    background: rgba(204,22,37,.06);
+    border-radius: 20px;
+    display: inline-block;
+    font-size: .75rem;
+    font-weight: 700;
+    color: #CC1625;
+    letter-spacing: .04em;
+  }
+  .label-wrap { text-align: center; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="label-wrap">
+    <span class="design-label">Design A — 따뜻한 미니멀 (Warm Minimal)</span>
+  </div>
+
+  <div class="brand-header">
+    <div class="brand-icon"><i class="fa-solid fa-plane-departure"></i></div>
+    <div class="brand-name">ZEGO</div>
+    <div class="brand-sub">항공 재고관리 시스템</div>
+  </div>
+
+  <div class="login-card">
+    <h5>다시 만나서 반갑습니다</h5>
+
+    <div class="mb-3">
+      <label class="form-label">아이디</label>
+      <div class="input-icon-wrap">
+        <i class="fa-solid fa-user input-icon"></i>
+        <input type="text" class="form-control" placeholder="아이디를 입력하세요" value="admin">
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">비밀번호</label>
+      <div class="input-icon-wrap">
+        <i class="fa-solid fa-lock input-icon"></i>
+        <input type="password" class="form-control" placeholder="비밀번호를 입력하세요" value="••••••••">
+      </div>
+    </div>
+    <button class="btn-login"><i class="fa-solid fa-arrow-right-to-bracket me-2"></i>로그인</button>
+  </div>
+
+  <div class="login-help">관리자에게 계정을 요청하세요</div>
+
+  <!-- 사이드바 + 대시보드 미리보기 -->
+  <div class="sidebar-preview">
+    <div class="sb">
+      <div class="sb-brand">
+        <div class="sb-brand-icon"><i class="fa-solid fa-plane-departure"></i></div>
+        <div class="sb-brand-name">ZEGO</div>
+      </div>
+      <div class="sb-label">메인</div>
+      <div class="sb-item active"><i class="fa-solid fa-gauge"></i> 대시보드</div>
+      <div class="sb-item"><i class="fa-solid fa-boxes-stacked"></i> 재고 현황</div>
+      <div class="sb-label">거래</div>
+      <div class="sb-item"><i class="fa-solid fa-truck-ramp-box"></i> 입고</div>
+      <div class="sb-item"><i class="fa-solid fa-dolly"></i> 출고</div>
+      <div class="sb-item"><i class="fa-solid fa-truck-moving"></i> 이전</div>
+    </div>
+    <div class="main-preview">
+      <div class="mp-top">
+        <span style="color:#CC1625"><i class="fa-solid fa-gauge"></i></span>
+        대시보드
+      </div>
+      <div class="mp-grid">
+        <div class="mp-card"><div class="num" style="color:#2563EB">12</div><div class="lbl">운영 지점</div></div>
+        <div class="mp-card"><div class="num" style="color:#CC1625">3</div><div class="lbl">재고 부족</div></div>
+      </div>
+      <div class="mp-table">
+        <div class="mp-table-row" style="background:#FAFAF8;font-weight:700;color:#A8A29E;font-size:.6rem;text-transform:uppercase">
+          최근 거래
+        </div>
+        <div class="mp-table-row">
+          <span class="mp-badge badge-in">입고</span>
+          <span style="color:#1C1917;font-weight:600">안전벨트 연장</span>
+          <span style="margin-left:auto;color:#A8A29E">ICN</span>
+        </div>
+        <div class="mp-table-row">
+          <span class="mp-badge badge-out">출고</span>
+          <span style="color:#1C1917;font-weight:600">구명조끼</span>
+          <span style="margin-left:auto;color:#A8A29E">GMP</span>
+        </div>
+        <div class="mp-table-row">
+          <span class="mp-badge badge-in">입고</span>
+          <span style="color:#1C1917;font-weight:600">헤드셋</span>
+          <span style="margin-left:auto;color:#A8A29E">PUS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
