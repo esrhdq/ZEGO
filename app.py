@@ -300,6 +300,7 @@ def handle_exception(e):
 @app.context_processor
 def inject_globals():
     notif_count = 0
+    pw_expire_days = None
     bid  = session.get('branch_id')
     role = session.get('role')
     if 'user_id' in session:
@@ -314,13 +315,11 @@ def inject_globals():
                 ).fetchone()
                 pending = int(r['cnt']) if r else 0
             elif bid:
-                # 내 지점에 들어온 PENDING 이전 요청 (승인 대기)
                 r = conn.execute(
                     'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE from_branch_id=%s AND status=%s',
                     (bid, 'PENDING')
                 ).fetchone()
                 pending = int(r['cnt']) if r else 0
-                # 내 지점 대상 읽지 않은 알림 (승인/반려 결과)
                 r2 = conn.execute(
                     'SELECT COUNT(*) AS cnt FROM notifications WHERE branch_id=%s AND is_read=0',
                     (bid,)
@@ -330,7 +329,13 @@ def inject_globals():
             notif_count = pending + unread
         except Exception:
             pass
-    return {'notif_count': notif_count, 'endpoint': request.endpoint}
+        # 비밀번호 만료일 계산
+        changed_ts = session.get('_pwd_changed_at', 0)
+        if changed_ts:
+            elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
+            days_left = int(180 - elapsed / 86400)
+            pw_expire_days = days_left
+    return {'notif_count': notif_count, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days}
 
 
 # ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
@@ -343,12 +348,15 @@ def check_ip_and_session():
         if client_ip not in ALLOWED_IPS:
             return render_template('403.html'), 403
 
-    # 비밀번호 6개월 강제 변경 (change_password, logout 제외)
-    if 'user_id' in session and request.endpoint not in ('change_password', 'logout', None):
+    # 비밀번호 만료: 당일(<=0)만 강제 리디렉트, 7일 이하는 배너 경고만
+    if 'user_id' in session and request.endpoint not in ('change_password', 'logout', 'set_lang', None):
         changed_ts = session.get('_pwd_changed_at', 0)
-        if changed_ts and (datetime.now(timezone.utc).timestamp() - changed_ts) > 15552000:  # 180일
-            flash('비밀번호를 변경한 지 6개월이 지났습니다. 보안을 위해 비밀번호를 변경해 주세요.', 'warning')
-            return redirect(url_for('change_password'))
+        if changed_ts:
+            elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
+            days_left = int(180 - elapsed / 86400)
+            if days_left <= 0:
+                flash('비밀번호 유효기간이 만료되었습니다. 지금 바로 변경해 주세요.', 'danger')
+                return redirect(url_for('change_password'))
 
     # 30분 유휴 세션 만료 (API 엔드포인트 제외)
     if 'user_id' in session and not request.path.startswith('/api/'):
@@ -1027,9 +1035,36 @@ def dashboard():
         'today_tx': _s['today_cnt'],
         'alerts':   len(low_stock) + len(empty_stock),
     }
+    # 6개월 출고 트렌드 (차트용)
+    import json as _json
+    chart_data = {'labels': [], 'datasets': []}
+    try:
+        months = conn.execute('''
+            SELECT TO_CHAR(CURRENT_DATE - INTERVAL '5 months', 'YYYY-MM') AS m0,
+                   TO_CHAR(CURRENT_DATE - INTERVAL '4 months', 'YYYY-MM') AS m1,
+                   TO_CHAR(CURRENT_DATE - INTERVAL '3 months', 'YYYY-MM') AS m2,
+                   TO_CHAR(CURRENT_DATE - INTERVAL '2 months', 'YYYY-MM') AS m3,
+                   TO_CHAR(CURRENT_DATE - INTERVAL '1 months', 'YYYY-MM') AS m4,
+                   TO_CHAR(CURRENT_DATE, 'YYYY-MM') AS m5
+        ''').fetchone()
+        labels = [months[f'm{i}'] for i in range(6)]
+        chart_cond = f'AND from_branch_id={bid}' if role != 'admin' and bid else ''
+        rows_chart = conn.execute(f'''
+            SELECT TO_CHAR(transaction_date, 'YYYY-MM') AS ym,
+                   SUM(quantity) AS total
+            FROM transactions
+            WHERE type='OUT' AND transaction_date >= CURRENT_DATE - INTERVAL '5 months' {chart_cond}
+            GROUP BY ym ORDER BY ym
+        ''').fetchall()
+        monthly_map = {r['ym']: int(r['total']) for r in rows_chart}
+        data_vals = [monthly_map.get(lb, 0) for lb in labels]
+        chart_data = {'labels': labels, 'datasets': [{'label': '전체 출고량', 'data': data_vals}]}
+    except Exception:
+        pass
     conn.close()
     return render_template('dashboard.html', low_stock=low_stock, empty_stock=empty_stock,
-                           recent_tx=recent_tx, stats=stats)
+                           recent_tx=recent_tx, stats=stats,
+                           chart_data=_json.dumps(chart_data))
 
 
 @app.route('/inventory')
@@ -1187,7 +1222,24 @@ def inbound():
         conn.commit()
 
         b = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
-        f = conn.execute('SELECT name FROM form_types WHERE id=%s', (fid,)).fetchone()
+        f = conn.execute('SELECT name, min_threshold FROM form_types WHERE id=%s', (fid,)).fetchone()
+        # 입고 후에도 여전히 부족한 경우 알림 (기존 미읽음 없을 때만)
+        inv_after = conn.execute(
+            'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s', (bid, fid)
+        ).fetchone()
+        if inv_after and f and inv_after['quantity'] <= f['min_threshold']:
+            dup_notif = conn.execute(
+                "SELECT id FROM notifications WHERE branch_id=%s AND is_read=0 "
+                "AND message LIKE %s LIMIT 1",
+                (bid, f'%{f["name"]}%')
+            ).fetchone()
+            if not dup_notif:
+                status_label = '소진' if inv_after['quantity'] == 0 else '부족'
+                conn.execute(
+                    "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+                    (bid, f'[재고{status_label}] {b["name"]} — {f["name"]} 잔여 {inv_after["quantity"]}개')
+                )
+                conn.commit()
         flash(f'입고 완료 ✔ {b["name"]} — {f["name"]} {qty}개 ({tx_date})', 'success')
         conn.close()
         return redirect(url_for('inbound'))
@@ -1241,6 +1293,28 @@ def outbound():
             (fid, bid, qty, notes, session['username'], period_month, tx_date)
         )
         conn.commit()
+        # 출고 후 재고 부족/소진 즉시 알림
+        inv_after = conn.execute(
+            'SELECT i.quantity, f.min_threshold FROM inventory i '
+            'JOIN form_types f ON i.form_type_id=f.id '
+            'WHERE i.branch_id=%s AND i.form_type_id=%s', (bid, fid)
+        ).fetchone()
+        if inv_after and inv_after['quantity'] <= inv_after['min_threshold']:
+            b_name = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
+            f_name = conn.execute('SELECT name FROM form_types WHERE id=%s', (fid,)).fetchone()
+            if b_name and f_name:
+                dup_notif = conn.execute(
+                    "SELECT id FROM notifications WHERE branch_id=%s AND is_read=0 "
+                    "AND message LIKE %s LIMIT 1",
+                    (bid, f'%{f_name["name"]}%')
+                ).fetchone()
+                if not dup_notif:
+                    status_label = '소진' if inv_after['quantity'] == 0 else '부족'
+                    conn.execute(
+                        "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+                        (bid, f'[재고{status_label}] {b_name["name"]} — {f_name["name"]} 잔여 {inv_after["quantity"]}개')
+                    )
+                    conn.commit()
         flash(f'출고 처리 완료 ✔ ({tx_date})', 'success')
         conn.close()
         return redirect(url_for('outbound'))
@@ -1316,6 +1390,17 @@ def transfer():
         ft     = conn.execute('SELECT name, unit FROM form_types WHERE id=%s', (fid,)).fetchone()
         if not from_b or not to_b or not ft:
             flash('잘못된 요청입니다.', 'danger')
+            conn.close()
+            return redirect(url_for('transfer'))
+
+        # 동일 조합 PENDING 중복 신청 방지
+        dup = conn.execute(
+            "SELECT id FROM transfer_requests "
+            "WHERE from_branch_id=%s AND to_branch_id=%s AND form_type_id=%s AND status='PENDING'",
+            (from_bid, to_bid, fid)
+        ).fetchone()
+        if dup:
+            flash(f'동일한 이전 신청이 이미 처리 대기 중입니다. (신청 #{dup["id"]})', 'warning')
             conn.close()
             return redirect(url_for('transfer'))
 
@@ -3771,6 +3856,230 @@ with app.app_context():
 
 
 # ── 5년 경과 데이터 자동 파기 (관리자 전용) ──────────────────────────────────
+
+@app.route('/bulk-outbound')
+@login_required
+def bulk_outbound_page():
+    conn = get_db()
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
+
+    if role == 'admin':
+        bid_filter = request.args.get('branch_id', '')
+        if bid_filter:
+            rows = conn.execute('''
+                SELECT i.branch_id, i.form_type_id, i.quantity,
+                       f.name form_name, f.unit, f.min_threshold,
+                       b.name branch_name, b.code branch_code
+                FROM inventory i
+                JOIN form_types f ON i.form_type_id=f.id
+                JOIN branches  b ON i.branch_id=b.id
+                WHERE i.branch_id=%s
+                ORDER BY f.name
+            ''', (bid_filter,)).fetchall()
+        else:
+            rows = conn.execute('''
+                SELECT i.branch_id, i.form_type_id, i.quantity,
+                       f.name form_name, f.unit, f.min_threshold,
+                       b.name branch_name, b.code branch_code
+                FROM inventory i
+                JOIN form_types f ON i.form_type_id=f.id
+                JOIN branches  b ON i.branch_id=b.id
+                ORDER BY b.code, f.name
+            ''').fetchall()
+    else:
+        rows = conn.execute('''
+            SELECT i.branch_id, i.form_type_id, i.quantity,
+                   f.name form_name, f.unit, f.min_threshold,
+                   b.name branch_name, b.code branch_code
+            FROM inventory i
+            JOIN form_types f ON i.form_type_id=f.id
+            JOIN branches  b ON i.branch_id=b.id
+            WHERE i.branch_id=%s
+            ORDER BY f.name
+        ''', (bid,)).fetchall()
+    conn.close()
+    from datetime import date
+    return render_template('bulk_outbound.html', inventory_rows=rows, branches=branches,
+                           today=date.today().isoformat())
+
+
+@app.route('/transfer/my-requests')
+@login_required
+def my_transfer_requests():
+    conn = get_db()
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    status_f   = request.args.get('status', '')
+    date_from  = request.args.get('date_from', '')
+    date_to    = request.args.get('date_to', '')
+    page       = max(1, int(request.args.get('page', 1)))
+    per_page   = 20
+
+    conditions = ['1=1']
+    params     = []
+    if role != 'admin' and bid:
+        conditions.append('(tr.from_branch_id=%s OR tr.to_branch_id=%s)')
+        params.extend([bid, bid])
+    if status_f:
+        conditions.append('tr.status=%s'); params.append(status_f)
+    if date_from:
+        conditions.append('tr.created_at >= %s'); params.append(date_from)
+    if date_to:
+        conditions.append('tr.created_at <= %s'); params.append(date_to + ' 23:59:59')
+
+    total = conn.execute(
+        f'SELECT COUNT(*) AS cnt FROM transfer_requests tr WHERE {" AND ".join(conditions)}',
+        params
+    ).fetchone()['cnt']
+
+    rows = conn.execute(
+        _TR_SELECT + f' WHERE {" AND ".join(conditions)} ORDER BY tr.created_at DESC LIMIT {per_page} OFFSET {(page-1)*per_page}',
+        params
+    ).fetchall()
+    conn.close()
+
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    return render_template('my_transfers.html', rows=rows,
+                           status_f=status_f, date_from=date_from, date_to=date_to,
+                           page=page, total_pages=total_pages, total=total)
+
+
+@app.route('/admin/access-logs')
+@login_required
+def access_logs_view():
+    if session.get('role') != 'admin':
+        flash('관리자 권한이 필요합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    username_f = request.args.get('username', '')
+    action_f   = request.args.get('action', '')
+    date_from  = request.args.get('date_from', '')
+    date_to    = request.args.get('date_to', '')
+    page       = max(1, int(request.args.get('page', 1)))
+    per_page   = 50
+
+    conditions, params = ['1=1'], []
+    if username_f:
+        conditions.append('username LIKE %s'); params.append(f'%{username_f}%')
+    if action_f:
+        conditions.append('action LIKE %s'); params.append(f'%{action_f}%')
+    if date_from:
+        conditions.append('created_at >= %s'); params.append(date_from)
+    if date_to:
+        conditions.append('created_at <= %s'); params.append(date_to + ' 23:59:59')
+
+    total = conn.execute(
+        f'SELECT COUNT(*) AS cnt FROM access_logs WHERE {" AND ".join(conditions)}', params
+    ).fetchone()['cnt']
+    logs = conn.execute(
+        f'SELECT * FROM access_logs WHERE {" AND ".join(conditions)} '
+        f'ORDER BY created_at DESC LIMIT {per_page} OFFSET {(page-1)*per_page}',
+        params
+    ).fetchall()
+    conn.close()
+
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    return render_template('access_logs.html', logs=logs,
+                           username_f=username_f, action_f=action_f,
+                           date_from=date_from, date_to=date_to,
+                           page=page, total_pages=total_pages, total=total)
+
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@login_required
+def notifications_read_all():
+    bid = session.get('branch_id')
+    if not bid and session.get('role') != 'admin':
+        return jsonify({'ok': False}), 403
+    conn = get_db()
+    if session.get('role') == 'admin':
+        conn.execute('UPDATE notifications SET is_read=1 WHERE is_read=0')
+    else:
+        conn.execute('UPDATE notifications SET is_read=1 WHERE branch_id=%s AND is_read=0', (bid,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/bulk-outbound', methods=['POST'])
+@login_required
+def bulk_outbound():
+    data  = request.get_json(silent=True) or {}
+    items = data.get('items', [])
+    if not items:
+        return jsonify({'ok': False, 'msg': '출고 항목이 없습니다.'}), 400
+
+    conn    = get_db()
+    role    = session.get('role')
+    my_bid  = session.get('branch_id')
+    success = []
+    failed  = []
+
+    for item in items:
+        try:
+            bid  = int(item['branch_id'])
+            fid  = int(item['form_type_id'])
+            qty  = int(item['quantity'])
+            note = item.get('notes', '')
+            period_month = item.get('period_month', datetime.now(timezone.utc).strftime('%Y-%m'))
+            tx_date = item.get('transaction_date', datetime.now(timezone.utc).strftime('%Y-%m-%d'))
+
+            if role != 'admin' and bid != my_bid:
+                failed.append({'branch_id': bid, 'form_type_id': fid, 'reason': '권한 없음'})
+                continue
+            if qty <= 0:
+                failed.append({'branch_id': bid, 'form_type_id': fid, 'reason': '수량 오류'})
+                continue
+
+            cur = conn.execute(
+                'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s', (bid, fid)
+            ).fetchone()
+            if not cur or cur['quantity'] < qty:
+                failed.append({'branch_id': bid, 'form_type_id': fid,
+                               'reason': f'재고 부족 (현재 {cur["quantity"] if cur else 0}개)'})
+                continue
+
+            conn.execute(
+                'UPDATE inventory SET quantity=quantity-%s, last_updated=NOW() '
+                'WHERE branch_id=%s AND form_type_id=%s', (qty, bid, fid)
+            )
+            conn.execute(
+                "INSERT INTO transactions "
+                "(type, form_type_id, from_branch_id, quantity, notes, created_by, period_month, transaction_date) "
+                "VALUES ('OUT',%s,%s,%s,%s,%s,%s,%s)",
+                (fid, bid, qty, note, session['username'], period_month, tx_date)
+            )
+            # 재고 부족 알림
+            inv_after = conn.execute(
+                'SELECT i.quantity, f.min_threshold, f.name fn, b.name bn '
+                'FROM inventory i JOIN form_types f ON i.form_type_id=f.id '
+                'JOIN branches b ON i.branch_id=b.id '
+                'WHERE i.branch_id=%s AND i.form_type_id=%s', (bid, fid)
+            ).fetchone()
+            if inv_after and inv_after['quantity'] <= inv_after['min_threshold']:
+                dup = conn.execute(
+                    "SELECT id FROM notifications WHERE branch_id=%s AND is_read=0 AND message LIKE %s LIMIT 1",
+                    (bid, f'%{inv_after["fn"]}%')
+                ).fetchone()
+                if not dup:
+                    sl = '소진' if inv_after['quantity'] == 0 else '부족'
+                    conn.execute(
+                        "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+                        (bid, f'[재고{sl}] {inv_after["bn"]} — {inv_after["fn"]} 잔여 {inv_after["quantity"]}개')
+                    )
+            success.append({'branch_id': bid, 'form_type_id': fid, 'quantity': qty})
+        except Exception as e:
+            failed.append({'branch_id': item.get('branch_id'), 'form_type_id': item.get('form_type_id'),
+                           'reason': str(e)})
+
+    if success:
+        conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'processed': len(success), 'failed': failed})
+
 
 @app.route('/admin/access-logs/download')
 @login_required

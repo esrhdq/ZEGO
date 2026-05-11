@@ -48,11 +48,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div class="stat-icon" style="background:var(--red-light);color:var(--red)">
+        <div class="stat-icon" style="background:var(--warning-bg);color:var(--warning)">
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
         <div>
-          <div class="stat-num" style="color:var(--red)">{{ stats.alerts }}</div>
+          <div class="stat-num" style="color:var(--warning)">{{ stats.alerts }}</div>
           <div class="stat-label">{{ T('dash.stock_alerts') }}</div>
         </div>
       </div>
@@ -181,6 +181,17 @@
   </div>
 </div>
 
+<!-- 6개월 출고 트렌드 차트 -->
+<div class="card mt-4">
+  <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
+    <i class="fa-solid fa-chart-line me-2" style="color:var(--brand)"></i>
+    <strong>출고 트렌드 (최근 6개월)</strong>
+  </div>
+  <div class="card-body" style="height:220px;position:relative">
+    <canvas id="outboundChart"></canvas>
+  </div>
+</div>
+
 <!-- 바로가기 버튼 -->
 <div class="row g-2 mt-3 shortcut-row">
   <div class="col-auto">
@@ -193,4 +204,36 @@
     <a href="{{ url_for('transfer') }}" class="btn btn-primary"><i class="fa-solid fa-truck-moving me-1"></i>{{ T('dash.btn_transfer') }}</a>
   </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  var raw = {{ chart_data | safe }};
+  if (!raw || !raw.labels || !raw.labels.length) return;
+  var ctx = document.getElementById('outboundChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: raw.labels,
+      datasets: raw.datasets.map(function(ds) {
+        return {
+          label: ds.label, data: ds.data,
+          borderColor: '#CC1625', backgroundColor: 'rgba(204,22,37,.08)',
+          fill: true, tension: 0.35,
+          pointBackgroundColor: '#CC1625', pointRadius: 4, borderWidth: 2
+        };
+      })
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color:'rgba(0,0,0,.05)' }, ticks: { font: { family:'Pretendard' } } },
+        x: { grid: { display: false }, ticks: { font: { family:'Pretendard' } } }
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

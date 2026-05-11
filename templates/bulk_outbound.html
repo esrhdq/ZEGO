@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}일괄 출고{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-layer-group"></i>{% endblock %}
+{% block page_title %}일괄 출고{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+  <div class="card-header bg-white border-bottom py-3">
+    <strong>출고 항목 선택</strong>
+    <span class="text-muted small ms-2">체크박스로 여러 품목을 선택하고 한 번에 출고합니다</span>
+  </div>
+  <div class="card-body">
+    {% if session.role == 'admin' %}
+    <div class="row g-2 mb-3">
+      <div class="col-sm-4">
+        <label class="form-label small fw-semibold mb-1">지점 선택</label>
+        <select id="branchFilter" class="form-select form-select-sm" onchange="loadInventory()">
+          <option value="">지점 선택</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="table-scroll">
+      <table class="table table-hover" id="inventoryTable">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
+            {% if session.role == 'admin' %}<th>지점</th>{% endif %}
+            <th>품목명</th>
+            <th class="text-center">현재 재고</th>
+            <th class="text-center">최소기준</th>
+            <th class="text-center" style="width:130px">출고 수량</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in inventory_rows %}
+          <tr data-branch="{{ row.branch_id }}" data-form="{{ row.form_type_id }}"
+              data-stock="{{ row.quantity }}" data-unit="{{ row.unit }}">
+            <td><input type="checkbox" class="row-check"></td>
+            {% if session.role == 'admin' %}
+            <td><span class="badge bg-secondary">{{ row.branch_code }}</span> {{ row.branch_name }}</td>
+            {% endif %}
+            <td class="small fw-semibold">{{ row.form_name }}</td>
+            <td class="text-center">
+              {% if row.quantity == 0 %}
+                <span class="badge badge-status-empty">소진</span>
+              {% elif row.quantity <= row.min_threshold %}
+                <span class="badge badge-status-low">{{ row.quantity }}</span>
+              {% else %}
+                <span class="badge badge-status-safe">{{ row.quantity }}</span>
+              {% endif %}
+            </td>
+            <td class="text-center text-muted small">{{ row.min_threshold }}</td>
+            <td>
+              <input type="number" class="form-control form-control-sm qty-input text-center"
+                     min="1" max="{{ row.quantity }}" value=""
+                     style="width:90px"
+                     oninput="validateQty(this, {{ row.quantity }})">
+            </td>
+            <td><input type="text" class="form-control form-control-sm note-input" placeholder="비고" style="min-width:120px"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if not inventory_rows %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="fa-solid fa-layer-group"></i></div>
+      <h6>재고 데이터가 없습니다</h6>
+      <p>출고할 재고가 없습니다.</p>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-footer bg-white d-flex align-items-center gap-2">
+    <div class="me-auto">
+      <span id="selectedCount" class="text-muted small">선택된 항목: 0개</span>
+    </div>
+    <input type="month" id="periodMonth" class="form-control form-control-sm"
+           style="width:150px" value="{{ today[:7] }}" title="출고 기간">
+    <button type="button" class="btn btn-primary" id="bulkOutboundBtn" onclick="submitBulk()">
+      <i class="fa-solid fa-dolly me-1"></i>선택 항목 출고
+    </button>
+  </div>
+</div>
+
+<div id="resultArea" class="d-none">
+  <div class="card">
+    <div class="card-header bg-white border-bottom py-3"><strong>처리 결과</strong></div>
+    <div class="card-body" id="resultBody"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(cb) {
+  document.querySelectorAll('.row-check').forEach(function(c){ c.checked = cb.checked; });
+  updateCount();
+}
+function updateCount() {
+  var n = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('selectedCount').textContent = '선택된 항목: ' + n + '개';
+}
+document.querySelectorAll('.row-check').forEach(function(c){ c.addEventListener('change', updateCount); });
+
+function validateQty(input, maxStock) {
+  var v = parseInt(input.value);
+  if (v > maxStock) {
+    input.classList.add('is-invalid');
+    input.title = '재고(' + maxStock + ')를 초과합니다';
+  } else {
+    input.classList.remove('is-invalid');
+    input.title = '';
+  }
+}
+
+function submitBulk() {
+  var btn = document.getElementById('bulkOutboundBtn');
+  var items = [];
+  var period = document.getElementById('periodMonth').value;
+  var today  = new Date().toISOString().slice(0,10);
+  var hasError = false;
+
+  document.querySelectorAll('tbody tr').forEach(function(row) {
+    var cb  = row.querySelector('.row-check');
+    if (!cb || !cb.checked) return;
+    var qty = parseInt(row.querySelector('.qty-input').value);
+    if (!qty || qty <= 0) { hasError = true; return; }
+    if (row.querySelector('.qty-input.is-invalid')) { hasError = true; return; }
+    items.push({
+      branch_id:    parseInt(row.dataset.branch),
+      form_type_id: parseInt(row.dataset.form),
+      quantity:     qty,
+      notes:        row.querySelector('.note-input').value,
+      period_month: period,
+      transaction_date: today
+    });
+  });
+
+  if (hasError) { alert('수량을 올바르게 입력해주세요.'); return; }
+  if (!items.length) { alert('출고할 항목을 선택하세요.'); return; }
+
+  setLoading(btn, true);
+  fetch('{{ url_for("bulk_outbound") }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    setLoading(btn, false);
+    var area = document.getElementById('resultArea');
+    var body = document.getElementById('resultBody');
+    area.classList.remove('d-none');
+    var html = '<p class="text-success mb-1"><i class="fa-solid fa-circle-check me-1"></i>성공: <strong>' + d.processed + '건</strong></p>';
+    if (d.failed && d.failed.length) {
+      html += '<p class="text-danger mb-2"><i class="fa-solid fa-circle-xmark me-1"></i>실패: <strong>' + d.failed.length + '건</strong></p>';
+      html += '<ul class="small text-muted mb-0">';
+      d.failed.forEach(function(f){ html += '<li>지점 #' + f.branch_id + ' / 품목 #' + f.form_type_id + ' — ' + f.reason + '</li>'; });
+      html += '</ul>';
+    }
+    body.innerHTML = html;
+    if (d.processed > 0) setTimeout(function(){ location.reload(); }, 2000);
+  })
+  .catch(function() { setLoading(btn, false); alert('오류가 발생했습니다.'); });
+}
+</script>
+{% endblock %}
