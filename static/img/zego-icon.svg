@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
+
+  <!-- ── 배경: EastarJet 스타일 빨간 라운드 사각형 ── -->
+  <rect width="56" height="56" rx="12" fill="#CC1625"/>
+
+  <!-- ── 미세한 광택 하이라이트 (상단) ── -->
+  <rect width="56" height="28" rx="12" fill="url(#shine)" opacity="0.12"/>
+  <defs>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="1"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── 비행기 실루엣 ──
+       방법: 위쪽(y=0)을 향하도록 그린 뒤 42° 시계방향 회전 → 우상단을 향함
+       EastarJet 로고와 동일한 구도
+  ── -->
+  <g transform="rotate(42, 28, 28)" fill="white">
+
+    <!-- 동체 (fuselage) — 앞뒤를 부드럽게 -->
+    <path d="M25.8 9.5 Q28 6.8 30.2 9.5 L30.2 43.5 Q28 46.2 25.8 43.5 Z"/>
+
+    <!-- 주 날개 (main wings) — 날개 위치: 동체 상단 35% 지점 -->
+    <path d="M25.8 15 L8.5 26.5 L8.5 22.5 L25.8 11.5 Z"/>
+    <path d="M30.2 15 L47.5 26.5 L47.5 22.5 L30.2 11.5 Z"/>
+
+    <!-- 꼬리 수평 안정판 (horizontal stabilizer) -->
+    <path d="M25.8 36 L16.5 41.5 L16.5 38.5 L25.8 33 Z"/>
+    <path d="M30.2 36 L39.5 41.5 L39.5 38.5 L30.2 33 Z"/>
+
+  </g>
+
+  <!-- ── 4각 별 스파클 (EastarJet 로고 요소 참조, 우상단 = 기수 근처) ── -->
+  <path d="M43.5 10
+           L44.5 7.2
+           L45.5 10
+           L48.3 10
+           L46.1 11.8
+           L46.9 14.6
+           L44.5 13
+           L42.1 14.6
+           L42.9 11.8
+           L40.7 10 Z"
+        fill="rgba(255,255,255,0.88)"/>
+
+</svg>

@@ -210,15 +210,6 @@
       border-bottom: 1px solid var(--sidebar-border);
       display: flex; align-items: center; gap: 11px;
     }
-    .brand-icon {
-      width: 34px; height: 34px;
-      background: var(--brand);
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .9rem; color: #fff;
-      flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(204,22,37,.25);
-    }
     .brand-text .brand-name {
       color: var(--text); font-weight: 800; font-size: 1rem;
       letter-spacing: .1em; line-height: 1;
@@ -513,9 +504,9 @@
 <div class="sidebar" id="sidebar">
 
   <div class="sidebar-brand">
-    <div class="brand-icon">
-      <i class="fa-solid fa-plane-departure"></i>
-    </div>
+    <img src="{{ url_for('static', filename='img/zego-icon.svg') }}"
+         width="34" height="34" alt="ZEGO"
+         style="border-radius:9px;flex-shrink:0;box-shadow:0 2px 8px rgba(204,22,37,.22)">
     <div class="brand-text">
       <div class="brand-name">ZEGO</div>
       <div class="brand-sub">{{ T('nav.brand_sub') }}</div>
