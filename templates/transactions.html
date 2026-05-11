@@ -107,11 +107,11 @@
             </td>
             <td class="text-center">
               {% if t.type=='IN' %}
-                <span class="badge" style="background:#d1fae5;color:#065f46">{{ T('common.inbound') }}</span>
+                <span class="badge badge-tx-in rounded-pill">{{ T('common.inbound') }}</span>
               {% elif t.type=='OUT' %}
-                <span class="badge" style="background:#fee2e2;color:#991b1b">{{ T('common.outbound') }}</span>
+                <span class="badge badge-tx-out rounded-pill">{{ T('common.outbound') }}</span>
               {% else %}
-                <span class="badge" style="background:#dbeafe;color:#1e40af">{{ T('common.transfer') }}</span>
+                <span class="badge badge-tx-transfer rounded-pill">{{ T('common.transfer') }}</span>
               {% endif %}
             </td>
             <td class="small">{{ t.form_name }}</td>
@@ -144,9 +144,10 @@
     </div>
     <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}{{ T('hist.max_rows') }}</div>
     {% else %}
-    <div class="text-center text-muted py-5">
-      <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>
-      {{ T('hist.no_data') }}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
+      <h6>{{ T('hist.no_data') }}</h6>
+      <p>조건에 맞는 거래 이력이 없습니다.</p>
     </div>
     {% endif %}
   </div>

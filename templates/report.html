@@ -188,13 +188,13 @@
                 {% else %}<span class="badge badge-cargo">화물</span>{% endif %}
               </td>
               <td><strong>{{ r.code }}</strong> <span class="text-muted small">{{ r.name }}</span></td>
-              <td class="text-center"><span class="badge bg-success">{{ r.ok_cnt or 0 }}</span></td>
+              <td class="text-center"><span class="badge badge-status-safe rounded-pill">{{ r.ok_cnt or 0 }}</span></td>
               <td class="text-center">
-                {% if r.low_cnt %}<span class="badge bg-warning text-dark">{{ r.low_cnt }}</span>
+                {% if r.low_cnt %}<span class="badge badge-status-low rounded-pill">{{ r.low_cnt }}</span>
                 {% else %}<span class="text-muted">—</span>{% endif %}
               </td>
               <td class="text-center">
-                {% if r.empty_cnt %}<span class="badge bg-danger">{{ r.empty_cnt }}</span>
+                {% if r.empty_cnt %}<span class="badge badge-status-empty rounded-pill">{{ r.empty_cnt }}</span>
                 {% else %}<span class="text-muted">—</span>{% endif %}
               </td>
               {% if session.role == 'admin' %}
@@ -224,9 +224,9 @@
           <tr>
             <td class="fw-semibold">{{ m.month }}</td>
             <td class="text-center">
-              {% if m.type=='IN' %}<span class="badge" style="background:#d1fae5;color:#065f46">{{ T('common.inbound') }}</span>
-              {% elif m.type=='OUT' %}<span class="badge" style="background:#fee2e2;color:#991b1b">{{ T('common.outbound') }}</span>
-              {% else %}<span class="badge" style="background:#dbeafe;color:#1e40af">{{ T('common.transfer') }}</span>{% endif %}
+              {% if m.type=='IN' %}<span class="badge badge-tx-in rounded-pill">{{ T('common.inbound') }}</span>
+              {% elif m.type=='OUT' %}<span class="badge badge-tx-out rounded-pill">{{ T('common.outbound') }}</span>
+              {% else %}<span class="badge badge-tx-transfer rounded-pill">{{ T('common.transfer') }}</span>{% endif %}
             </td>
             <td class="text-center">{{ m.tx_count }}건</td>
             <td class="text-center fw-semibold">{{ m.total_qty }}</td>
