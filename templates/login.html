@@ -8,10 +8,10 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
   <style>
-    * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; }
+    * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0B172E;
+      background: #FAF9F7;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -21,197 +21,156 @@
       overflow: hidden;
     }
 
-    /* 배경 그리드 패턴 */
+    /* 배경 장식 — 부드러운 빛 번짐 */
     body::before {
       content: '';
       position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-      background-size: 48px 48px;
-      pointer-events: none;
-    }
-
-    /* 배경 오브 */
-    .bg-orb {
-      position: fixed;
+      top: -140px; right: -140px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(204,22,37,.07) 0%, transparent 68%);
       border-radius: 50%;
       pointer-events: none;
-      filter: blur(90px);
     }
-    .bg-orb-1 {
-      width: 520px; height: 520px;
-      background: radial-gradient(circle, rgba(204,22,37,.16) 0%, transparent 70%);
-      top: -160px; left: -120px;
-    }
-    .bg-orb-2 {
-      width: 420px; height: 420px;
-      background: radial-gradient(circle, rgba(204,22,37,.1) 0%, transparent 70%);
-      bottom: -120px; right: -100px;
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -120px; left: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(251,191,36,.05) 0%, transparent 65%);
+      border-radius: 50%;
+      pointer-events: none;
     }
 
     /* 메인 래퍼 */
     .login-wrap {
       width: 100%;
-      max-width: 440px;
+      max-width: 420px;
       position: relative;
       z-index: 10;
     }
 
-    /* 상단 브랜드 */
-    .top-brand { text-align: center; margin-bottom: 28px; }
-    .airline-badge {
+    /* ── 브랜드 헤더 ── */
+    .brand-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .brand-icon-wrap {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      background: rgba(204,22,37,.13);
-      border: 1px solid rgba(204,22,37,.28);
-      border-radius: 20px;
-      padding: 5px 16px;
-      color: #D9283A;
-      font-size: .72rem;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
+      justify-content: center;
+      width: 54px; height: 54px;
+      background: #CC1625;
+      border-radius: 15px;
       margin-bottom: 14px;
+      box-shadow: 0 4px 18px rgba(204,22,37,.26);
     }
-    .app-logo {
-      color: #fff;
-      font-size: 3.2rem;
+    .brand-icon-wrap i { font-size: 1.3rem; color: #fff; }
+    .brand-name {
+      font-size: 1.75rem;
       font-weight: 900;
-      letter-spacing: .28em;
+      color: #1C1917;
+      letter-spacing: .08em;
       line-height: 1;
+      margin-bottom: 5px;
     }
-    .app-logo .accent { color: #CC1625; }
-
-    /* 로그인 카드 */
-    .login-card {
-      background: #fff;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,.05),
-        0 24px 64px rgba(0,0,0,.55),
-        0 8px 24px rgba(0,0,0,.3);
-    }
-
-    /* 카드 헤더 */
-    .card-hd {
-      background: linear-gradient(140deg, #CC1625 0%, #D9283A 55%, #E04060 100%);
-      padding: 26px 30px 22px;
-      position: relative;
-      overflow: hidden;
-    }
-    .card-hd::before {
-      content: '';
-      position: absolute;
-      width: 240px; height: 240px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.1);
-      top: -90px; right: -60px;
-    }
-    .card-hd::after {
-      content: '';
-      position: absolute;
-      width: 160px; height: 160px;
-      border-radius: 50%;
-      background: rgba(0,0,0,.07);
-      bottom: -70px; left: -30px;
-    }
-    .card-hd-inner {
-      position: relative; z-index: 1;
-      display: flex; align-items: center; gap: 16px;
-    }
-    .hd-icon {
-      width: 50px; height: 50px;
-      background: rgba(255,255,255,.22);
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.35rem; color: #fff;
-      flex-shrink: 0;
-    }
-    .hd-text h2 {
-      color: #fff;
-      font-size: 1.08rem;
-      font-weight: 700;
-      margin: 0 0 4px;
-      line-height: 1.3;
-    }
-    .hd-text p {
-      color: rgba(255,255,255,.8);
-      font-size: .76rem;
-      margin: 0;
+    .brand-tagline {
+      font-size: .78rem;
+      color: #A8A29E;
+      font-weight: 500;
       letter-spacing: .03em;
     }
 
-    /* 카드 바디 */
-    .card-bd { padding: 30px 30px 28px; }
-
-    .form-label {
-      font-size: .82rem;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 6px;
+    /* ── 로그인 카드 ── */
+    .login-card {
+      background: #FFFFFF;
+      border-radius: 22px;
+      padding: 36px 32px 30px;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.05),
+        0 4px 6px rgba(0,0,0,.03),
+        0 12px 40px rgba(0,0,0,.07);
     }
-    .ig-icon {
-      width: 42px;
-      background: #F8FAFC;
-      border: 1px solid #E4E9F0;
-      border-right: none;
-      display: flex; align-items: center; justify-content: center;
-      color: #9BAABB;
+
+    .card-greeting {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1C1917;
+      margin-bottom: 4px;
+    }
+    .card-sub {
       font-size: .82rem;
-      transition: all .2s;
-      border-radius: 10px 0 0 10px !important;
+      color: #A8A29E;
+      margin-bottom: 26px;
+      font-weight: 500;
+    }
+
+    /* ── 폼 ── */
+    .form-label {
+      font-size: .8rem;
+      font-weight: 600;
+      color: #57534E;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap .field-icon {
+      position: absolute;
+      left: 13px; top: 50%;
+      transform: translateY(-50%);
+      color: #C7C3C0;
+      font-size: .82rem;
+      pointer-events: none;
+      transition: color .15s;
     }
     .form-control {
-      border: 1px solid #E4E9F0;
-      border-left: none;
-      padding: 10px 14px;
-      font-size: .88rem;
-      background: #FAFBFC;
-      border-radius: 0 10px 10px 0 !important;
-      transition: all .2s;
+      width: 100%;
+      border: 1.5px solid #E7E5E4;
+      border-radius: 10px;
+      padding: 10px 14px 10px 36px;
+      font-size: .9rem;
+      color: #1C1917;
+      background: #FAFAF9;
+      font-family: 'Pretendard', sans-serif;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      outline: none;
     }
     .form-control:focus {
       border-color: #CC1625;
+      box-shadow: 0 0 0 3px rgba(204,22,37,.1);
       background: #fff;
-      box-shadow: none;
     }
-    .input-group:focus-within .ig-icon {
-      border-color: #CC1625;
-      color: #CC1625;
-      background: #FFF5F0;
-    }
-    .input-group:focus-within .form-control {
-      border-color: #CC1625;
-    }
+    .form-control:focus + .field-icon,
+    .input-icon-wrap:focus-within .field-icon { color: #CC1625; }
+    .form-control::placeholder { color: #D4CFC9; }
 
-    /* 로그인 버튼 */
+    .mb-field { margin-bottom: 16px; }
+    .mb-field-last { margin-bottom: 24px; }
+
+    /* ── 로그인 버튼 ── */
     .btn-login {
-      background: linear-gradient(135deg, #CC1625 0%, #D9283A 100%);
-      border: none;
-      color: #fff;
       width: 100%;
-      padding: 13px;
-      font-size: .95rem;
+      background: #CC1625;
+      color: #fff;
+      border: none;
+      border-radius: 11px;
+      padding: 12px;
+      font-size: .92rem;
       font-weight: 700;
-      border-radius: 12px;
-      letter-spacing: .04em;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: all .22s;
-      box-shadow: 0 4px 18px rgba(204,22,37,.38);
+      letter-spacing: .02em;
       cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .15s, box-shadow .15s, transform .1s;
+      box-shadow: 0 3px 12px rgba(204,22,37,.24);
+      font-family: 'Pretendard', sans-serif;
     }
     .btn-login:hover {
-      background: linear-gradient(135deg, #A8101D, #C01830);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(204,22,37,.48);
-      color: #fff;
+      background: #A8101D;
+      box-shadow: 0 6px 20px rgba(204,22,37,.32);
+      transform: translateY(-1px);
     }
     .btn-login:active { transform: translateY(0); }
-    .btn-login:disabled { opacity: .75; transform: none; cursor: not-allowed; }
+    .btn-login:disabled { opacity: .72; cursor: not-allowed; transform: none; }
+
     .btn-spin {
       display: none;
       width: 16px; height: 16px;
@@ -222,110 +181,157 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* 알럿 */
+    /* ── 알럿 ── */
     .alert {
       border-radius: 10px;
       font-size: .83rem;
       padding: 10px 14px;
       margin-bottom: 20px;
       border: none;
+      display: flex; align-items: center; gap: 8px;
     }
     .alert-danger  { background: #FEF2F2; color: #B91C1C; }
     .alert-success { background: #F0FDF4; color: #15803D; }
     .alert-warning { background: #FFFBEB; color: #92400E; }
 
-    /* 푸터 */
-    .login-foot {
+    /* ── 하단 ── */
+    .login-footer {
       text-align: center;
-      margin-top: 20px;
-      color: rgba(255,255,255,.25);
+      margin-top: 22px;
+    }
+    .login-footer-text {
+      font-size: .74rem;
+      color: #C7C3C0;
+      line-height: 1.8;
+    }
+    .lang-row {
+      margin-top: 10px;
+      display: flex; justify-content: center; gap: 12px;
+    }
+    .lang-link {
       font-size: .7rem;
-      line-height: 1.7;
+      color: #C7C3C0;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color .15s;
+    }
+    .lang-link.active,
+    .lang-link:hover { color: #78716C; }
+
+    /* ── 통계 스트립 ── */
+    .stat-strip {
+      display: flex;
+      gap: 0;
+      margin-top: 20px;
+      border: 1px solid #F0EFED;
+      border-radius: 14px;
+      background: #FFFFFF;
+      overflow: hidden;
+    }
+    .stat-cell {
+      flex: 1;
+      padding: 14px 16px;
+      text-align: center;
+      border-right: 1px solid #F0EFED;
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-cell .num {
+      font-size: 1.2rem; font-weight: 900;
+      color: #1C1917; line-height: 1;
+    }
+    .stat-cell .lbl {
+      font-size: .67rem; color: #A8A29E;
+      font-weight: 600; margin-top: 3px;
     }
 
     @media (max-width: 480px) {
-      .app-logo { font-size: 2.6rem; }
-      .card-bd  { padding: 24px 20px; }
-      .card-hd  { padding: 20px 20px 18px; }
+      .login-card { padding: 28px 22px 24px; }
     }
   </style>
 </head>
 <body>
 
-<div class="bg-orb bg-orb-1"></div>
-<div class="bg-orb bg-orb-2"></div>
-
 <div class="login-wrap">
 
-  <!-- 상단 브랜드 -->
-  <div class="top-brand">
-    <div class="airline-badge">
+  <!-- 브랜드 헤더 -->
+  <div class="brand-header">
+    <div class="brand-icon-wrap">
       <i class="fa-solid fa-plane-departure"></i>
-      이스타항공 &middot; EastarJet
     </div>
-    <div class="app-logo">ZE<span class="accent">G</span>O</div>
+    <div class="brand-name">ZEGO</div>
+    <div class="brand-tagline">이스타항공 재고관리 시스템</div>
   </div>
 
-  <!-- 카드 -->
+  <!-- 로그인 카드 -->
   <div class="login-card">
+    <div class="card-greeting">{{ T('login.welcome') if T('login.welcome') != 'login.welcome' else '다시 만나서 반갑습니다' }}</div>
+    <div class="card-sub">계속하려면 로그인해 주세요</div>
 
-    <div class="card-hd">
-      <div class="card-hd-inner">
-        <div class="hd-icon"><i class="fa-solid fa-warehouse"></i></div>
-        <div class="hd-text">
-          <h2>{{ T('login.system_name') }}</h2>
-          <p>Ground Services Inventory System</p>
+    {% set messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }}">
+        <i class="fa-solid fa-circle-exclamation"></i>{{ msg }}
+      </div>
+    {% endfor %}
+
+    <form id="loginForm" method="post">
+      <div class="mb-field">
+        <label class="form-label">{{ T('login.username') }}</label>
+        <div class="input-icon-wrap">
+          <input type="text" name="username" class="form-control"
+                 placeholder="{{ T('login.username_placeholder') }}"
+                 required autofocus autocomplete="username">
+          <i class="fa-solid fa-user field-icon"></i>
         </div>
       </div>
-    </div>
-
-    <div class="card-bd">
-
-      {% set messages = get_flashed_messages(with_categories=true) %}
-      {% for cat, msg in messages %}
-        <div class="alert alert-{{ cat }}">
-          <i class="fa-solid fa-circle-exclamation me-1"></i>{{ msg }}
+      <div class="mb-field-last">
+        <label class="form-label">{{ T('login.password') }}</label>
+        <div class="input-icon-wrap">
+          <input type="password" name="password" class="form-control"
+                 placeholder="{{ T('login.password_placeholder') }}"
+                 required autocomplete="current-password">
+          <i class="fa-solid fa-lock field-icon"></i>
         </div>
+      </div>
+      <button type="submit" class="btn-login" id="loginBtn"
+              data-submitting="{{ T('login.submitting') }}">
+        <i class="fa-solid fa-arrow-right-to-bracket" id="btnIcon"></i>
+        <span id="btnText">{{ T('login.submit') }}</span>
+        <div class="btn-spin" id="btnSpin"></div>
+      </button>
+    </form>
+  </div>
+
+  <!-- 통계 스트립 -->
+  <div class="stat-strip">
+    <div class="stat-cell">
+      <div class="num">24</div>
+      <div class="lbl">운영 지점</div>
+    </div>
+    <div class="stat-cell">
+      <div class="num">100+</div>
+      <div class="lbl">양식 종류</div>
+    </div>
+    <div class="stat-cell">
+      <div class="num">99%</div>
+      <div class="lbl">정확도</div>
+    </div>
+  </div>
+
+  <!-- 하단 -->
+  <div class="login-footer">
+    <div class="login-footer-text">
+      © 2026 이스타항공 운송본부 &nbsp;·&nbsp; All rights reserved<br>
+      {{ T('login.contact') }}
+    </div>
+    <div class="lang-row">
+      {% for lc in SUPPORTED_LANGS %}
+      <a href="{{ url_for('set_lang', code=lc) }}"
+         class="lang-link {% if lc==cur_lang %}active{% endif %}">
+        {{ LANG_LABELS[lc] }}
+      </a>
       {% endfor %}
-
-      <form id="loginForm" method="post">
-        <div class="mb-3">
-          <label class="form-label">{{ T('login.username') }}</label>
-          <div class="input-group">
-            <div class="ig-icon"><i class="fa-solid fa-user"></i></div>
-            <input type="text" name="username" class="form-control"
-                   placeholder="{{ T('login.username_placeholder') }}" required autofocus autocomplete="username">
-          </div>
-        </div>
-        <div class="mb-4">
-          <label class="form-label">{{ T('login.password') }}</label>
-          <div class="input-group">
-            <div class="ig-icon"><i class="fa-solid fa-lock"></i></div>
-            <input type="password" name="password" class="form-control"
-                   placeholder="{{ T('login.password_placeholder') }}" required autocomplete="current-password">
-          </div>
-        </div>
-        <button type="submit" class="btn-login" id="loginBtn" data-submitting="{{ T('login.submitting') }}">
-          <i class="fa-solid fa-right-to-bracket" id="btnIcon"></i>
-          <span id="btnText">{{ T('login.submit') }}</span>
-          <div class="btn-spin" id="btnSpin"></div>
-        </button>
-      </form>
-
     </div>
-  </div>
-
-  <div class="login-foot">
-    © 2026 이스타항공 운송본부 &nbsp;·&nbsp; All rights reserved<br>
-    {{ T('login.contact') }}
-  </div>
-  <div class="login-foot" style="margin-top:12px">
-    {% for lc in SUPPORTED_LANGS %}
-    <a href="{{ url_for('set_lang', code=lc) }}"
-       style="color:rgba(255,255,255,{% if lc==cur_lang %}.7{% else %}.3{% endif %});font-size:.68rem;text-decoration:none;margin:0 4px">
-      {{ LANG_LABELS[lc] }}
-    </a>
-    {% endfor %}
   </div>
 
 </div>
@@ -339,7 +345,7 @@
     const txt  = document.getElementById('btnText');
     const spin = document.getElementById('btnSpin');
     icon.style.display = 'none';
-    txt.textContent    = btn.dataset.submitting || '...';
+    txt.textContent    = btn.dataset.submitting || '처리 중...';
     spin.style.display = 'block';
     btn.disabled = true;
   });
