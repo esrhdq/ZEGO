@@ -51,22 +51,23 @@
     body { background: var(--bg); color: var(--text); }
 
     /* ════════════════════════════════════════
-       사이드바 — 모던 다크
+       사이드바 — 라이트 그레이
     ════════════════════════════════════════ */
     .sidebar {
       width: 240px;
       height: 100vh;
-      background: #0F172A;
+      background: #F1F5F9;
       position: fixed; top: 0; left: 0; z-index: 1040;
       display: flex; flex-direction: column; overflow: hidden;
       transition: transform .26s cubic-bezier(.4,0,.2,1);
-      box-shadow: 0 0 0 1px rgba(255,255,255,.04), 4px 0 32px rgba(0,0,0,.28);
+      border-right: 1px solid #E2E8F0;
+      box-shadow: 2px 0 12px rgba(0,0,0,.06);
     }
 
     .sidebar-brand {
       padding: 20px 18px 16px;
       flex-shrink: 0;
-      border-bottom: 1px solid rgba(255,255,255,.06);
+      border-bottom: 1px solid #E2E8F0;
       display: flex; align-items: center; gap: 12px;
     }
     .brand-icon {
@@ -76,14 +77,14 @@
       display: flex; align-items: center; justify-content: center;
       font-size: .95rem; color: #fff;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(204,22,37,.4);
+      box-shadow: 0 2px 8px rgba(204,22,37,.3);
     }
     .brand-text .brand-name {
-      color: #fff; font-weight: 800; font-size: 1.05rem;
+      color: #1E293B; font-weight: 800; font-size: 1.05rem;
       letter-spacing: .1em; line-height: 1;
     }
     .brand-text .brand-sub {
-      color: #64748B; font-size: .67rem; font-weight: 500;
+      color: #94A3B8; font-size: .67rem; font-weight: 500;
       letter-spacing: .02em; margin-top: 3px;
     }
 
@@ -91,10 +92,10 @@
       flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px 0 4px;
     }
     .sidebar-nav::-webkit-scrollbar { width: 2px; }
-    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
 
     .section-label {
-      color: #475569;
+      color: #94A3B8;
       font-size: .6rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: .14em;
       padding: 16px 20px 4px;
@@ -103,7 +104,7 @@
 
     .sidebar .nav-link {
       display: flex; align-items: center;
-      color: #94A3B8;
+      color: #475569;
       padding: 8px 14px 8px 16px;
       font-size: .84rem; font-weight: 500;
       border-radius: 8px; margin: 1px 8px;
@@ -111,17 +112,17 @@
       position: relative;
     }
     .sidebar .nav-link i { width: 18px; text-align: center; font-size: .85rem; flex-shrink: 0; }
-    .sidebar .nav-link:hover { background: rgba(255,255,255,.06); color: #CBD5E1; }
+    .sidebar .nav-link:hover { background: #E2E8F0; color: #1E293B; }
     .sidebar .nav-link.active {
-      background: rgba(204,22,37,.15);
-      color: #FCA5A5;
+      background: #FFECEE;
+      color: var(--brand);
       font-weight: 600;
       box-shadow: inset 3px 0 0 var(--brand);
     }
 
     .sidebar-footer {
       padding: 10px 8px;
-      border-top: 1px solid rgba(255,255,255,.06);
+      border-top: 1px solid #E2E8F0;
       flex-shrink: 0;
     }
     .sidebar-user {
@@ -130,16 +131,16 @@
     }
     .user-avatar {
       width: 30px; height: 30px;
-      background: #1E293B;
-      border: 1px solid rgba(255,255,255,.1);
+      background: #E2E8F0;
+      border: 1px solid #CBD5E1;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       color: #64748B; font-size: .8rem; flex-shrink: 0;
     }
     .user-info .user-name {
-      color: #CBD5E1; font-size: .8rem; font-weight: 600; line-height: 1.2;
+      color: #1E293B; font-size: .8rem; font-weight: 600; line-height: 1.2;
     }
-    .user-info .user-branch { color: #475569; font-size: .68rem; line-height: 1.2; }
+    .user-info .user-branch { color: #94A3B8; font-size: .68rem; line-height: 1.2; }
 
     .sidebar-overlay {
       display: none; position: fixed; inset: 0;
