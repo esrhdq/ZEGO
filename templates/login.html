@@ -11,7 +11,6 @@
     * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #FAF9F7;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -19,26 +18,35 @@
       padding: 24px 16px;
       position: relative;
       overflow: hidden;
+      /* 따뜻한 크림 + 점 격자 패턴 */
+      background-color: #FAF9F7;
+      background-image:
+        radial-gradient(rgba(204,22,37,.055) 1.2px, transparent 1.2px);
+      background-size: 28px 28px;
     }
 
-    /* 배경 장식 — 부드러운 빛 번짐 */
-    body::before {
-      content: '';
+    /* 배경 — 부드러운 빛 오브 */
+    .bg-orb {
       position: fixed;
-      top: -140px; right: -140px;
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(204,22,37,.07) 0%, transparent 68%);
       border-radius: 50%;
       pointer-events: none;
+      filter: blur(90px);
+      z-index: 0;
     }
-    body::after {
-      content: '';
-      position: fixed;
-      bottom: -120px; left: -100px;
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(251,191,36,.05) 0%, transparent 65%);
-      border-radius: 50%;
-      pointer-events: none;
+    .bg-orb-1 {
+      width: 560px; height: 480px;
+      background: radial-gradient(circle, rgba(204,22,37,.13) 0%, transparent 65%);
+      top: -160px; right: -120px;
+    }
+    .bg-orb-2 {
+      width: 440px; height: 400px;
+      background: radial-gradient(circle, rgba(251,146,60,.09) 0%, transparent 65%);
+      bottom: -140px; left: -100px;
+    }
+    .bg-orb-3 {
+      width: 320px; height: 280px;
+      background: radial-gradient(circle, rgba(204,22,37,.07) 0%, transparent 65%);
+      top: 40%; left: 55%;
     }
 
     /* 메인 래퍼 */
@@ -46,7 +54,7 @@
       width: 100%;
       max-width: 420px;
       position: relative;
-      z-index: 10;
+      z-index: 1;
     }
 
     /* ── 브랜드 헤더 ── */
@@ -218,31 +226,8 @@
     .lang-link.active,
     .lang-link:hover { color: #78716C; }
 
-    /* ── 통계 스트립 ── */
-    .stat-strip {
-      display: flex;
-      gap: 0;
-      margin-top: 20px;
-      border: 1px solid #F0EFED;
-      border-radius: 14px;
-      background: #FFFFFF;
-      overflow: hidden;
-    }
-    .stat-cell {
-      flex: 1;
-      padding: 14px 16px;
-      text-align: center;
-      border-right: 1px solid #F0EFED;
-    }
-    .stat-cell:last-child { border-right: none; }
-    .stat-cell .num {
-      font-size: 1.2rem; font-weight: 900;
-      color: #1C1917; line-height: 1;
-    }
-    .stat-cell .lbl {
-      font-size: .67rem; color: #A8A29E;
-      font-weight: 600; margin-top: 3px;
-    }
+    /* login-wrap z-index */
+    .login-wrap { position: relative; z-index: 1; }
 
     @media (max-width: 480px) {
       .login-card { padding: 28px 22px 24px; }
@@ -250,6 +235,10 @@
   </style>
 </head>
 <body>
+
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
 
 <div class="login-wrap">
 
@@ -300,22 +289,6 @@
         <div class="btn-spin" id="btnSpin"></div>
       </button>
     </form>
-  </div>
-
-  <!-- 통계 스트립 -->
-  <div class="stat-strip">
-    <div class="stat-cell">
-      <div class="num">24</div>
-      <div class="lbl">운영 지점</div>
-    </div>
-    <div class="stat-cell">
-      <div class="num">100+</div>
-      <div class="lbl">양식 종류</div>
-    </div>
-    <div class="stat-cell">
-      <div class="num">99%</div>
-      <div class="lbl">정확도</div>
-    </div>
   </div>
 
   <!-- 하단 -->

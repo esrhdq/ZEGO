@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}ZEGO{% endblock %} — ZEGO</title>
+  <script>
+    /* 다크모드 플래시 방지 — head 최상단 즉시 실행 */
+    (function(){ var t = localStorage.getItem('zego-theme'); if(t) document.documentElement.setAttribute('data-theme', t); })();
+  </script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -44,14 +48,145 @@
       --text-muted:   #A8A29E;
       --text-faint:   #C7C3C0;
       /* 사이드바 */
-      --sidebar-bg:   #FAFAF8;
-      --sidebar-border: #F0EFED;
-      --sidebar-text: #78716C;
+      --sidebar-bg:   #EDEBE5;
+      --sidebar-border: #D9D6CF;
+      --sidebar-text: #57534E;
       --sidebar-muted: #A8A29E;
-      --sidebar-hover: #F5F4F2;
+      --sidebar-hover: #E2DED8;
       --sidebar-active-bg: #FFF1F2;
       --sidebar-active-text: #CC1625;
     }
+
+    /* ════════════════════════════════════════
+       다크 모드 변수
+    ════════════════════════════════════════ */
+    [data-theme="dark"] {
+      --bg:           #1C1A18;
+      --card-bg:      #252220;
+      --border:       #353230;
+      --border-md:    #443F3B;
+      --text:         #F2F0ED;
+      --text-secondary: #CCC8C2;
+      --text-muted:   #9C9590;
+      --text-faint:   #6B6560;
+      --sidebar-bg:   #201E1C;
+      --sidebar-border: #2E2B28;
+      --sidebar-text: #A8A29E;
+      --sidebar-muted: #78716C;
+      --sidebar-hover: rgba(255,255,255,.06);
+      --sidebar-active-bg: rgba(204,22,37,.18);
+      --sidebar-active-text: #FC9999;
+      --brand-light:  rgba(204,22,37,.18);
+      --brand-pale:   rgba(204,22,37,.1);
+      --red-light:    rgba(204,22,37,.18);
+      --red-pale:     rgba(204,22,37,.1);
+      --warning-bg:   rgba(217,119,6,.18);
+      --danger-bg:    rgba(220,38,38,.16);
+      --success-bg:   rgba(22,163,74,.14);
+      --info-bg:      rgba(37,99,235,.16);
+    }
+    [data-theme="dark"] body { background: var(--bg); color: var(--text); }
+    [data-theme="dark"] .topbar {
+      background: rgba(28,26,24,.96);
+      border-bottom-color: var(--border);
+    }
+    [data-theme="dark"] .card {
+      background: var(--card-bg);
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .card-header {
+      background: var(--card-bg);
+      border-bottom-color: var(--border);
+      color: var(--text);
+    }
+    [data-theme="dark"] .table {
+      --bs-table-hover-bg: rgba(255,255,255,.04);
+      color: var(--text);
+    }
+    [data-theme="dark"] .table thead th {
+      background: rgba(255,255,255,.03);
+      border-bottom-color: var(--border);
+      color: var(--text-muted);
+    }
+    [data-theme="dark"] .table tbody td {
+      border-color: var(--border);
+      color: var(--text);
+    }
+    [data-theme="dark"] .table-hover tbody tr:hover {
+      background: rgba(255,255,255,.04) !important;
+    }
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+      background: #2E2B28;
+      border-color: var(--border-md);
+      color: var(--text);
+    }
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus {
+      background: #35322E;
+      border-color: var(--brand);
+    }
+    [data-theme="dark"] .form-control::placeholder { color: var(--text-faint); }
+    [data-theme="dark"] .input-group-text {
+      background: #2A2724;
+      border-color: var(--border-md);
+      color: var(--text-muted);
+    }
+    [data-theme="dark"] .btn-outline-secondary {
+      color: var(--text-muted);
+      border-color: var(--border-md);
+    }
+    [data-theme="dark"] .btn-outline-secondary:hover {
+      background: var(--border-md);
+      color: var(--text);
+    }
+    [data-theme="dark"] .dropdown-menu {
+      background: #2A2724;
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .dropdown-item {
+      color: var(--text-secondary);
+    }
+    [data-theme="dark"] .dropdown-item:hover,
+    [data-theme="dark"] .dropdown-item:focus {
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+    }
+    [data-theme="dark"] .dropdown-item.active {
+      background: var(--brand);
+      color: #fff;
+    }
+    [data-theme="dark"] .modal-content {
+      background: var(--card-bg);
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .modal-header,
+    [data-theme="dark"] .modal-footer {
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .alert-success { background: var(--success-bg); color: #4ADE80; }
+    [data-theme="dark"] .alert-danger   { background: var(--danger-bg);  color: #F87171; }
+    [data-theme="dark"] .alert-warning  { background: var(--warning-bg); color: #FCD34D; }
+    [data-theme="dark"] .alert-info     { background: var(--info-bg);    color: #60A5FA; }
+    [data-theme="dark"] .bg-white,
+    [data-theme="dark"] .bg-light { background: var(--card-bg) !important; }
+    [data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
+    [data-theme="dark"] .border-bottom { border-color: var(--border) !important; }
+    [data-theme="dark"] .nav-tabs .nav-link.active { background: var(--card-bg); border-color: var(--border) var(--border) var(--card-bg); }
+    [data-theme="dark"] .nav-tabs { border-color: var(--border); }
+    [data-theme="dark"] .table-light { --bs-table-bg: rgba(255,255,255,.03); }
+
+    /* 다크모드 토글 버튼 */
+    .theme-toggle {
+      width: 34px; height: 34px;
+      background: none; border: 1.5px solid var(--border-md);
+      border-radius: 9px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: .88rem;
+      transition: background .14s, color .14s, border-color .14s;
+    }
+    .theme-toggle:hover { background: var(--border); color: var(--text); }
+
     * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; }
     body { background: var(--bg); color: var(--text); }
 
@@ -553,6 +688,10 @@
         </div>
       </div>
       {% endif %}
+      <!-- 다크모드 토글 -->
+      <button class="theme-toggle" id="themeToggleBtn" title="다크/라이트 모드 전환">
+        <i class="fa-solid fa-moon" id="themeIcon"></i>
+      </button>
       <div class="zego-chip">
         <i class="fa-solid fa-plane-departure"></i>
         ZEGO &nbsp;·&nbsp; 26년 2분기
@@ -652,6 +791,22 @@ function markAllRead() {
     .then(function(r){ return r.json(); })
     .then(function(d){ if(d.ok) { document.getElementById('notifDropdown').querySelector('#notifList').innerHTML='<div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem"><i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>새 알림이 없습니다</div>'; var badge=document.querySelector('#notifDropdownBtn .badge'); if(badge) badge.remove(); } });
 }
+
+// ── 다크모드 토글 ──
+(function() {
+  var btn  = document.getElementById('themeToggleBtn');
+  var icon = document.getElementById('themeIcon');
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('zego-theme', t);
+    icon.className = t === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  }
+  var saved = localStorage.getItem('zego-theme') || 'light';
+  applyTheme(saved);
+  btn && btn.addEventListener('click', function() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+})();
 
 // 공용 확인 모달
 function showConfirm(msg, onOk) {
