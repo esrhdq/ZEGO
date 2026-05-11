@@ -18,35 +18,27 @@
       padding: 24px 16px;
       position: relative;
       overflow: hidden;
-      /* 따뜻한 크림 + 점 격자 패턴 */
-      background-color: #FAF9F7;
-      background-image:
-        radial-gradient(rgba(204,22,37,.055) 1.2px, transparent 1.2px);
-      background-size: 28px 28px;
+      background: #0B0D0F;
     }
 
-    /* 배경 — 부드러운 빛 오브 */
-    .bg-orb {
+    /* 배경 이미지 */
+    .bg-photo {
       position: fixed;
-      border-radius: 50%;
-      pointer-events: none;
-      filter: blur(90px);
+      inset: 0;
+      background: url("{{ url_for('static', filename='img/eastar-bg.png') }}")
+                  center center / cover no-repeat;
       z-index: 0;
     }
-    .bg-orb-1 {
-      width: 560px; height: 480px;
-      background: radial-gradient(circle, rgba(204,22,37,.13) 0%, transparent 65%);
-      top: -160px; right: -120px;
-    }
-    .bg-orb-2 {
-      width: 440px; height: 400px;
-      background: radial-gradient(circle, rgba(251,146,60,.09) 0%, transparent 65%);
-      bottom: -140px; left: -100px;
-    }
-    .bg-orb-3 {
-      width: 320px; height: 280px;
-      background: radial-gradient(circle, rgba(204,22,37,.07) 0%, transparent 65%);
-      top: 40%; left: 55%;
+    /* 어두운 오버레이 — 카드 가독성 확보 */
+    .bg-photo::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(0,0,0,.62) 0%,
+        rgba(10,5,5,.72) 100%
+      );
     }
 
     /* 메인 래퍼 */
@@ -65,27 +57,28 @@
     .brand-name {
       font-size: 1.75rem;
       font-weight: 900;
-      color: #1C1917;
+      color: #FFFFFF;
       letter-spacing: .08em;
       line-height: 1;
       margin-bottom: 5px;
     }
     .brand-tagline {
       font-size: .78rem;
-      color: #A8A29E;
+      color: rgba(255,255,255,.6);
       font-weight: 500;
       letter-spacing: .03em;
     }
 
     /* ── 로그인 카드 ── */
     .login-card {
-      background: #FFFFFF;
+      background: rgba(255,255,255,.96);
       border-radius: 22px;
       padding: 36px 32px 30px;
       box-shadow:
-        0 0 0 1px rgba(0,0,0,.05),
-        0 4px 6px rgba(0,0,0,.03),
-        0 12px 40px rgba(0,0,0,.07);
+        0 0 0 1px rgba(255,255,255,.12),
+        0 8px 32px rgba(0,0,0,.4),
+        0 24px 64px rgba(0,0,0,.3);
+      backdrop-filter: blur(12px);
     }
 
     .card-greeting {
@@ -198,7 +191,7 @@
     }
     .login-footer-text {
       font-size: .74rem;
-      color: #C7C3C0;
+      color: rgba(255,255,255,.45);
       line-height: 1.8;
     }
     .lang-row {
@@ -207,13 +200,13 @@
     }
     .lang-link {
       font-size: .7rem;
-      color: #C7C3C0;
+      color: rgba(255,255,255,.4);
       text-decoration: none;
       font-weight: 600;
       transition: color .15s;
     }
     .lang-link.active,
-    .lang-link:hover { color: #78716C; }
+    .lang-link:hover { color: rgba(255,255,255,.8); }
 
     /* login-wrap z-index */
     .login-wrap { position: relative; z-index: 1; }
@@ -225,9 +218,7 @@
 </head>
 <body>
 
-<div class="bg-orb bg-orb-1"></div>
-<div class="bg-orb bg-orb-2"></div>
-<div class="bg-orb bg-orb-3"></div>
+<div class="bg-photo"></div>
 
 <div class="login-wrap">
 
