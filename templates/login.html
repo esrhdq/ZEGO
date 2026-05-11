@@ -228,13 +228,13 @@
       <i class="fa-solid fa-plane-departure" style="color:white;font-size:24px;"></i>
     </div>
     <div class="brand-name">ZEGO</div>
-    <div class="brand-tagline">이스타항공 재고관리 시스템</div>
+    <div class="brand-tagline">{{ T('login.system_name') }}</div>
   </div>
 
   <!-- 로그인 카드 -->
   <div class="login-card">
-    <div class="card-greeting">{{ T('login.welcome') if T('login.welcome') != 'login.welcome' else '다시 만나서 반갑습니다' }}</div>
-    <div class="card-sub">계속하려면 로그인해 주세요</div>
+    <div class="card-greeting">{{ T('login.welcome') }}</div>
+    <div class="card-sub">{{ T('login.sub') }}</div>
 
     {% set messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
@@ -274,7 +274,7 @@
   <!-- 하단 -->
   <div class="login-footer">
     <div class="login-footer-text">
-      © 2026 이스타항공 운송본부 &nbsp;·&nbsp; All rights reserved<br>
+      {{ T('login.footer_copy') }}<br>
       {{ T('login.contact') }}
     </div>
     <div class="lang-row">
