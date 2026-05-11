@@ -142,9 +142,9 @@
                   </div>
                 </td>
                 <td class="text-center">
-                  {% if r.quantity == 0 %}<span class="badge bg-danger">{{ T('common.exhausted') }}</span>
-                  {% elif r.quantity <= r.min_threshold %}<span class="badge bg-warning text-dark">{{ T('common.low') }}</span>
-                  {% else %}<span class="badge bg-success">{{ T('common.normal') }}</span>{% endif %}
+                  {% if r.quantity == 0 %}<span class="badge badge-status-empty rounded-pill">{{ T('common.exhausted') }}</span>
+                  {% elif r.quantity <= r.min_threshold %}<span class="badge badge-status-low rounded-pill">{{ T('common.low') }}</span>
+                  {% else %}<span class="badge badge-status-safe rounded-pill">{{ T('common.normal') }}</span>{% endif %}
                 </td>
                 <td class="small text-muted">{{ r.last_updated | dt if r.last_updated else '—' }}</td>
               </tr>
@@ -154,8 +154,10 @@
         </div>
         <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}건</div>
         {% else %}
-        <div class="text-center text-muted py-5">
-          <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T('inv.no_data') }}
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-warehouse"></i></div>
+          <h6>{{ T('inv.no_data') }}</h6>
+          <p>조건에 맞는 재고 데이터가 없습니다.</p>
         </div>
         {% endif %}
       </div>

@@ -93,13 +93,13 @@
               <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
               <td class="text-center">
                 {% if r.status == 'PENDING' %}
-                  <span class="badge" style="background:#fef3c7;color:#92400e">대기</span>
+                  <span class="badge badge-pending rounded-pill">대기</span>
                 {% elif r.status == 'APPROVED' %}
-                  <span class="badge" style="background:#d1fae5;color:#065f46">승인</span>
+                  <span class="badge badge-approved rounded-pill">승인</span>
                 {% elif r.status == 'REJECTED' %}
-                  <span class="badge" style="background:#fee2e2;color:#991b1b">반려</span>
+                  <span class="badge badge-rejected rounded-pill">반려</span>
                 {% elif r.status == 'CONFIRMED' %}
-                  <span class="badge" style="background:#dbeafe;color:#1e40af">완료</span>
+                  <span class="badge badge-confirmed rounded-pill">완료</span>
                 {% endif %}
               </td>
               <td class="small text-muted">
@@ -115,9 +115,10 @@
         </table>
       </div>
       {% else %}
-      <div class="text-center text-muted py-5">
-        <i class="fa-solid fa-clock-rotate-left fs-2 d-block mb-2 opacity-25"></i>
-        이동 내역이 없습니다.
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+        <h6>이동 내역이 없습니다</h6>
+        <p>처리된 이전 신청 내역이 여기에 표시됩니다.</p>
       </div>
       {% endif %}
     </div>
