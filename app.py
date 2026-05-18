@@ -33,7 +33,7 @@ _BRANCH_EMAIL_SEEDS = {
     'KIX': 'zekix@eastarjet.com',        # 간사이(오사카)
     'FUK': 'zefuk@eastarjet.com',        # 후쿠오카
     'TSA': 'zetsa@eastarjet.com',        # 송산(타이베이)
-    'TPE': 'zetpe@eastarjet.com',        # 타이베이
+    'TPE': 'zetpe@eastarjet.com',        # 타오위안
     'BKK': 'zebkk@eastarjet.com',        # 방콕
     'DAD': 'zedadd2@eastarjet.com',      # 다낭
     'CXR': 'zecxr@eastarjet.com',        # 나트랑
@@ -826,7 +826,7 @@ def init_db():
                 ('GMP', '김포', 'DOM'), ('CJU', '제주', 'DOM'), ('CJJ', '청주', 'DOM'),
                 ('PUS', '부산', 'DOM'), ('TSA', '송산', 'INTL'), ('KMJ', '구마모토', 'INTL'),
                 ('서울역', '서울역', 'DOM'), ('광명역', '광명역', 'DOM'), ('이지드랍', '이지드랍', 'DOM'),
-                ('ICN', '인천', 'DOM'), ('TPE', '타이페이', 'INTL'), ('NRT', '나리타', 'INTL'),
+                ('ICN', '인천', 'DOM'), ('TPE', '타오위안', 'INTL'), ('NRT', '나리타', 'INTL'),
                 ('KIX', '간사이', 'INTL'), ('FUK', '후쿠오카', 'INTL'), ('CTS', '삿포로', 'INTL'),
                 ('OKA', '오키나와', 'INTL'), ('TKS', '도쿠시마', 'INTL'), ('BKK', '방콕', 'INTL'),
                 ('CNX', '치앙마이', 'INTL'), ('DAD', '다낭', 'INTL'), ('CXR', '나트랑', 'INTL'),
@@ -891,6 +891,7 @@ def init_db():
                 )
         else:
             conn.execute("UPDATE branches SET type='DOM' WHERE code='ICN' AND type != 'DOM'")
+            conn.execute("UPDATE branches SET name='타오위안' WHERE code='TPE' AND name='타이페이'")
 
         # 지점 이메일 시드 — email이 비어있는 지점에만 적용 (수동 설정 보호)
         ph = '%s' if not USE_SQLITE else '?'
