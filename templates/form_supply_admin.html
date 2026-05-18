@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% block title %}운송양식 신청 관리{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-file-invoice"></i>{% endblock %}
+{% block page_title %}운송양식 신청 관리{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
+    <i class="fa-solid fa-file-invoice text-primary"></i>
+    <strong>전체 신청 목록</strong>
+    <span class="badge bg-secondary ms-1">{{ requests|length if requests else 0 }}건</span>
+
+    <!-- 상태 필터 -->
+    <div class="ms-auto d-flex gap-1 flex-wrap">
+      <button class="btn btn-sm btn-outline-secondary active" data-filter="ALL" onclick="filterAdminReqs(this)">전체</button>
+      <button class="btn btn-sm btn-outline-warning" data-filter="pending" onclick="filterAdminReqs(this)">대기</button>
+      <button class="btn btn-sm btn-outline-success" data-filter="approved" onclick="filterAdminReqs(this)">승인</button>
+      <button class="btn btn-sm btn-outline-danger" data-filter="rejected" onclick="filterAdminReqs(this)">반려</button>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if requests %}
+    <div class="table-scroll">
+      <table class="table table-hover mb-0" id="adminReqTable">
+        <thead>
+          <tr>
+            <th style="width:32px"></th>
+            <th>지점</th>
+            <th>신청일시</th>
+            <th>신청자</th>
+            <th class="text-center">상태</th>
+            <th>신청 항목 요약</th>
+            <th class="text-center" style="width:160px">처리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in requests %}
+          <tr data-status="{{ r.status }}" class="row-toggle" data-target="adetail-{{ r.id }}" style="cursor:pointer">
+            <td class="text-center">
+              <i class="fa-solid fa-chevron-right toggle-icon" style="font-size:.7rem;color:var(--text-muted);transition:transform .15s"></i>
+            </td>
+            <td>
+              <span class="badge bg-secondary">{{ r.branch_code }}</span>
+              <span class="small ms-1 fw-semibold">{{ r.branch_name }}</span>
+            </td>
+            <td class="small text-muted" style="white-space:nowrap">{{ r.created_at | dt }}</td>
+            <td class="small">{{ r.requested_by or '—' }}</td>
+            <td class="text-center">
+              {% if r.status == 'pending' %}
+                <span class="badge badge-pending rounded-pill">대기</span>
+              {% elif r.status == 'approved' %}
+                <span class="badge badge-confirmed rounded-pill">승인</span>
+              {% elif r.status == 'rejected' %}
+                <span class="badge badge-rejected rounded-pill">반려</span>
+              {% else %}
+                <span class="badge badge-pending rounded-pill">{{ r.status }}</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">
+              {% if r.items %}
+                {{ r.items|length }}종 / 총 {{ r.total_qty or (r.items|sum(attribute='quantity')) }}개
+                <span class="text-faint">·</span>
+                <span class="text-truncate d-inline-block" style="max-width:240px;vertical-align:bottom">
+                  {{ r.items[0].form_name }}{% if r.items|length > 1 %} 외 {{ r.items|length - 1 }}종{% endif %}
+                </span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-center" onclick="event.stopPropagation()">
+              {% if r.status == 'pending' %}
+              <div class="d-flex gap-1 justify-content-center">
+                <button type="button" class="btn btn-sm btn-success"
+                        onclick="openApproveModal({{ r.id }}, '{{ r.branch_name|e }}', {{ r.items|length if r.items else 0 }})">
+                  <i class="fa-solid fa-check me-1"></i>승인
+                </button>
+                <button type="button" class="btn btn-sm btn-danger"
+                        onclick="openRejectModal({{ r.id }}, '{{ r.branch_name|e }}', {{ r.items|length if r.items else 0 }})">
+                  <i class="fa-solid fa-xmark me-1"></i>반려
+                </button>
+              </div>
+              {% else %}
+                <span class="small text-muted">
+                  {% if r.processed_by %}{{ r.processed_by }}{% else %}처리완료{% endif %}
+                </span>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- 상세 행 (accordion) -->
+          <tr id="adetail-{{ r.id }}" class="d-none detail-row" data-status="{{ r.status }}">
+            <td colspan="7" style="background:#FAF9F7;padding:18px 24px">
+              {% if r.notes %}
+              <div class="mb-3">
+                <div class="small fw-semibold text-muted mb-1">
+                  <i class="fa-solid fa-pen-to-square me-1"></i>요청 비고
+                </div>
+                <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
+                  {{ r.notes }}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if r.status == 'rejected' and r.reject_reason %}
+              <div class="mb-3 p-3" style="background:#fff0f0;border:1px solid #fca5a5;border-radius:8px">
+                <div class="small fw-semibold mb-1" style="color:#991b1b">
+                  <i class="fa-solid fa-xmark me-1"></i>반려 사유
+                </div>
+                <div style="font-size:.85rem">{{ r.reject_reason }}</div>
+              </div>
+              {% endif %}
+
+              {% if r.items %}
+              <div class="small fw-semibold text-muted mb-1">
+                <i class="fa-solid fa-list me-1"></i>신청 항목
+              </div>
+              <div class="table-scroll" style="background:#fff;border:1px solid var(--border);border-radius:8px">
+                <table class="table mb-0" style="font-size:.82rem">
+                  <thead>
+                    <tr>
+                      <th>양식명</th>
+                      <th class="text-center" style="width:100px">단위</th>
+                      <th class="text-center" style="width:120px">단위 상세</th>
+                      <th class="text-center" style="width:100px">수량</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for it in r.items %}
+                    <tr>
+                      <td>{{ it.form_name }}</td>
+                      <td class="text-center text-muted">{{ it.unit or '—' }}</td>
+                      <td class="text-center text-muted">{{ it.unit_detail or '—' }}</td>
+                      <td class="text-center fw-bold">{{ it.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
+      <h6>신청 내역이 없습니다</h6>
+      <p>직원의 운송양식 신청이 접수되면 이곳에 표시됩니다.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── 승인 확인 모달 ─────────────────────────────────────────── -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="fa-solid fa-check text-success me-2"></i>신청 승인</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="approveForm" method="post">
+        <div class="modal-body">
+          <p class="text-muted small mb-0" id="approveDesc"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-success">
+            <i class="fa-solid fa-check me-1"></i>승인 확인
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── 반려 모달 ──────────────────────────────────────────────── -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>신청 반려</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="rejectForm" method="post">
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="rejectDesc"></p>
+          <label class="form-label fw-semibold">반려 사유 <span class="text-danger">*</span></label>
+          <textarea name="reject_reason" class="form-control" rows="3" required
+                    placeholder="반려 사유를 입력해주세요"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="fa-solid fa-xmark me-1"></i>반려
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 행 토글 (accordion)
+document.querySelectorAll('.row-toggle').forEach(row => {
+  row.addEventListener('click', function() {
+    const target = document.getElementById(this.dataset.target);
+    const icon   = this.querySelector('.toggle-icon');
+    if (!target) return;
+    if (target.classList.contains('d-none')) {
+      target.classList.remove('d-none');
+      icon.style.transform = 'rotate(90deg)';
+    } else {
+      target.classList.add('d-none');
+      icon.style.transform = '';
+    }
+  });
+});
+
+// 상태 필터
+function filterAdminReqs(btn) {
+  document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const f = btn.dataset.filter;
+  document.querySelectorAll('#adminReqTable tbody tr').forEach(tr => {
+    if (tr.classList.contains('detail-row')) {
+      tr.style.display = (f === 'ALL' || tr.dataset.status === f) ? '' : 'none';
+      if (!(f === 'ALL' || tr.dataset.status === f)) tr.classList.add('d-none');
+    } else {
+      tr.style.display = (f === 'ALL' || tr.dataset.status === f) ? '' : 'none';
+    }
+  });
+}
+
+// 승인 모달
+function openApproveModal(reqId, branchName, itemCount) {
+  const form = document.getElementById('approveForm');
+  form.action = `/admin/form-supply/requests/${reqId}/action?action=approved`;
+  document.getElementById('approveDesc').textContent =
+    `${branchName}의 양식 신청(${itemCount}종)을 승인합니다.`;
+  // hidden field로 action 전달도 가능하도록
+  let hidden = form.querySelector('input[name="action"]');
+  if (!hidden) {
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'action';
+    form.appendChild(hidden);
+  }
+  hidden.value = 'approved';
+  form.action = `/admin/form-supply/requests/${reqId}/action`;
+  new bootstrap.Modal(document.getElementById('approveModal')).show();
+}
+
+// 반려 모달
+function openRejectModal(reqId, branchName, itemCount) {
+  const form = document.getElementById('rejectForm');
+  form.action = `/admin/form-supply/requests/${reqId}/action`;
+  let hidden = form.querySelector('input[name="action"]');
+  if (!hidden) {
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'action';
+    form.appendChild(hidden);
+  }
+  hidden.value = 'rejected';
+  document.getElementById('rejectDesc').textContent =
+    `${branchName}의 양식 신청(${itemCount}종)을 반려합니다.`;
+  form.querySelector('textarea').value = '';
+  new bootstrap.Modal(document.getElementById('rejectModal')).show();
+}
+</script>
+{% endblock %}

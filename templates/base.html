@@ -584,6 +584,18 @@
       <i class="fa-solid fa-clock-rotate-left"></i>신청 내역
     </a>
 
+    <div class="section-label">운송양식 신청</div>
+    <a href="{{ url_for('form_supply_request') }}"
+       class="nav-link {% if endpoint=='form_supply_request' %}active{% endif %}"
+       {% if session.role == 'admin' %}style="opacity:0.4;pointer-events:none"{% endif %}>
+      <i class="fa-solid fa-file-circle-plus"></i>양식 신청
+    </a>
+    <a href="{{ url_for('form_supply_my_requests') }}"
+       class="nav-link {% if endpoint=='form_supply_my_requests' %}active{% endif %}"
+       {% if session.role == 'admin' %}style="opacity:0.4;pointer-events:none"{% endif %}>
+      <i class="fa-solid fa-clock-rotate-left"></i>내 신청 현황
+    </a>
+
     {% if session.role == 'admin' %}
     <div class="section-label">{{ T('nav.admin') }}</div>
     <a href="{{ url_for('manage_users') }}"
@@ -593,6 +605,18 @@
     <a href="{{ url_for('catalog_edit') }}"
        class="nav-link {% if endpoint=='catalog_edit' %}active{% endif %}">
       <i class="fa-solid fa-sliders"></i>{{ T('nav.catalog_edit') }}
+    </a>
+    <a href="{{ url_for('form_supply_admin_requests') }}"
+       class="nav-link {% if endpoint in ('form_supply_admin_requests','form_supply_admin_action') %}active{% endif %}">
+      <i class="fa-solid fa-file-invoice"></i>양식 신청 관리
+    </a>
+    <a href="{{ url_for('form_supply_settings') }}"
+       class="nav-link {% if endpoint=='form_supply_settings' %}active{% endif %}">
+      <i class="fa-solid fa-calendar-days"></i>신청 기간 설정
+    </a>
+    <a href="{{ url_for('admin_branch_emails') }}"
+       class="nav-link {% if endpoint=='admin_branch_emails' %}active{% endif %}">
+      <i class="fa-solid fa-envelope-open-text"></i>지점 이메일 관리
     </a>
     <a href="{{ url_for('access_logs_view') }}"
        class="nav-link {% if endpoint=='access_logs_view' %}active{% endif %}">

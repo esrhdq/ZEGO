@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}운송양식 신청{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-file-circle-plus"></i>{% endblock %}
+{% block page_title %}운송양식 신청{% endblock %}
+
+{% block content %}
+{# ── 신청 기간 상태 판단 ──────────────────────────────────────────── #}
+{% set is_active = period and period.is_enabled and period.in_range %}
+
+<!-- 상태 배너 -->
+{% if is_active %}
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:var(--success-bg);border:1px solid #86efac;border-radius:12px">
+  <i class="fa-solid fa-circle-check" style="color:var(--success);font-size:1.1rem"></i>
+  <div>
+    <strong>신청 기간이 활성화 되었습니다.</strong>
+    <span class="text-muted ms-2 small">
+      {{ period.period_start }} ~ {{ period.period_end }}
+    </span>
+  </div>
+</div>
+{% else %}
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:var(--warning-bg);border:1px solid #fcd34d;border-radius:12px">
+  <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:1.1rem"></i>
+  <div>
+    <strong>현재 운송양식 신청 기간이 아닙니다.</strong>
+    {% if period and period.period_start and period.period_end %}
+    <div class="small text-muted mt-1">
+      예정 기간: {{ period.period_start }} ~ {{ period.period_end }}
+      {% if not period.is_enabled %} · 관리자가 비활성 처리함{% endif %}
+    </div>
+    {% else %}
+    <div class="small text-muted mt-1">관리자가 아직 신청 기간을 설정하지 않았습니다.</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if is_active %}
+<!-- ── 신청 폼 ───────────────────────────────────────────────────────── -->
+<form method="post" action="{{ url_for('form_supply_request') }}">
+  <div class="card mb-3">
+    <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
+      <i class="fa-solid fa-list-check text-primary"></i>
+      <strong>신청 양식 선택</strong>
+      <span class="badge bg-secondary ms-1">{{ form_types|length }}종</span>
+      <small class="text-muted ms-2">필요한 양식의 수량을 입력해 주세요.</small>
+      <span class="ms-auto badge"
+            style="background:var(--brand-light);color:var(--brand);font-size:.78rem;padding:6px 12px">
+        선택: <strong id="selectedCount">0</strong>종
+      </span>
+    </div>
+    <div class="card-body p-0">
+      {% if form_types %}
+      <div class="table-scroll">
+        <table class="table table-hover mb-0" id="formTable">
+          <thead>
+            <tr>
+              <th style="width:50px"></th>
+              <th>양식명</th>
+              <th class="text-center" style="width:90px">단위</th>
+              <th class="text-center" style="width:120px">단위 상세</th>
+              <th class="text-center" style="width:180px">수량</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in form_types %}
+            <tr data-row="{{ f.id }}">
+              <td class="text-center">
+                <input type="checkbox" class="form-check-input row-check"
+                       data-id="{{ f.id }}" id="chk-{{ f.id }}">
+              </td>
+              <td>
+                <label for="chk-{{ f.id }}" class="fw-semibold mb-0"
+                       style="cursor:pointer">{{ f.name }}</label>
+              </td>
+              <td class="text-center small text-muted">{{ f.unit or '—' }}</td>
+              <td class="text-center small text-muted">{{ f.unit_detail or '—' }}</td>
+              <td class="text-center">
+                <input type="number" name="qty_{{ f.id }}" class="form-control form-control-sm row-qty text-center"
+                       min="1" max="9999" step="1"
+                       data-id="{{ f.id }}"
+                       placeholder="0" disabled
+                       style="max-width:140px;margin:0 auto">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
+        <h6>등록된 양식이 없습니다</h6>
+        <p>관리자에게 양식 등록을 요청하세요.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── 비고 ─────────────────────────────────────────────────────── -->
+  <div class="card mb-3">
+    <div class="card-header bg-white d-flex align-items-center gap-2">
+      <i class="fa-solid fa-pen-to-square text-secondary"></i>
+      <strong>비고</strong>
+      <small class="text-muted ms-1">(선택)</small>
+    </div>
+    <div class="card-body">
+      <textarea name="notes" class="form-control" rows="3"
+                placeholder="요청사항이나 특이사항이 있다면 입력해 주세요."></textarea>
+    </div>
+  </div>
+
+  <!-- ── 제출 버튼 ────────────────────────────────────────────────── -->
+  <div class="d-flex gap-2 justify-content-end">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+    <button type="submit" class="btn btn-primary px-4" id="submitBtn" disabled data-loading>
+      <i class="fa-solid fa-paper-plane me-1"></i>신청서 제출
+    </button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if is_active %}
+<script>
+(function() {
+  const checkBoxes = document.querySelectorAll('.row-check');
+  const qtyInputs  = document.querySelectorAll('.row-qty');
+  const counter    = document.getElementById('selectedCount');
+  const submitBtn  = document.getElementById('submitBtn');
+
+  function recount() {
+    let n = 0;
+    checkBoxes.forEach(cb => { if (cb.checked) n++; });
+    counter.textContent = n;
+    submitBtn.disabled = (n === 0);
+  }
+
+  checkBoxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      const qty = document.querySelector('.row-qty[data-id="' + cb.dataset.id + '"]');
+      if (cb.checked) {
+        qty.disabled = false;
+        if (!qty.value || parseInt(qty.value, 10) < 1) qty.value = 1;
+        qty.focus();
+      } else {
+        qty.disabled = true;
+        qty.value = '';
+      }
+      recount();
+    });
+  });
+
+  qtyInputs.forEach(qty => {
+    qty.addEventListener('input', function() {
+      let v = parseInt(qty.value, 10);
+      if (isNaN(v) || v < 1) v = '';
+      else if (v > 9999) v = 9999;
+      qty.value = v;
+    });
+  });
+
+  // 폼 제출 시 체크되지 않은 행의 qty 입력은 비우기
+  document.querySelector('form').addEventListener('submit', function(e) {
+    let valid = false;
+    checkBoxes.forEach(cb => {
+      const qty = document.querySelector('.row-qty[data-id="' + cb.dataset.id + '"]');
+      if (cb.checked && parseInt(qty.value, 10) >= 1) valid = true;
+      if (!cb.checked) qty.value = '';
+    });
+    if (!valid) {
+      e.preventDefault();
+      alert('최소 1개 이상의 양식과 수량을 선택해 주세요.');
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

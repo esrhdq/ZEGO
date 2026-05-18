@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}운송양식 신청 기간 설정{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-calendar-days"></i>{% endblock %}
+{% block page_title %}운송양식 신청 기간 설정{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- ── 카드 1: 기간 설정 폼 ───────────────────────────────── -->
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex align-items-center gap-2">
+        <i class="fa-solid fa-calendar-plus text-primary"></i>
+        <strong>신청 기간 설정</strong>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          직원이 운송양식을 신청할 수 있는 기간을 설정합니다.
+          기간 외에는 신청 페이지에 안내 메시지만 표시됩니다.
+        </p>
+
+        <form method="post" action="{{ url_for('form_supply_settings') }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="fa-solid fa-calendar-day me-1 text-primary"></i>
+              신청 시작일 <span class="text-danger">*</span>
+            </label>
+            <input type="date" name="period_start" class="form-control" required
+                   value="{{ current.period_start if current and current.period_start else '' }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="fa-solid fa-calendar-xmark me-1 text-primary"></i>
+              신청 종료일 <span class="text-danger">*</span>
+            </label>
+            <input type="date" name="period_end" class="form-control" required
+                   value="{{ current.period_end if current and current.period_end else '' }}">
+            <div class="form-text">종료일 자정까지 신청이 가능합니다.</div>
+          </div>
+
+          <div class="mb-4">
+            <div class="form-check form-switch">
+              <input type="checkbox" name="is_enabled" id="enabledSwitch"
+                     class="form-check-input" role="switch" value="1"
+                     {% if current and current.is_enabled %}checked{% endif %}>
+              <label class="form-check-label fw-semibold" for="enabledSwitch">
+                신청 기능 활성화
+              </label>
+            </div>
+            <div class="form-text">체크 해제 시 기간 내라도 신청이 차단됩니다.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4" data-loading>
+              <i class="fa-solid fa-floppy-disk me-1"></i>저장
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 카드 2: 설정 이력 테이블 ───────────────────────────── -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex align-items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
+        <strong>설정 이력</strong>
+        <span class="badge bg-secondary ms-1">{{ settings_history|length if settings_history else 0 }}건</span>
+      </div>
+      <div class="card-body p-0">
+        {% if settings_history %}
+        <div class="table-scroll">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>설정일시</th>
+                <th>신청 기간</th>
+                <th class="text-center">상태</th>
+                <th>설정자</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in settings_history %}
+              <tr>
+                <td class="small text-muted" style="white-space:nowrap">
+                  {{ s.created_at | dt if s.created_at else '—' }}
+                </td>
+                <td class="small">
+                  <span class="fw-semibold">{{ s.period_start }}</span>
+                  <span class="text-muted mx-1">~</span>
+                  <span class="fw-semibold">{{ s.period_end }}</span>
+                </td>
+                <td class="text-center">
+                  {% if s.is_enabled %}
+                    <span class="badge badge-confirmed rounded-pill">활성</span>
+                  {% else %}
+                    <span class="badge badge-pending rounded-pill">비활성</span>
+                  {% endif %}
+                </td>
+                <td class="small text-muted">{{ s.created_by or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-calendar-days"></i></div>
+          <h6>설정 이력이 없습니다</h6>
+          <p>위 폼에서 신청 기간을 설정해 주세요.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

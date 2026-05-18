@@ -232,9 +232,24 @@
               </div>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-3">
               <label class="form-label fw-semibold">{{ T('common.notes') }}</label>
               <input type="text" name="notes" class="form-control" placeholder="{{ T('common.notes_optional') }}">
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-envelope me-1 text-primary"></i>
+                요청받는 지점 이메일 <small class="text-muted fw-normal">(선택 — 담당자에게 안내 메일 발송)</small>
+              </label>
+              <div class="input-group">
+                <input type="email" name="notify_email" id="notifyEmailInput" class="form-control"
+                       placeholder="지점 선택 시 자동 입력됩니다">
+                <span class="input-group-text" id="notifyEmailStatus" style="min-width:34px;justify-content:center">
+                  <i class="fa-solid fa-envelope text-muted" style="font-size:.8rem"></i>
+                </span>
+              </div>
+              <div class="form-text">지점에 등록된 이메일은 자동으로 불러옵니다. 직접 수정도 가능합니다.</div>
             </div>
 
             <div class="d-flex gap-2">
@@ -297,13 +312,14 @@
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center">
                   <form id="approveForm-{{ r.id }}" method="post" action="{{ url_for('approve_transfer', req_id=r.id) }}">
+                    <input type="hidden" name="notify_email" id="approveEmail-{{ r.id }}" value="">
                     <button type="button" class="btn btn-sm btn-success"
-                            onclick="showConfirm('{{ T('xfer.confirm_approve') }}', () => document.getElementById('approveForm-{{ r.id }}').submit())">
+                            onclick="openApproveModal({{ r.id }}, '{{ r.form_name|e }}', {{ r.quantity }}, '{{ r.to_branch_name|e }}', {{ r.to_branch_id }})">
                       <i class="fa-solid fa-check me-1"></i>{{ T('xfer.approve') }}
                     </button>
                   </form>
                   <button type="button" class="btn btn-sm btn-danger"
-                          onclick="openRejectModal({{ r.id }}, '{{ r.form_name|e }}', {{ r.quantity }})">
+                          onclick="openRejectModal({{ r.id }}, '{{ r.form_name|e }}', {{ r.quantity }}, {{ r.to_branch_id }})">
                     <i class="fa-solid fa-xmark me-1"></i>{{ T('xfer.reject') }}
                   </button>
                 </div>
@@ -406,23 +422,64 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>{{ T('xfer.modal_reject') }}</h6>
+        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>이전 요청 반려</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="rejectForm" method="post">
         <div class="modal-body">
           <p class="text-muted small mb-3" id="rejectDesc"></p>
-          <label class="form-label fw-semibold">{{ T('xfer.reject_reason') }} <span class="text-danger">*</span></label>
-          <textarea name="reject_reason" class="form-control" rows="3" required
-                    placeholder="{{ T('xfer.reject_placeholder') }}"></textarea>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">반려 사유 <span class="text-danger">*</span></label>
+            <textarea name="reject_reason" class="form-control" rows="3" required
+                      placeholder="반려 사유를 입력해주세요"></textarea>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">
+              <i class="fa-solid fa-envelope me-1 text-primary"></i>
+              요청 지점 이메일 <small class="text-muted fw-normal">(선택)</small>
+            </label>
+            <input type="email" name="notify_email" class="form-control"
+                   placeholder="반려 내용을 메일로 발송할 주소">
+            <div class="form-text">입력 시 해당 주소로 반려 안내 메일이 발송됩니다.</div>
+          </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
           <button type="submit" class="btn btn-danger">
-            <i class="fa-solid fa-xmark me-1"></i>{{ T('xfer.reject_submit') }}
+            <i class="fa-solid fa-xmark me-1"></i>반려
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- 승인 + 이메일 모달 -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="fa-solid fa-check text-success me-2"></i>이전 요청 승인</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3" id="approveDesc"></p>
+        <div class="mb-1">
+          <label class="form-label fw-semibold">
+            <i class="fa-solid fa-envelope me-1 text-primary"></i>
+            요청 지점 이메일 <small class="text-muted fw-normal">(선택)</small>
+          </label>
+          <input type="email" id="approveEmailInput" class="form-control"
+                 placeholder="승인 내용을 메일로 발송할 주소">
+          <div class="form-text">입력 시 해당 주소로 승인 안내 메일이 발송됩니다.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-success" id="approveConfirmBtn">
+          <i class="fa-solid fa-check me-1"></i>승인 확인
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -450,6 +507,52 @@ function filterHistory(btn) {
     tr.style.display = (f === 'ALL' || tr.dataset.status === f) ? '' : 'none';
   });
 }
+
+// 지점 이메일 맵 (페이지 로드 시 한 번 fetch)
+let _branchEmails = {};
+(async function loadBranchEmails() {
+  try {
+    const r = await fetch('/api/branches/emails');
+    _branchEmails = await r.json();
+  } catch(e) { /* 실패 시 빈 맵 유지 */ }
+})();
+
+function applyBranchEmail(branchId, inputEl, statusEl) {
+  if (!inputEl) return;
+  const email = _branchEmails[String(branchId)] || '';
+  if (email) {
+    if (!inputEl.dataset.userEdited) {   // 사용자가 직접 수정하지 않은 경우만 덮어씀
+      inputEl.value = email;
+    }
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success" style="font-size:.8rem" title="등록된 이메일"></i>';
+    }
+  } else {
+    if (!inputEl.dataset.userEdited) inputEl.value = '';
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fa-solid fa-envelope text-muted" style="font-size:.8rem"></i>';
+    }
+  }
+}
+
+// 사용자가 직접 수정하면 자동입력 잠금 해제 플래그 제거 대신 userEdited 표시
+document.addEventListener('DOMContentLoaded', function() {
+  const notifyInput = document.getElementById('notifyEmailInput');
+  if (notifyInput) {
+    notifyInput.addEventListener('input', function() {
+      this.dataset.userEdited = '1';
+    });
+  }
+  const fromBranch = document.getElementById('fromBranch');
+  if (fromBranch) {
+    fromBranch.addEventListener('change', function() {
+      const notifyEl  = document.getElementById('notifyEmailInput');
+      const statusEl  = document.getElementById('notifyEmailStatus');
+      if (notifyEl) delete notifyEl.dataset.userEdited;  // 지점 바꾸면 잠금 해제
+      applyBranchEmail(this.value, notifyEl, statusEl);
+    });
+  }
+});
 
 // 재고 조회
 async function fetchFromStock() {
@@ -487,12 +590,41 @@ async function fetchFromStock() {
 }
 
 // 반려 모달
-function openRejectModal(reqId, formName, qty) {
+function openRejectModal(reqId, formName, qty, toBranchId) {
   document.getElementById('rejectForm').action = `/transfer/requests/${reqId}/reject`;
   document.getElementById('rejectDesc').textContent =
     `${formName} ${qty}개 이전 신청을 반려합니다.`;
   document.querySelector('#rejectModal textarea').value = '';
+  const rejectEmailEl = document.querySelector('#rejectModal input[name="notify_email"]');
+  rejectEmailEl.value = (toBranchId && _branchEmails[String(toBranchId)]) || '';
   new bootstrap.Modal(document.getElementById('rejectModal')).show();
 }
+
+// 승인 + 이메일 모달
+let _approveModal = null;
+let _currentApproveId = null;
+
+function openApproveModal(reqId, formName, qty, toBranch, toBranchId) {
+  _currentApproveId = reqId;
+  document.getElementById('approveDesc').textContent =
+    `${toBranch}의 ${formName} ${qty}개 이전 신청을 승인합니다.`;
+  const approveEmailEl = document.getElementById('approveEmailInput');
+  approveEmailEl.value = (toBranchId && _branchEmails[String(toBranchId)]) || '';
+  if (!_approveModal) _approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
+  _approveModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('approveConfirmBtn');
+  if (!btn) return;
+  btn.addEventListener('click', function() {
+    const email = document.getElementById('approveEmailInput').value;
+    const emailInput = document.getElementById('approveEmail-' + _currentApproveId);
+    if (emailInput) emailInput.value = email;
+    if (_approveModal) _approveModal.hide();
+    const form = document.getElementById('approveForm-' + _currentApproveId);
+    if (form) form.submit();
+  });
+});
 </script>
 {% endblock %}

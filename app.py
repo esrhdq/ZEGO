@@ -6,6 +6,9 @@ import os
 import hashlib
 import sqlite3
 import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from functools import wraps
 from io import BytesIO
 from datetime import datetime, timezone, timedelta
@@ -274,6 +277,48 @@ def log_action(action, target_info=''):
         conn.close()
     except Exception:
         pass
+
+
+# ── 이메일 전송 헬퍼 ──────────────────────────────────────────────────────────
+
+def send_email(to_addr, subject, body_html):
+    """환경변수: SMTP_HOST, SMTP_PORT(기본587), SMTP_USER, SMTP_PASS, SMTP_FROM"""
+    smtp_host = os.environ.get('SMTP_HOST', '')
+    smtp_user = os.environ.get('SMTP_USER', '')
+    if not smtp_host or not smtp_user:
+        app.logger.warning(f'SMTP 미설정, 메일 전송 생략: to={to_addr}')
+        return False
+    try:
+        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        smtp_pass = os.environ.get('SMTP_PASS', '')
+        smtp_from = os.environ.get('SMTP_FROM', smtp_user)
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = smtp_from
+        msg['To']      = to_addr
+        msg.attach(MIMEText(body_html, 'html', 'utf-8'))
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as srv:
+            srv.ehlo(); srv.starttls(); srv.login(smtp_user, smtp_pass)
+            srv.sendmail(smtp_from, [to_addr], msg.as_string())
+        return True
+    except Exception as e:
+        app.logger.error(f'메일 전송 실패 ({to_addr}): {e}')
+        return False
+
+
+# ── 운송양식 신청 기간 헬퍼 ────────────────────────────────────────────────
+
+def _get_active_supply_period():
+    """현재 활성화된 신청 기간 반환. 없으면 None."""
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    today = datetime.now().strftime('%Y-%m-%d')
+    row = conn.execute(
+        f"SELECT * FROM form_supply_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
+        (today, today)
+    ).fetchone()
+    conn.close()
+    return row
 
 
 # ── Jinja2 필터 ──────────────────────────────────────────────────────────────
@@ -547,6 +592,52 @@ def init_db():
                     UNIQUE(request_id, item_code)
                 )
             ''')
+            # ── 운송양식 공급 신청 시스템 ─────────────────────────────
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS form_supply_settings (
+                    id           INTEGER PRIMARY KEY,
+                    period_start TEXT NOT NULL,
+                    period_end   TEXT NOT NULL,
+                    is_enabled   INTEGER DEFAULT 1,
+                    created_by   TEXT NOT NULL,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS form_supply_requests (
+                    id            INTEGER PRIMARY KEY,
+                    branch_id     INTEGER NOT NULL,
+                    status        TEXT DEFAULT 'pending',
+                    notes         TEXT DEFAULT '',
+                    reject_reason TEXT DEFAULT '',
+                    requested_by  TEXT NOT NULL,
+                    processed_by  TEXT DEFAULT '',
+                    processed_at  TIMESTAMP,
+                    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (branch_id) REFERENCES branches(id)
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS form_supply_request_items (
+                    id           INTEGER PRIMARY KEY,
+                    request_id   INTEGER NOT NULL,
+                    form_type_id INTEGER NOT NULL,
+                    quantity     INTEGER NOT NULL DEFAULT 1,
+                    FOREIGN KEY (request_id)   REFERENCES form_supply_requests(id),
+                    FOREIGN KEY (form_type_id) REFERENCES form_types(id)
+                )
+            ''')
+            # 기존 DB 마이그레이션 — 컬럼 추가
+            for _alter in [
+                "ALTER TABLE transfer_requests ADD COLUMN notify_email TEXT DEFAULT ''",
+                "ALTER TABLE branches ADD COLUMN email TEXT DEFAULT ''",
+            ]:
+                try:
+                    conn.execute(_alter)
+                    conn.commit()
+                except Exception:
+                    pass
         else:
             # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
             conn.execute('''
@@ -666,6 +757,34 @@ def init_db():
                     custom_text     TEXT DEFAULT '',
                     UNIQUE(request_id, item_code)
                 );
+                CREATE TABLE IF NOT EXISTS form_supply_settings (
+                    id           SERIAL PRIMARY KEY,
+                    period_start TEXT NOT NULL,
+                    period_end   TEXT NOT NULL,
+                    is_enabled   INTEGER DEFAULT 1,
+                    created_by   TEXT NOT NULL,
+                    updated_at   TIMESTAMP DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS form_supply_requests (
+                    id            SERIAL PRIMARY KEY,
+                    branch_id     INTEGER NOT NULL REFERENCES branches(id),
+                    status        TEXT DEFAULT 'pending',
+                    notes         TEXT DEFAULT '',
+                    reject_reason TEXT DEFAULT '',
+                    requested_by  TEXT NOT NULL,
+                    processed_by  TEXT DEFAULT '',
+                    processed_at  TIMESTAMP,
+                    created_at    TIMESTAMP DEFAULT NOW(),
+                    updated_at    TIMESTAMP DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS form_supply_request_items (
+                    id           SERIAL PRIMARY KEY,
+                    request_id   INTEGER NOT NULL REFERENCES form_supply_requests(id),
+                    form_type_id INTEGER NOT NULL REFERENCES form_types(id),
+                    quantity     INTEGER NOT NULL DEFAULT 1
+                );
+                ALTER TABLE transfer_requests ADD COLUMN IF NOT EXISTS notify_email TEXT DEFAULT '';
+                ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
             ''')
 
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
@@ -1365,6 +1484,7 @@ def transfer():
         from_bid = request.form.get('from_branch_id', '')
         fid      = request.form.get('form_type_id', '')
         notes    = request.form.get('notes', '')
+        notify_email = request.form.get('notify_email', '').strip()
         try:
             qty = int(request.form['quantity'])
         except (ValueError, KeyError):
@@ -1406,9 +1526,9 @@ def transfer():
 
         conn.execute(
             "INSERT INTO transfer_requests "
-            "(from_branch_id, to_branch_id, form_type_id, quantity, notes, requested_by) "
-            "VALUES (%s,%s,%s,%s,%s,%s)",
-            (from_bid, to_bid, fid, qty, notes, session['username'])
+            "(from_branch_id, to_branch_id, form_type_id, quantity, notes, requested_by, notify_email) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (from_bid, to_bid, fid, qty, notes, session['username'], notify_email)
         )
         msg = (f"[이전 신청] {to_b['name']}에서 "
                f"{ft['name']} {qty}{ft['unit']} 이전을 요청했습니다.")
@@ -1417,6 +1537,26 @@ def transfer():
             (from_bid, msg)
         )
         conn.commit()
+
+        # 이메일 통보 (옵션)
+        if notify_email:
+            email_subject = f"[ZEGO] 운송양식 이전 요청 — {ft['name']}"
+            email_body = f"""
+            <div style="font-family:sans-serif;max-width:500px">
+              <h3 style="color:#CC1625">운송양식 이전 요청 안내</h3>
+              <p>{to_b['name']}에서 아래 양식의 이전을 요청했습니다.</p>
+              <table style="border-collapse:collapse;width:100%">
+                <tr><td style="padding:6px;font-weight:bold">양식명</td><td style="padding:6px">{ft['name']}</td></tr>
+                <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">수량</td><td style="padding:6px">{qty} {ft['unit']}</td></tr>
+                <tr><td style="padding:6px;font-weight:bold">요청 지점</td><td style="padding:6px">{to_b['name']}</td></tr>
+                <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">요청자</td><td style="padding:6px">{session['username']}</td></tr>
+                {f'<tr><td style="padding:6px;font-weight:bold">비고</td><td style="padding:6px">{notes}</td></tr>' if notes else ''}
+              </table>
+              <p style="color:#666;font-size:0.85em;margin-top:16px">ZEGO 재고관리 시스템 자동 발송</p>
+            </div>
+            """
+            send_email(notify_email, email_subject, email_body)
+
         flash(f'{from_b["name"]}에 이전 신청 완료. 승인을 기다려 주세요.', 'success')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
@@ -1500,6 +1640,8 @@ def approve_transfer(req_id):
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
+    notify_email = request.form.get('notify_email', '').strip()
+
     conn.execute(
         "UPDATE transfer_requests SET status='APPROVED', approved_by=%s, updated_at=NOW() WHERE id=%s",
         (session['username'], req_id)
@@ -1512,6 +1654,25 @@ def approve_transfer(req_id):
         (req['to_branch_id'], msg)
     )
     conn.commit()
+
+    # 이메일 통보 (옵션)
+    if notify_email:
+        email_subject = f"[ZEGO] 이전 요청 승인 — {req['form_name']}"
+        email_body = f"""
+        <div style="font-family:sans-serif;max-width:500px">
+          <h3 style="color:#16A34A">이전 요청이 승인되었습니다</h3>
+          <table style="border-collapse:collapse;width:100%">
+            <tr><td style="padding:6px;font-weight:bold">양식명</td><td style="padding:6px">{req['form_name']}</td></tr>
+            <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">수량</td><td style="padding:6px">{req['quantity']} {req['unit']}</td></tr>
+            <tr><td style="padding:6px;font-weight:bold">발신 지점</td><td style="padding:6px">{req['from_branch_name']}</td></tr>
+            <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">승인자</td><td style="padding:6px">{session['username']}</td></tr>
+          </table>
+          <p style="color:#666;margin-top:12px">실물 수령 후 ZEGO에서 수령 확인을 눌러주세요.</p>
+          <p style="color:#666;font-size:0.85em">ZEGO 재고관리 시스템 자동 발송</p>
+        </div>
+        """
+        send_email(notify_email, email_subject, email_body)
+
     flash('승인 완료. 요청 지점에 알림을 보냈습니다.', 'success')
     conn.close()
     return redirect(url_for('transfer') + '?tab=inbox')
@@ -1546,6 +1707,8 @@ def reject_transfer(req_id):
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
+    notify_email = request.form.get('notify_email', '').strip()
+
     conn.execute(
         "UPDATE transfer_requests SET status='REJECTED', reject_reason=%s, "
         "approved_by=%s, updated_at=NOW() WHERE id=%s",
@@ -1559,6 +1722,24 @@ def reject_transfer(req_id):
         (req['to_branch_id'], msg)
     )
     conn.commit()
+
+    # 이메일 통보 (옵션)
+    if notify_email:
+        email_subject = f"[ZEGO] 이전 요청 반려 — {req['form_name']}"
+        email_body = f"""
+        <div style="font-family:sans-serif;max-width:500px">
+          <h3 style="color:#DC2626">이전 요청이 반려되었습니다</h3>
+          <table style="border-collapse:collapse;width:100%">
+            <tr><td style="padding:6px;font-weight:bold">양식명</td><td style="padding:6px">{req['form_name']}</td></tr>
+            <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">수량</td><td style="padding:6px">{req['quantity']} {req['unit']}</td></tr>
+            <tr><td style="padding:6px;font-weight:bold">발신 지점</td><td style="padding:6px">{req['from_branch_name']}</td></tr>
+            <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">반려 사유</td><td style="padding:6px">{reason}</td></tr>
+          </table>
+          <p style="color:#666;font-size:0.85em;margin-top:16px">ZEGO 재고관리 시스템 자동 발송</p>
+        </div>
+        """
+        send_email(notify_email, email_subject, email_body)
+
     flash('반려 처리 완료. 요청 지점에 알림을 보냈습니다.', 'success')
     conn.close()
     return redirect(url_for('transfer') + '?tab=inbox')
@@ -3624,6 +3805,49 @@ def api_inventory_branches():
     return jsonify([dict(r) for r in rows])
 
 
+# ── 지점 이메일 맵 API ────────────────────────────────────────────────────────
+
+@app.route('/api/branches/emails')
+@login_required
+def api_branch_emails():
+    """전체 지점 이메일 맵 반환: {branch_id: email}"""
+    conn = get_db()
+    rows = conn.execute('SELECT id, email FROM branches').fetchall()
+    conn.close()
+    return jsonify({str(r['id']): (r['email'] or '') for r in rows})
+
+
+# ── 지점 이메일 관리 (관리자) ─────────────────────────────────────────────────
+
+@app.route('/admin/branches/emails', methods=['GET', 'POST'])
+@login_required
+def admin_branch_emails():
+    if session.get('role') != 'admin':
+        flash('관리자 권한이 필요합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    if request.method == 'POST':
+        data = request.form.to_dict()
+        for key, val in data.items():
+            if key.startswith('email_'):
+                bid = key[6:]  # 'email_123' → '123'
+                email_val = val.strip()
+                conn.execute(
+                    f'UPDATE branches SET email={ph} WHERE id={ph}',
+                    (email_val, bid)
+                )
+        conn.commit()
+        conn.close()
+        flash('지점 이메일이 저장되었습니다.', 'success')
+        return redirect(url_for('admin_branch_emails'))
+    branches = conn.execute(
+        'SELECT id, code, name, type, COALESCE(email, \'\') AS email FROM branches ORDER BY type, code'
+    ).fetchall()
+    conn.close()
+    return render_template('branch_emails.html', branches=branches)
+
+
 # ── 최소기준 수정 ─────────────────────────────────────────────────────────────
 
 @app.route('/api/update_threshold', methods=['POST'])
@@ -4158,6 +4382,324 @@ def purge_old_data():
     conn.close()
 
     return jsonify({'ok': True, 'purged': results})
+
+
+# ── 운송양식 공급 신청 시스템 ──────────────────────────────────────────────────
+
+@app.route('/admin/form-supply/settings', methods=['GET', 'POST'])
+@login_required
+def form_supply_settings():
+    """관리자 — 운송양식 신청 기간 설정"""
+    if session.get('role') != 'admin':
+        flash('관리자만 접근 가능합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    if request.method == 'POST':
+        period_start = request.form.get('period_start', '').strip()
+        period_end   = request.form.get('period_end', '').strip()
+        is_enabled   = 1 if request.form.get('is_enabled') else 0
+
+        if not period_start or not period_end:
+            flash('시작일과 종료일을 모두 입력해주세요.', 'danger')
+            conn.close()
+            return redirect(url_for('form_supply_settings'))
+        if period_start > period_end:
+            flash('시작일은 종료일보다 빠르거나 같아야 합니다.', 'danger')
+            conn.close()
+            return redirect(url_for('form_supply_settings'))
+
+        conn.execute(
+            f"INSERT INTO form_supply_settings (period_start, period_end, is_enabled, created_by, updated_at) "
+            f"VALUES ({ph},{ph},{ph},{ph},{now_sql})",
+            (period_start, period_end, is_enabled, session['username'])
+        )
+        conn.commit()
+        log_action('운송양식_신청기간_설정', f'{period_start}~{period_end} (활성:{is_enabled})')
+        flash('신청 기간 설정이 저장되었습니다.', 'success')
+        conn.close()
+        return redirect(url_for('form_supply_settings'))
+
+    # GET — 현재 최신 설정 + 이력
+    current = conn.execute(
+        'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 1'
+    ).fetchone()
+    settings_history = conn.execute(
+        'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 50'
+    ).fetchall()
+    # SQLite Row를 dict처럼 다루기 위해 created_at 대체 (테이블에는 updated_at만 있음)
+    history_list = []
+    for s in settings_history:
+        d = dict(s)
+        d['created_at'] = d.get('updated_at')
+        history_list.append(d)
+    conn.close()
+    return render_template('form_supply_settings.html',
+                           current=current,
+                           settings_history=history_list)
+
+
+@app.route('/api/form-supply/period')
+@login_required
+def api_form_supply_period():
+    """현재 신청 기간 상태 API"""
+    period = _get_active_supply_period()
+    if period:
+        return jsonify({
+            'active': True,
+            'id': period['id'],
+            'period_start': period['period_start'],
+            'period_end':   period['period_end'],
+        })
+    # 활성 기간이 없을 때 가장 최근 설정 정보 반환
+    conn = get_db()
+    latest = conn.execute(
+        'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 1'
+    ).fetchone()
+    conn.close()
+    if latest:
+        return jsonify({
+            'active': False,
+            'id': latest['id'],
+            'period_start': latest['period_start'],
+            'period_end':   latest['period_end'],
+        })
+    return jsonify({'active': False})
+
+
+@app.route('/form-supply/request', methods=['GET', 'POST'])
+@login_required
+def form_supply_request():
+    """직원 — 운송양식 신청"""
+    role = session.get('role')
+    bid  = session.get('branch_id')
+
+    if role == 'admin':
+        flash('관리자는 신청 페이지를 사용할 수 없습니다. 기간 설정 화면으로 이동합니다.', 'info')
+        return redirect(url_for('form_supply_settings'))
+    if not bid:
+        flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    # 활성 기간 / 최근 설정 조회 (템플릿용)
+    today = datetime.now().strftime('%Y-%m-%d')
+    latest = conn.execute(
+        'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 1'
+    ).fetchone()
+    period_ctx = None
+    if latest:
+        d = dict(latest)
+        d['in_range'] = (
+            str(d.get('period_start', '')) <= today <= str(d.get('period_end', ''))
+        )
+        period_ctx = d
+
+    if request.method == 'POST':
+        # 서버사이드 기간 검증
+        active = _get_active_supply_period()
+        if not active:
+            flash('현재 신청 기간이 아닙니다.', 'danger')
+            conn.close()
+            return redirect(url_for('form_supply_request'))
+
+        notes = request.form.get('notes', '').strip()
+
+        # qty_<form_type_id> 필드 수집
+        items = []
+        for ft in conn.execute('SELECT id FROM form_types').fetchall():
+            fid = ft['id']
+            raw = request.form.get(f'qty_{fid}', '').strip()
+            if not raw:
+                continue
+            try:
+                q = int(raw)
+            except ValueError:
+                continue
+            if q >= 1:
+                items.append((fid, min(q, 9999)))
+
+        if not items:
+            flash('최소 1개 이상의 양식과 수량을 선택해주세요.', 'danger')
+            conn.close()
+            return redirect(url_for('form_supply_request'))
+
+        # 신청서 INSERT
+        if USE_SQLITE:
+            cur = conn.execute(
+                f"INSERT INTO form_supply_requests (branch_id, status, notes, requested_by, created_at, updated_at) "
+                f"VALUES ({ph},'pending',{ph},{ph},{now_sql},{now_sql})",
+                (bid, notes, session['username'])
+            )
+            req_id = cur.lastrowid
+        else:
+            row = conn.execute(
+                "INSERT INTO form_supply_requests (branch_id, status, notes, requested_by) "
+                "VALUES (%s,'pending',%s,%s) RETURNING id",
+                (bid, notes, session['username'])
+            ).fetchone()
+            req_id = row['id']
+
+        # 항목 INSERT
+        for fid, q in items:
+            conn.execute(
+                f"INSERT INTO form_supply_request_items (request_id, form_type_id, quantity) "
+                f"VALUES ({ph},{ph},{ph})",
+                (req_id, fid, q)
+            )
+
+        # 관리자 알림 — admin 사용자의 branch_id가 NULL일 수 있어 신청 지점에 사본 알림만 남김
+        b_name_row = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
+        b_name = b_name_row['name'] if b_name_row else f'지점#{bid}'
+        msg = f"[운송양식 신청] {b_name} — {len(items)}종 신청 (#{req_id})"
+        conn.execute(
+            "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+            (bid, msg)
+        )
+        conn.commit()
+        log_action('운송양식_신청', f'#{req_id} {len(items)}종')
+        flash(f'신청 완료. ({len(items)}종 / 신청번호 #{req_id})', 'success')
+        conn.close()
+        return redirect(url_for('form_supply_my_requests'))
+
+    # GET — 폼 렌더
+    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    conn.close()
+    return render_template('form_supply_request.html',
+                           period=period_ctx,
+                           form_types=form_types)
+
+
+@app.route('/form-supply/my-requests')
+@login_required
+def form_supply_my_requests():
+    """직원 — 내 신청 현황"""
+    role = session.get('role')
+    bid  = session.get('branch_id')
+
+    if role == 'admin':
+        return redirect(url_for('form_supply_admin_requests'))
+    if not bid:
+        flash('소속 지점이 없습니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    reqs = conn.execute(
+        'SELECT * FROM form_supply_requests WHERE branch_id=%s ORDER BY id DESC',
+        (bid,)
+    ).fetchall()
+
+    result = []
+    for r in reqs:
+        items = conn.execute(
+            'SELECT i.form_type_id, i.quantity, f.name AS form_name, f.unit, f.unit_detail '
+            'FROM form_supply_request_items i '
+            'JOIN form_types f ON f.id = i.form_type_id '
+            'WHERE i.request_id=%s ORDER BY f.name',
+            (r['id'],)
+        ).fetchall()
+        d = dict(r)
+        d['items'] = [dict(x) for x in items]
+        result.append(d)
+    conn.close()
+    return render_template('form_supply_my_requests.html', requests=result)
+
+
+@app.route('/admin/form-supply/requests')
+@login_required
+def form_supply_admin_requests():
+    """관리자 — 전체 신청 목록"""
+    if session.get('role') != 'admin':
+        flash('관리자만 접근 가능합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    reqs = conn.execute(
+        'SELECT r.*, b.code AS branch_code, b.name AS branch_name '
+        'FROM form_supply_requests r '
+        'JOIN branches b ON b.id = r.branch_id '
+        'ORDER BY r.id DESC'
+    ).fetchall()
+
+    result = []
+    for r in reqs:
+        items = conn.execute(
+            'SELECT i.form_type_id, i.quantity, f.name AS form_name, f.unit, f.unit_detail '
+            'FROM form_supply_request_items i '
+            'JOIN form_types f ON f.id = i.form_type_id '
+            'WHERE i.request_id=%s ORDER BY f.name',
+            (r['id'],)
+        ).fetchall()
+        d = dict(r)
+        d['items'] = [dict(x) for x in items]
+        result.append(d)
+    conn.close()
+    return render_template('form_supply_admin_requests.html', requests=result)
+
+
+@app.route('/admin/form-supply/requests/<int:req_id>/action', methods=['POST'])
+@login_required
+def form_supply_admin_action(req_id):
+    """관리자 — 승인/반려 처리"""
+    if session.get('role') != 'admin':
+        flash('관리자만 접근 가능합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    action = request.form.get('action', '').strip()
+    reject_reason = request.form.get('reject_reason', '').strip()
+
+    if action not in ('approved', 'rejected'):
+        flash('잘못된 요청입니다.', 'danger')
+        return redirect(url_for('form_supply_admin_requests'))
+    if action == 'rejected' and not reject_reason:
+        flash('반려 사유를 입력해주세요.', 'danger')
+        return redirect(url_for('form_supply_admin_requests'))
+
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    req = conn.execute(
+        'SELECT r.*, b.name AS branch_name FROM form_supply_requests r '
+        'JOIN branches b ON b.id = r.branch_id WHERE r.id=%s',
+        (req_id,)
+    ).fetchone()
+    if not req:
+        flash('신청을 찾을 수 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('form_supply_admin_requests'))
+    if req['status'] != 'pending':
+        flash('이미 처리된 신청입니다.', 'warning')
+        conn.close()
+        return redirect(url_for('form_supply_admin_requests'))
+
+    conn.execute(
+        f"UPDATE form_supply_requests "
+        f"SET status={ph}, reject_reason={ph}, processed_by={ph}, processed_at={now_sql}, updated_at={now_sql} "
+        f"WHERE id={ph}",
+        (action, reject_reason if action == 'rejected' else '', session['username'], req_id)
+    )
+
+    if action == 'approved':
+        notif = f"[운송양식 신청 승인] 신청 #{req_id}가 승인되었습니다."
+    else:
+        notif = f"[운송양식 신청 반려] 신청 #{req_id}가 반려되었습니다. 사유: {reject_reason}"
+    conn.execute(
+        "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+        (req['branch_id'], notif)
+    )
+    conn.commit()
+    log_action(f'운송양식_{action}', f'#{req_id} {req["branch_name"]}')
+    flash(f'신청 #{req_id} 처리 완료 ({action}).', 'success')
+    conn.close()
+    return redirect(url_for('form_supply_admin_requests'))
+
 
 if __name__ == '__main__':
     pass

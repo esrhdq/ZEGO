@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}지점 이메일 관리{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-envelope-open-text"></i>{% endblock %}
+{% block page_title %}지점 이메일 관리{% endblock %}
+
+{% block content %}
+<form method="post">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0" style="font-size:.875rem">
+      각 지점의 담당자 이메일을 등록해두면, 이전 신청·승인·반려 시 자동으로 불러옵니다.
+    </p>
+    <button type="submit" class="btn btn-primary px-4" data-loading="true">
+      <i class="fa-solid fa-floppy-disk me-1"></i>전체 저장
+    </button>
+  </div>
+
+  {% set types = [('DOM', '국내'), ('INTL', '국제'), ('CARGO', '화물')] %}
+  {% for type_code, type_label in types %}
+  {% set group = branches | selectattr('type', 'equalto', type_code) | list %}
+  {% if group %}
+  <div class="card mb-4">
+    <div class="card-header bg-white d-flex align-items-center gap-2 py-3">
+      {% if type_code == 'DOM' %}
+        <span class="badge badge-dom">{{ type_label }}</span>
+      {% elif type_code == 'INTL' %}
+        <span class="badge badge-intl">{{ type_label }}</span>
+      {% else %}
+        <span class="badge badge-cargo">{{ type_label }}</span>
+      {% endif %}
+      <strong>{{ type_label }} 지점</strong>
+      <span class="badge bg-secondary ms-1">{{ group | length }}개</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:100px">코드</th>
+              <th style="width:140px">지점명</th>
+              <th>담당자 이메일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in group %}
+            <tr>
+              <td>
+                <span class="badge
+                  {% if b.type == 'DOM' %}badge-dom
+                  {% elif b.type == 'INTL' %}badge-intl
+                  {% else %}badge-cargo{% endif %}">
+                  {{ b.code }}
+                </span>
+              </td>
+              <td class="fw-semibold">{{ b.name }}</td>
+              <td>
+                <input type="email"
+                       name="email_{{ b.id }}"
+                       value="{{ b.email }}"
+                       class="form-control form-control-sm"
+                       placeholder="예: {{ b.code.lower() }}-ops@eastarjet.com"
+                       style="max-width:340px">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  <div class="d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary px-4" data-loading="true">
+      <i class="fa-solid fa-floppy-disk me-1"></i>전체 저장
+    </button>
+  </div>
+</form>
+{% endblock %}
