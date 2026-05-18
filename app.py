@@ -20,6 +20,38 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 
+# ── 지점 이메일 시드 (branch code → email) ────────────────────────────────────
+# 이미지에서 읽은 지점별 담당자 이메일. init_db에서 email이 비어있는 지점에만 적용.
+_BRANCH_EMAIL_SEEDS = {
+    'GMP': 'zegmp@eastarjet.com',        # 김포
+    'CJU': 'zecju@eastarjet.com',        # 제주
+    'CJJ': 'zecjj@eastarjet.com',        # 청주
+    'KUV': 'zekuv@eastarjet.com',        # 군산
+    'PUS': 'zepus@eastarjet.com',        # 부산/울산
+    'ICN': 'zeicn@eastarjet.com',        # 인천
+    'NRT': 'zenrt@eastarjet.com',        # 나리타(도쿄)
+    'KIX': 'zekix@eastarjet.com',        # 간사이(오사카)
+    'FUK': 'zefuk@eastarjet.com',        # 후쿠오카
+    'TSA': 'zetsa@eastarjet.com',        # 송산(타이베이)
+    'TPE': 'zetpe@eastarjet.com',        # 타이베이
+    'BKK': 'zebkk@eastarjet.com',        # 방콕
+    'DAD': 'zedadd2@eastarjet.com',      # 다낭
+    'CXR': 'zecxr@eastarjet.com',        # 나트랑
+    'PVG': 'zepvg@eastarjet.com',        # 상하이
+    'PQC': 'zepqc@eastarjet.com',        # 푸꾸옥(무우쿡)
+    'CNX': 'zecnx@eastarjet.com',        # 치앙마이
+    'CTS': 'zects@eastarjet.com',        # 삿포로(지토세)
+    'OKA': 'zeoka@eastarjet.com',        # 오키나와
+    'KMJ': 'zekmi@eastarjet.com',        # 구마모토
+    'YNJ': 'ls1012cv@eastarjet.com',     # 연길
+    'CGO': 'rjl@eastarjet.com',          # 정저우
+    'YNT': 'zeynt@eastarjet.com',        # 옌타이
+    'MDC': 'zemdc@eastarjet.com',        # 마나도
+    'TKS': 'zekcj@eastarjet.com',        # 도쿠시마
+    'HKG': 'lsn.kim@eastarjet.com',      # 홍콩
+    'ALA': 'zeala@eastarjet.com',        # 알마티
+}
+
 # ── 카탈로그 기본 카테고리 순서 ───────────────────────────────────────────────
 CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', '안내문', '카운터 종합 안내문', '간판·표찰', '스탬프·쿠폰']
 
@@ -859,6 +891,14 @@ def init_db():
                 )
         else:
             conn.execute("UPDATE branches SET type='DOM' WHERE code='ICN' AND type != 'DOM'")
+
+        # 지점 이메일 시드 — email이 비어있는 지점에만 적용 (수동 설정 보호)
+        ph = '%s' if not USE_SQLITE else '?'
+        for _code, _email in _BRANCH_EMAIL_SEEDS.items():
+            conn.execute(
+                f"UPDATE branches SET email={ph} WHERE code={ph} AND (email IS NULL OR email='')",
+                (_email, _code)
+            )
 
         user_count = conn.execute('SELECT COUNT(*) AS cnt FROM users').fetchone()['cnt']
         if user_count == 0:
