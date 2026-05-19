@@ -3607,6 +3607,33 @@ def update_branch_email(bid):
     return redirect(url_for('manage_users') + '#branch-emails')
 
 
+@app.route('/admin/test-email')
+@login_required
+def test_email():
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+    to = request.args.get('to', '').strip()
+    if not to:
+        return jsonify({'ok': False, 'error': 'to 파라미터 필요. 예: /admin/test-email?to=xxx@xxx.com'})
+    if not MAIL_HOST:
+        return jsonify({'ok': False, 'error': 'MAIL_HOST 환경변수 미설정'})
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = '[ZEGO] 이메일 발송 테스트'
+        msg['From']    = MAIL_FROM
+        msg['To']      = to
+        msg.attach(MIMEText('ZEGO 이메일 발송 테스트입니다.', 'plain', 'utf-8'))
+        with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(MAIL_USER, MAIL_PASS)
+            server.sendmail(MAIL_FROM, [to], msg.as_string())
+        return jsonify({'ok': True, 'message': f'{to} 로 발송 성공'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+
 # ── 비밀번호 변경 (본인) ───────────────────────────────────────────────────────
 
 @app.route('/change-password', methods=['GET', 'POST'])
