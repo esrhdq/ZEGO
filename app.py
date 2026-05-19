@@ -2590,17 +2590,37 @@ def _seed_catalog_defs(conn):
     name/cat/sub_desc/sort_order는 코드 기준으로 갱신.
     img는 관리자가 이미지를 업로드한 경우(img_data != '')엔 유지,
     업로드 이미지가 없는 경우에만 코드 기준값으로 갱신."""
+    # user_deleted 컬럼이 존재하는지 확인 후 ON CONFLICT 조건 결정
+    try:
+        conn.execute('SELECT user_deleted FROM catalog_defs LIMIT 1')
+        has_user_deleted = True
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        has_user_deleted = False
+
     for item in CATALOG_ITEMS:
-        conn.execute(
-            'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
-            'VALUES (%s, %s, %s, %s, %s, %s) '
-            'ON CONFLICT (code) DO UPDATE SET '
-            '  img=CASE WHEN COALESCE(catalog_defs.img_data,\'\')=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
-            '  sort_order=EXCLUDED.sort_order '
-            'WHERE catalog_defs.user_deleted IS NOT TRUE',
-            (item['code'], item['img'], item['name'], item['cat'],
-             item.get('sub_desc', ''), item.get('sort', 0))
-        )
+        if has_user_deleted:
+            sql = (
+                'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
+                'VALUES (%s, %s, %s, %s, %s, %s) '
+                'ON CONFLICT (code) DO UPDATE SET '
+                '  img=CASE WHEN COALESCE(catalog_defs.img_data,\'\')=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
+                '  sort_order=EXCLUDED.sort_order '
+                'WHERE catalog_defs.user_deleted IS NOT TRUE'
+            )
+        else:
+            sql = (
+                'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order) '
+                'VALUES (%s, %s, %s, %s, %s, %s) '
+                'ON CONFLICT (code) DO UPDATE SET '
+                '  img=CASE WHEN COALESCE(catalog_defs.img_data,\'\')=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
+                '  sort_order=EXCLUDED.sort_order'
+            )
+        conn.execute(sql, (item['code'], item['img'], item['name'], item['cat'],
+                           item.get('sub_desc', ''), item.get('sort', 0)))
     conn.commit()
 
 
