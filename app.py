@@ -271,6 +271,7 @@ def send_mail(to_list, subject, body):
         with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
             server.ehlo()
             server.starttls()
+            server.ehlo()
             server.login(MAIL_USER, MAIL_PASS)
             server.sendmail(MAIL_FROM, recipients, msg.as_string())
     except Exception as e:
