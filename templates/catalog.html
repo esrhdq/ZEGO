@@ -595,7 +595,7 @@
   </button>
   {% endif %}
   <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
-    <img data-img="{{ item.img }}" src="" alt="{{ item.name }}">
+    <img data-img="{{ item.img }}" src="/static/item_images/{{ item.img }}.png" loading="lazy" alt="{{ item.name }}">
   </div>
   <div class="cat-body">
     <div class="cat-title">{{ item.name }}</div>
@@ -680,23 +680,11 @@
 
   function applyImgs(data) {
     window._catImgs = data;
-    const imgs = Array.from(document.querySelectorAll('img[data-img]'));
-    if (!imgs.length) return;
-
-    if ('IntersectionObserver' in window) {
-      const io = new IntersectionObserver((entries, obs) => {
-        entries.forEach(e => {
-          if (!e.isIntersecting) return;
-          const img = e.target;
-          const src = data[img.dataset.img];
-          if (src) img.src = src;
-          obs.unobserve(img);
-        });
-      }, { rootMargin: IO_MARGIN });
-      imgs.forEach(img => io.observe(img));
-    } else {
-      imgs.forEach(img => { const s = data[img.dataset.img]; if (s) img.src = s; });
-    }
+    // base64 커스텀 이미지만 src 교체 (정적 이미지는 이미 src 설정됨)
+    document.querySelectorAll('img[data-img]').forEach(img => {
+      const src = data[img.dataset.img];
+      if (src && src.startsWith('data:')) img.src = src;
+    });
   }
 
   // 이전 버전 캐시 정리 (localStorage 용량 절약)
