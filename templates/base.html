@@ -691,10 +691,21 @@
                     onclick="markAllRead()">모두 읽음</button>
           </div>
           <div style="max-height:360px;overflow-y:auto" id="notifList">
+            {% if notif_list %}
+              {% for n in notif_list %}
+              <div class="px-3 py-2" style="border-bottom:1px solid var(--border);font-size:.8rem;line-height:1.4">
+                <div style="color:var(--text)">{{ n.message }}</div>
+                {% if n.created_at %}
+                <div style="color:var(--text-muted);font-size:.72rem;margin-top:2px">{{ n.created_at.strftime('%m/%d %H:%M') if n.created_at else '' }}</div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            {% else %}
             <div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem">
               <i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>
               새 알림이 없습니다
             </div>
+            {% endif %}
           </div>
           <div style="border-top:1px solid var(--border)">
             <a href="{{ url_for('transfer') }}" class="dropdown-item text-center"

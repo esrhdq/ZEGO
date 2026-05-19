@@ -442,7 +442,20 @@ def inject_globals():
             elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
             days_left = int(180 - elapsed / 86400)
             pw_expire_days = days_left
-    return {'notif_count': notif_count, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days}
+    # 알림 목록 (최근 10개, 읽지 않은 것만)
+    notif_list = []
+    if 'user_id' in session and bid:
+        try:
+            conn = get_db()
+            notif_list = conn.execute(
+                'SELECT id, message, created_at FROM notifications '
+                'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
+                (bid,)
+            ).fetchall()
+            conn.close()
+        except Exception:
+            pass
+    return {'notif_count': notif_count, 'notif_list': notif_list, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days}
 
 
 # ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
