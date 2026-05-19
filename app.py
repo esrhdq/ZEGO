@@ -2622,6 +2622,24 @@ def _warm_img_tmp_cache_bg():
         print(f'[warm_img_cache_bg] {_e}')
 
 
+def _catalog_img_ver():
+    """img_data 변경 시 localStorage 캐시를 깨기 위한 버전 해시."""
+    try:
+        conn = get_db()
+        r = conn.execute(
+            "SELECT COUNT(*) AS cnt, "
+            "SUM(CASE WHEN img_data IS NOT NULL AND img_data != '' THEN 1 ELSE 0 END) AS custom_cnt, "
+            "MAX(LENGTH(COALESCE(img_data,''))) AS max_len "
+            "FROM catalog_defs"
+        ).fetchone()
+        conn.close()
+        if r:
+            return abs(hash((r['cnt'], r['custom_cnt'], r['max_len']))) % 10000000
+    except Exception:
+        pass
+    return 0
+
+
 def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)"""
     rows = conn.execute(
@@ -2760,7 +2778,7 @@ def catalog():
         branches=branches,
         cart_cnt=cart_cnt,
         custom_cats=['X-Banner', '스탠션'],
-        img_ver=len(catalog_items),
+        img_ver=_catalog_img_ver(),
     )
 
 
