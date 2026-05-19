@@ -13,10 +13,7 @@ from functools import wraps
 from io import BytesIO
 from datetime import datetime, timezone, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
+# openpyxl은 다운로드 함수 내에서 지연 import (cold start 150ms 절감)
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 
@@ -406,55 +403,44 @@ def handle_exception(e):
 
 @app.context_processor
 def inject_globals():
-    notif_count = 0
+    notif_count   = 0
+    notif_list    = []
     pw_expire_days = None
     bid  = session.get('branch_id')
     role = session.get('role')
+
     if 'user_id' in session:
+        # 비밀번호 만료일 계산 (DB 불필요)
+        changed_ts = session.get('_pwd_changed_at', 0)
+        if changed_ts:
+            elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
+            pw_expire_days = int(180 - elapsed / 86400)
+
         try:
             conn = get_db()
-            pending = 0
-            unread  = 0
             if role == 'admin':
                 r = conn.execute(
                     'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
                     ('PENDING',)
                 ).fetchone()
-                pending = int(r['cnt']) if r else 0
+                notif_count = int(r['cnt']) if r else 0
             elif bid:
                 r = conn.execute(
-                    'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE from_branch_id=%s AND status=%s',
-                    (bid, 'PENDING')
+                    'SELECT '
+                    '  (SELECT COUNT(*) FROM transfer_requests WHERE from_branch_id=%s AND status=%s) AS pending,'
+                    '  (SELECT COUNT(*) FROM notifications WHERE branch_id=%s AND is_read=0) AS unread',
+                    (bid, 'PENDING', bid)
                 ).fetchone()
-                pending = int(r['cnt']) if r else 0
-                r2 = conn.execute(
-                    'SELECT COUNT(*) AS cnt FROM notifications WHERE branch_id=%s AND is_read=0',
+                notif_count = (int(r['pending']) + int(r['unread'])) if r else 0
+                notif_list  = conn.execute(
+                    'SELECT id, message, created_at FROM notifications '
+                    'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
                     (bid,)
-                ).fetchone()
-                unread = int(r2['cnt']) if r2 else 0
-            conn.close()
-            notif_count = pending + unread
-        except Exception:
-            pass
-        # 비밀번호 만료일 계산
-        changed_ts = session.get('_pwd_changed_at', 0)
-        if changed_ts:
-            elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
-            days_left = int(180 - elapsed / 86400)
-            pw_expire_days = days_left
-    # 알림 목록 (최근 10개, 읽지 않은 것만)
-    notif_list = []
-    if 'user_id' in session and bid:
-        try:
-            conn = get_db()
-            notif_list = conn.execute(
-                'SELECT id, message, created_at FROM notifications '
-                'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
-                (bid,)
-            ).fetchall()
+                ).fetchall()
             conn.close()
         except Exception:
             pass
+
     return {'notif_count': notif_count, 'notif_list': notif_list, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days}
 
 
@@ -2425,6 +2411,10 @@ def forecast_download():
         bucket[key][r['mo']] += r['qty']
         meta[key] = (r['form_name'], r['unit'])
 
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
     is_admin = role == 'admin'
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -2777,18 +2767,22 @@ def catalog():
 @app.route('/catalog/imgs')
 @login_required
 def catalog_imgs():
-    """카탈로그 이미지 전체를 한 번에 반환 — 브라우저가 N개 개별 요청 대신 1회로 처리."""
+    """카탈로그 이미지 URL 맵 반환. 커스텀 업로드만 base64, 나머지는 정적 URL."""
     import base64 as _b64
     _ensure_catalog_table()
     conn = get_db()
     rows = conn.execute(
-        "SELECT img, img_data FROM catalog_defs "
-        "WHERE img_data IS NOT NULL AND img_data != ''"
+        "SELECT img, img_data FROM catalog_defs"
     ).fetchall()
     conn.close()
-    data = {r['img']: 'data:image/png;base64,' + r['img_data'] for r in rows}
+    data = {}
+    for r in rows:
+        if r['img_data']:
+            data[r['img']] = 'data:image/png;base64,' + r['img_data']
+        else:
+            data[r['img']] = '/static/item_images/' + r['img'] + '.png'
     resp = jsonify(data)
-    resp.headers['Cache-Control'] = 'private, max-age=1800'
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
     return resp
 
 
@@ -3703,6 +3697,10 @@ def inbound_template():
         my_branch_code = row['code'] if row else ''
     conn.close()
 
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
     wb  = openpyxl.Workbook()
     ws  = wb.active
     ws.title = '입고업로드'
