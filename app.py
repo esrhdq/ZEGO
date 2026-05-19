@@ -158,8 +158,9 @@ if DATABASE_URL:
             _PG = {}
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not _PG
-_catalog_table_ready = False  # warm 인스턴스에서 DDL 재실행 방지
-_img_tmp_warmed      = False  # 이미지 /tmp 일괄 캐시 완료 여부
+_catalog_table_ready   = False  # warm 인스턴스에서 DDL 재실행 방지
+_user_deleted_migrated = False  # user_deleted 컬럼 마이그레이션 완료 여부
+_img_tmp_warmed        = False  # 이미지 /tmp 일괄 캐시 완료 여부
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
 _local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
 SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
@@ -2657,6 +2658,10 @@ def _get_catalog_items(conn):
             'WHERE user_deleted IS NOT TRUE'
         ).fetchall()
     except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         rows = conn.execute(
             'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs'
         ).fetchall()
@@ -2683,6 +2688,25 @@ def _get_cat_groups(conn, items=None):
 
 
 # ── 사용자 관리 (관리자 전용) ─────────────────────────────────────────────────
+
+def _ensure_user_deleted_col():
+    """catalog_defs.user_deleted 컬럼 마이그레이션. _catalog_table_ready와 독립적으로 실행."""
+    global _user_deleted_migrated
+    if _user_deleted_migrated or USE_SQLITE:
+        return
+    try:
+        import psycopg2 as _pg2
+        _conn = _pg2.connect(**_PG)
+        _conn.autocommit = True
+        cur = _conn.cursor()
+        cur.execute(
+            "ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE"
+        )
+        _conn.close()
+        _user_deleted_migrated = True
+    except Exception as _e:
+        print(f'[ensure_user_deleted_col] {_e}')
+
 
 def _ensure_catalog_table():
     """catalog_branch_items + catalog_defs 테이블 보장 및 시딩.
@@ -2767,6 +2791,7 @@ def _ensure_catalog_table():
 @app.route('/catalog')
 @login_required
 def catalog():
+    _ensure_user_deleted_col()
     _ensure_catalog_table()
     conn = get_db()
     bid  = session.get('branch_id')
@@ -2810,6 +2835,10 @@ def catalog_imgs():
             "SELECT img, img_data FROM catalog_defs WHERE user_deleted IS NOT TRUE"
         ).fetchall()
     except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         rows = conn.execute("SELECT img, img_data FROM catalog_defs").fetchall()
     conn.close()
     data = {}
@@ -3333,6 +3362,7 @@ def catalog_edit():
     if session.get('role') != 'admin':
         flash('관리자 권한이 필요합니다.', 'danger')
         return redirect(url_for('catalog'))
+    _ensure_user_deleted_col()
     _ensure_catalog_table()
     conn = get_db()
     items = _get_catalog_items(conn)
