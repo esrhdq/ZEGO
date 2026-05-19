@@ -2651,10 +2651,15 @@ def _catalog_img_ver():
 
 def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)"""
-    rows = conn.execute(
-        'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs '
-        'WHERE user_deleted IS NOT TRUE'
-    ).fetchall()
+    try:
+        rows = conn.execute(
+            'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs '
+            'WHERE user_deleted IS NOT TRUE'
+        ).fetchall()
+    except Exception:
+        rows = conn.execute(
+            'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs'
+        ).fetchall()
     items = [dict(r) for r in rows]
     cat_idx = {cat: i for i, cat in enumerate(CAT_ORDER)}
     items.sort(key=lambda x: (cat_idx.get(x['cat'], 999), x.get('sort_order', 0)))
@@ -2745,6 +2750,7 @@ def _ensure_catalog_table():
         ''')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_name TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_cat  TEXT DEFAULT \'\'')
+        conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
@@ -2799,9 +2805,12 @@ def catalog_imgs():
     import base64 as _b64
     _ensure_catalog_table()
     conn = get_db()
-    rows = conn.execute(
-        "SELECT img, img_data FROM catalog_defs WHERE user_deleted IS NOT TRUE"
-    ).fetchall()
+    try:
+        rows = conn.execute(
+            "SELECT img, img_data FROM catalog_defs WHERE user_deleted IS NOT TRUE"
+        ).fetchall()
+    except Exception:
+        rows = conn.execute("SELECT img, img_data FROM catalog_defs").fetchall()
     conn.close()
     data = {}
     for r in rows:
