@@ -110,6 +110,13 @@ app.secret_key = _secret
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+# ── 메일 발송 설정 ────────────────────────────────────────────────────────────
+MAIL_HOST = os.environ.get('MAIL_HOST', '')
+MAIL_PORT = int(os.environ.get('MAIL_PORT', '587'))
+MAIL_USER = os.environ.get('MAIL_USER', '')
+MAIL_PASS = os.environ.get('MAIL_PASS', '')
+MAIL_FROM = os.environ.get('MAIL_FROM', MAIL_USER)
 # URL → 키워드 인자 dict 변환 (psycopg2.connect(**_PG)로 사용)
 # URL 파싱 대신 키워드 인자를 쓰면 비밀번호 특수문자([, ], @ 등) 인코딩 불필요
 _PG = {}
@@ -246,6 +253,28 @@ def close_db(e=None):
 
 def hash_pw(pw):
     return generate_password_hash(pw, method='pbkdf2:sha256:600000')
+
+
+def send_mail(to_list, subject, body):
+    """to_list: 이메일 주소 리스트. MAIL_HOST 미설정 시 무시."""
+    if not MAIL_HOST or not MAIL_USER or not to_list:
+        return
+    recipients = [addr for addr in to_list if addr and addr.strip()]
+    if not recipients:
+        return
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = MAIL_FROM
+        msg['To']      = ', '.join(recipients)
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(MAIL_USER, MAIL_PASS)
+            server.sendmail(MAIL_FROM, recipients, msg.as_string())
+    except Exception as e:
+        app.logger.warning(f'[send_mail] 발송 실패: {e}')
 
 
 def verify_pw(pw, stored):
@@ -818,6 +847,16 @@ def init_db():
                 ALTER TABLE transfer_requests ADD COLUMN IF NOT EXISTS notify_email TEXT DEFAULT '';
                 ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
             ''')
+
+        # 마이그레이션: branches.email 컬럼 추가
+        try:
+            if USE_SQLITE:
+                conn.execute('ALTER TABLE branches ADD COLUMN email TEXT')
+            else:
+                conn.execute('ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT')
+            conn.commit()
+        except Exception:
+            pass  # 이미 존재하는 컬럼
 
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
 
@@ -1546,8 +1585,8 @@ def transfer():
             conn.close()
             return redirect(url_for('transfer'))
 
-        from_b = conn.execute('SELECT name FROM branches WHERE id=%s', (from_bid,)).fetchone()
-        to_b   = conn.execute('SELECT name FROM branches WHERE id=%s', (to_bid,)).fetchone()
+        from_b = conn.execute('SELECT name, email FROM branches WHERE id=%s', (from_bid,)).fetchone()
+        to_b   = conn.execute('SELECT name, email FROM branches WHERE id=%s', (to_bid,)).fetchone()
         ft     = conn.execute('SELECT name, unit FROM form_types WHERE id=%s', (fid,)).fetchone()
         if not from_b or not to_b or not ft:
             flash('잘못된 요청입니다.', 'danger')
@@ -1571,33 +1610,26 @@ def transfer():
             "VALUES (%s,%s,%s,%s,%s,%s,%s)",
             (from_bid, to_bid, fid, qty, notes, session['username'], notify_email)
         )
-        msg = (f"[이전 신청] {to_b['name']}에서 "
-               f"{ft['name']} {qty}{ft['unit']} 이전을 요청했습니다.")
+        msg_from = (f"[이전 신청] {to_b['name']}에서 "
+                    f"{ft['name']} {qty}{ft['unit']} 이전을 요청했습니다.")
         conn.execute(
             "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
-            (from_bid, msg)
+            (from_bid, msg_from)
+        )
+        msg_to = (f"[이전 신청] {from_b['name']}에 "
+                  f"{ft['name']} {qty}{ft['unit']} 이전 신청이 완료되었습니다.")
+        conn.execute(
+            "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+            (to_bid, msg_to)
         )
         conn.commit()
-
-        # 이메일 통보 (옵션)
-        if notify_email:
-            email_subject = f"[ZEGO] 운송양식 이전 요청 — {ft['name']}"
-            email_body = f"""
-            <div style="font-family:sans-serif;max-width:500px">
-              <h3 style="color:#CC1625">운송양식 이전 요청 안내</h3>
-              <p>{to_b['name']}에서 아래 양식의 이전을 요청했습니다.</p>
-              <table style="border-collapse:collapse;width:100%">
-                <tr><td style="padding:6px;font-weight:bold">양식명</td><td style="padding:6px">{ft['name']}</td></tr>
-                <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">수량</td><td style="padding:6px">{qty} {ft['unit']}</td></tr>
-                <tr><td style="padding:6px;font-weight:bold">요청 지점</td><td style="padding:6px">{to_b['name']}</td></tr>
-                <tr style="background:#f9f9f9"><td style="padding:6px;font-weight:bold">요청자</td><td style="padding:6px">{session['username']}</td></tr>
-                {f'<tr><td style="padding:6px;font-weight:bold">비고</td><td style="padding:6px">{notes}</td></tr>' if notes else ''}
-              </table>
-              <p style="color:#666;font-size:0.85em;margin-top:16px">ZEGO 재고관리 시스템 자동 발송</p>
-            </div>
-            """
-            send_email(notify_email, email_subject, email_body)
-
+        # 이메일 발송 — 요청 받은 지점(from_bid)에만 발송
+        send_mail(
+            [from_b['email']],
+            f"[ZEGO 이전 신청] {to_b['name']} → {from_b['name']} {ft['name']} {qty}{ft['unit']}",
+            f"{to_b['name']} 지점에서 {ft['name']} {qty}{ft['unit']} 이전을 요청했습니다.\n\n"
+            f"ZEGO에 로그인하여 받은 신청 탭에서 승인 또는 반려해 주세요."
+        )
         flash(f'{from_b["name"]}에 이전 신청 완료. 승인을 기다려 주세요.', 'success')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
@@ -1694,6 +1726,7 @@ def approve_transfer(req_id):
         "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
         (req['to_branch_id'], msg)
     )
+    to_email = conn.execute('SELECT email FROM branches WHERE id=%s', (req['to_branch_id'],)).fetchone()
     conn.commit()
 
     # 이메일 통보 (옵션)
@@ -1716,6 +1749,12 @@ def approve_transfer(req_id):
 
     flash('승인 완료. 요청 지점에 알림을 보냈습니다.', 'success')
     conn.close()
+    send_mail(
+        [to_email['email'] if to_email else None],
+        f"[ZEGO 이전 승인] {req['from_branch_name']} → {req['form_name']} {req['quantity']}{req['unit']}",
+        f"{req['from_branch_name']} 지점에서 {req['form_name']} {req['quantity']}{req['unit']} 이전이 승인되었습니다.\n\n"
+        f"실물 수령 후 ZEGO에 로그인하여 수령 확인을 눌러주세요."
+    )
     return redirect(url_for('transfer') + '?tab=inbox')
 
 
@@ -1762,6 +1801,7 @@ def reject_transfer(req_id):
         "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
         (req['to_branch_id'], msg)
     )
+    to_email = conn.execute('SELECT email FROM branches WHERE id=%s', (req['to_branch_id'],)).fetchone()
     conn.commit()
 
     # 이메일 통보 (옵션)
@@ -1783,6 +1823,12 @@ def reject_transfer(req_id):
 
     flash('반려 처리 완료. 요청 지점에 알림을 보냈습니다.', 'success')
     conn.close()
+    send_mail(
+        [to_email['email'] if to_email else None],
+        f"[ZEGO 이전 반려] {req['from_branch_name']} → {req['form_name']} {req['quantity']}{req['unit']}",
+        f"{req['from_branch_name']} 지점에서 {req['form_name']} {req['quantity']}{req['unit']} 이전이 반려되었습니다.\n\n"
+        f"반려 사유: {reason}"
+    )
     return redirect(url_for('transfer') + '?tab=inbox')
 
 
@@ -3542,6 +3588,22 @@ def reset_user_password(uid):
     conn.close()
     flash('비밀번호가 초기화되었습니다.', 'success')
     return redirect(url_for('manage_users'))
+
+
+# ── 지점 이메일 관리 ──────────────────────────────────────────────────────────
+
+@app.route('/admin/branches/<int:bid>/update-email', methods=['POST'])
+@login_required
+def update_branch_email(bid):
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+    email = request.form.get('email', '').strip()
+    conn = get_db()
+    conn.execute('UPDATE branches SET email=%s WHERE id=%s', (email or None, bid))
+    conn.commit()
+    conn.close()
+    flash('이메일이 저장되었습니다.', 'success')
+    return redirect(url_for('manage_users') + '#branch-emails')
 
 
 # ── 비밀번호 변경 (본인) ───────────────────────────────────────────────────────

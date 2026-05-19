@@ -137,6 +137,55 @@
   </div>
 </div>
 
+<!-- 지점 이메일 관리 -->
+<div class="row g-4 mt-2" id="branch-emails">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <strong><i class="fa-solid fa-envelope me-2"></i>{{ T('usr.branch_email_section') }}</strong>
+        <span class="text-muted small ms-2">{{ T('usr.branch_email_desc') }}</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:80px">{{ T('common.col_type') }}</th>
+              <th style="width:100px">{{ T('common.branch_code') }}</th>
+              <th>{{ T('common.branch_name') }}</th>
+              <th>{{ T('usr.branch_email_label') }}</th>
+              <th style="width:80px" class="text-center">{{ T('common.save') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in branches %}
+            <tr>
+              <td>
+                {% if b.type == 'DOM' %}<span class="badge bg-primary">국내</span>
+                {% elif b.type == 'INTL' %}<span class="badge bg-info text-dark">국제</span>
+                {% else %}<span class="badge bg-secondary">화물</span>{% endif %}
+              </td>
+              <td class="fw-semibold small">{{ b.code }}</td>
+              <td>{{ b.name }}</td>
+              <td>
+                <form method="post" action="{{ url_for('update_branch_email', bid=b.id) }}" class="d-flex gap-2">
+                  <input type="email" name="email" class="form-control form-control-sm"
+                         value="{{ b.email or '' }}"
+                         placeholder="{{ T('usr.branch_email_placeholder') }}">
+                  <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                  </button>
+                </form>
+              </td>
+              <td></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 비밀번호 초기화 모달 -->
 <div class="modal fade" id="resetModal" tabindex="-1">
   <div class="modal-dialog modal-sm">

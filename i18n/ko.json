@@ -328,5 +328,9 @@
   "err.403_msg": "접근이 허용되지 않은 IP입니다.",
   "err.403_helper": "허가된 네트워크에서 접속하세요.",
   "hist.edit_btn": "수정",
-  "hist.edit_title": "출고 기록 수정"
+  "hist.edit_title": "출고 기록 수정",
+  "usr.branch_email_section": "지점 이메일 관리",
+  "usr.branch_email_desc": "이전 신청/승인/반려 시 자동 발송됩니다.",
+  "usr.branch_email_label": "이메일 주소",
+  "usr.branch_email_placeholder": "example@eastarjet.com"
 }

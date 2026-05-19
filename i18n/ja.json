@@ -328,5 +328,9 @@
   "cat.req_status.rejected": "却下",
   "cat.req_status.on_hold": "保留",
   "hist.edit_btn": "修正",
-  "hist.edit_title": "出庫記録修正"
+  "hist.edit_title": "出庫記録修正",
+  "usr.branch_email_section": "支店メール管理",
+  "usr.branch_email_desc": "移転申請・承認・却下時に自動送信されます。",
+  "usr.branch_email_label": "メールアドレス",
+  "usr.branch_email_placeholder": "example@eastarjet.com"
 }

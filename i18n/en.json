@@ -328,5 +328,9 @@
   "cat.req_status.rejected": "Rejected",
   "cat.req_status.on_hold": "On Hold",
   "hist.edit_btn": "Edit",
-  "hist.edit_title": "Edit Outbound Record"
+  "hist.edit_title": "Edit Outbound Record",
+  "usr.branch_email_section": "Branch Email Management",
+  "usr.branch_email_desc": "Automatically sent on transfer request / approval / rejection.",
+  "usr.branch_email_label": "Email Address",
+  "usr.branch_email_placeholder": "example@eastarjet.com"
 }

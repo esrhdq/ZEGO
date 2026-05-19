@@ -328,5 +328,9 @@
   "cat.req_status.rejected": "已拒絕",
   "cat.req_status.on_hold": "暫緩",
   "hist.edit_btn": "編輯",
-  "hist.edit_title": "編輯出庫記錄"
+  "hist.edit_title": "編輯出庫記錄",
+  "usr.branch_email_section": "站點郵件管理",
+  "usr.branch_email_desc": "轉移申請/審批/拒絕時自動發送。",
+  "usr.branch_email_label": "電子郵件地址",
+  "usr.branch_email_placeholder": "example@eastarjet.com"
 }
