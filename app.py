@@ -984,6 +984,8 @@ def init_db():
             cat_cols = [r[1] for r in conn.execute('PRAGMA table_info(catalog_defs)').fetchall()]
             if 'img_data' not in cat_cols:
                 conn.execute("ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT ''")
+            if 'user_deleted' not in cat_cols:
+                conn.execute("ALTER TABLE catalog_defs ADD COLUMN user_deleted INTEGER NOT NULL DEFAULT 0")
         else:
             conn.execute('''
                 DO $$
@@ -1043,6 +1045,12 @@ def init_db():
                         WHERE table_name='catalog_defs' AND column_name='img_data'
                     ) THEN
                         ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT '';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='catalog_defs' AND column_name='user_deleted'
+                    ) THEN
+                        ALTER TABLE catalog_defs ADD COLUMN user_deleted BOOLEAN NOT NULL DEFAULT FALSE;
                     END IF;
                 END $$
             ''')
@@ -2587,7 +2595,8 @@ def _seed_catalog_defs(conn):
             'VALUES (%s, %s, %s, %s, %s, %s) '
             'ON CONFLICT (code) DO UPDATE SET '
             '  img=CASE WHEN COALESCE(catalog_defs.img_data,\'\')=\'\' THEN EXCLUDED.img ELSE catalog_defs.img END, '
-            '  sort_order=EXCLUDED.sort_order',
+            '  sort_order=EXCLUDED.sort_order '
+            'WHERE catalog_defs.user_deleted IS NOT TRUE',
             (item['code'], item['img'], item['name'], item['cat'],
              item.get('sub_desc', ''), item.get('sort', 0))
         )
@@ -2643,7 +2652,8 @@ def _catalog_img_ver():
 def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)"""
     rows = conn.execute(
-        'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs'
+        'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs '
+        'WHERE user_deleted IS NOT TRUE'
     ).fetchall()
     items = [dict(r) for r in rows]
     cat_idx = {cat: i for i, cat in enumerate(CAT_ORDER)}
@@ -2790,7 +2800,7 @@ def catalog_imgs():
     _ensure_catalog_table()
     conn = get_db()
     rows = conn.execute(
-        "SELECT img, img_data FROM catalog_defs"
+        "SELECT img, img_data FROM catalog_defs WHERE user_deleted IS NOT TRUE"
     ).fetchall()
     conn.close()
     data = {}
@@ -3523,7 +3533,7 @@ def catalog_delete():
     if not code:
         return jsonify({'ok': False, 'msg': '코드 없음'}), 400
     conn = get_db()
-    conn.execute('DELETE FROM catalog_defs WHERE code=%s', (code,))
+    conn.execute('UPDATE catalog_defs SET user_deleted=TRUE WHERE code=%s', (code,))
     conn.execute('DELETE FROM catalog_branch_items WHERE item_code=%s', (code,))
     conn.commit()
     conn.close()
