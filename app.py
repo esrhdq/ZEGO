@@ -2714,6 +2714,7 @@ def _ensure_user_deleted_col():
     global _user_deleted_migrated
     if _user_deleted_migrated or USE_SQLITE:
         return
+    _conn = None
     try:
         import psycopg2 as _pg2
         _conn = _pg2.connect(**_PG)
@@ -2722,10 +2723,17 @@ def _ensure_user_deleted_col():
         cur.execute(
             "ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE"
         )
-        _conn.close()
-        _user_deleted_migrated = True
     except Exception as _e:
         print(f'[ensure_user_deleted_col] {_e}')
+    finally:
+        # 성공/실패 무관하게 반드시 닫음 (연결 풀 누수 방지)
+        if _conn is not None:
+            try:
+                _conn.close()
+            except Exception:
+                pass
+        # 재시도 루프 방지 — 실패해도 폴백 쿼리가 처리함
+        _user_deleted_migrated = True
 
 
 def _ensure_catalog_table():
