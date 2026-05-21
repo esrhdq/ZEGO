@@ -2846,6 +2846,14 @@ def catalog():
     catalog_items = _get_catalog_items(conn)
     cat_groups    = _get_cat_groups(conn, items=catalog_items)
     cart_cnt      = _cart_count(conn, bid) if bid else 0
+    # 커스텀 이미지 코드 목록 (img_data 있는 것만) — 템플릿에서 data-custom 마킹용
+    try:
+        _ci_rows = conn.execute(
+            "SELECT img FROM catalog_defs WHERE img_data IS NOT NULL AND img_data != ''"
+        ).fetchall()
+        custom_img_set = {r['img'] for r in _ci_rows}
+    except Exception:
+        custom_img_set = set()
     conn.close()
     # 이미지 /tmp 캐시 워밍 — 백그라운드에서 실행해 페이지 응답 지연 없음
     if not _img_tmp_warmed and not USE_SQLITE:
@@ -2858,7 +2866,7 @@ def catalog():
         branches=branches,
         cart_cnt=cart_cnt,
         custom_cats=['X-Banner', '스탠션'],
-        img_ver=_catalog_img_ver(),
+        custom_img_set=custom_img_set,
     )
 
 

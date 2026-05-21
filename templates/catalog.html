@@ -595,7 +595,10 @@
   </button>
   {% endif %}
   <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
-    <img data-img="{{ item.img }}" src="/static/item_images/{{ item.img }}.png" loading="lazy" alt="{{ item.name }}">
+    <img data-img="{{ item.img }}"
+         src="/static/item_images/{{ item.img }}.png"
+         {% if item.img in custom_img_set %}data-custom="1"{% endif %}
+         loading="lazy" alt="{{ item.name }}">
   </div>
   <div class="cat-body">
     <div class="cat-title">{{ item.name }}</div>
@@ -668,52 +671,31 @@
 
 {% block scripts %}
 <script>
-/* ── 카탈로그 이미지 배치 로더 (localStorage + IntersectionObserver) ── */
+/* ── 카탈로그 커스텀 이미지 레이지 로더 (IntersectionObserver) ── */
+/* 정적 이미지: 브라우저 네이티브 loading="lazy" + Vercel CDN 처리
+   커스텀 이미지(data-custom="1"): 뷰포트 진입 시 /ci/ 엔드포인트로 개별 요청 */
 (function() {
-  const VER      = {{ img_ver }};          // 아이템 수 기반 버전 (추가/삭제 시 자동 갱신)
-  const LS_KEY   = 'ci_imgs_v' + VER;      // 버전별 캐시 키
-  const LS_META  = 'ci_imgs_meta';          // 마지막 저장 버전 추적용
-  const IO_MARGIN = '400px 0px';            // 뷰포트 400px 전에 미리 로드
+  const imgs = document.querySelectorAll('img[data-custom="1"]');
+  if (!imgs.length) return;
 
-  // 전역 캐시 (lightbox에서도 사용)
-  window._catImgs = null;
-
-  function applyImgs(data) {
-    window._catImgs = data;
-    // base64 커스텀 이미지만 src 교체 (정적 이미지는 이미 src 설정됨)
-    document.querySelectorAll('img[data-img]').forEach(img => {
-      const src = data[img.dataset.img];
-      if (src && src.startsWith('data:')) img.src = src;
-    });
+  function loadImg(img) {
+    img.src = '/ci/' + img.dataset.img + '.png';
   }
 
-  // 이전 버전 캐시 정리 (localStorage 용량 절약)
-  try {
-    const prevVer = JSON.parse(localStorage.getItem(LS_META) || 'null');
-    if (prevVer !== null && prevVer !== VER) {
-      localStorage.removeItem('ci_imgs_v' + prevVer);
-    }
-    localStorage.setItem(LS_META, JSON.stringify(VER));
-  } catch(e) {}
+  if (!('IntersectionObserver' in window)) {
+    imgs.forEach(loadImg);
+    return;
+  }
 
-  // localStorage 캐시 확인
-  try {
-    const cached = localStorage.getItem(LS_KEY);
-    if (cached) { applyImgs(JSON.parse(cached)); return; }
-  } catch(e) {}
-
-  // 캐시 미스 → 서버에서 일괄 수신
-  fetch('{{ url_for("catalog_imgs") }}')
-    .then(r => r.json())
-    .then(data => {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
-      applyImgs(data);
-    })
-    .catch(() => {
-      document.querySelectorAll('img[data-img]').forEach(img => {
-        img.src = '/ci/' + img.dataset.img + '.png';
-      });
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      loadImg(e.target);
+      obs.unobserve(e.target);
     });
+  }, { rootMargin: '400px 0px' });
+
+  imgs.forEach(img => obs.observe(img));
 })();
 
 /* ── 라이트박스 ── */
@@ -721,9 +703,11 @@ const catThumbs = Array.from(document.querySelectorAll('.cat-thumb[onclick]'));
 let catIdx = 0;
 
 function catLbSrc(img) {
-  if (img.src && !img.src.endsWith('/')) return img.src;
-  // 아직 레이지 로드 안 된 경우 전역 캐시에서 직접 조회
-  return (window._catImgs && img.dataset.img && window._catImgs[img.dataset.img]) || '';
+  // 커스텀 이미지가 아직 IntersectionObserver로 로드되지 않은 경우 즉시 로드
+  if (img.dataset.custom === '1' && img.src.includes('/static/item_images/')) {
+    img.src = '/ci/' + img.dataset.img + '.png';
+  }
+  return img.src || '';
 }
 function catOpenLB(el) {
   const img = el.querySelector('img');
