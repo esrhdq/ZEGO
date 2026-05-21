@@ -9,11 +9,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div class="stat-icon" style="background:#EFF6FF;color:#2563EB">
+        <div class="stat-icon" style="background:var(--info-bg);color:var(--info)">
           <i class="fa-solid fa-location-dot"></i>
         </div>
         <div>
-          <div class="stat-num" style="color:#2563EB">{{ stats.branches }}</div>
+          <div class="stat-num" style="color:var(--info)">{{ stats.branches }}</div>
           <div class="stat-label">{{ T('dash.operating_branches') }}</div>
         </div>
       </div>
@@ -22,11 +22,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div class="stat-icon" style="background:#F5F3FF;color:#7C3AED">
+        <div class="stat-icon" style="background:var(--purple-bg);color:var(--purple)">
           <i class="fa-solid fa-copy"></i>
         </div>
         <div>
-          <div class="stat-num" style="color:#7C3AED">{{ stats.forms }}</div>
+          <div class="stat-num" style="color:var(--purple)">{{ stats.forms }}</div>
           <div class="stat-label">{{ T('dash.form_types') }}</div>
         </div>
       </div>
@@ -35,11 +35,11 @@
   <div class="col-sm-6 col-xl-3">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div class="stat-icon" style="background:#F0FDF4;color:#16A34A">
+        <div class="stat-icon" style="background:var(--success-bg);color:var(--success)">
           <i class="fa-solid fa-arrows-rotate"></i>
         </div>
         <div>
-          <div class="stat-num" style="color:#16A34A">{{ stats.today_tx }}</div>
+          <div class="stat-num" style="color:var(--success)">{{ stats.today_tx }}</div>
           <div class="stat-label">{{ T('dash.today_tx') }}</div>
         </div>
       </div>

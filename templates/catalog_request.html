@@ -5,22 +5,22 @@
 
 {% block content %}
 <style>
-  .req-section { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+  .req-section { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
   .req-section-header {
     background:var(--red); color:#fff; padding:11px 16px;
     font-size:.92rem; font-weight:700; display:flex; align-items:center; gap:8px;
   }
   .req-table { width:100%; border-collapse:collapse; font-size:.82rem; }
-  .req-table thead tr { background:#f7f7f7; }
-  .req-table thead th { padding:8px 12px; text-align:left; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; }
-  .req-table tbody tr { border-bottom:1px solid #eee; }
-  .req-table tbody tr:hover { background:#fef9f9; }
+  .req-table thead tr { background:var(--bg); }
+  .req-table thead th { padding:8px 12px; text-align:left; font-weight:700; border-bottom:2px solid var(--border-md); color:var(--text-muted); }
+  .req-table tbody tr { border-bottom:1px solid var(--border); }
+  .req-table tbody tr:hover { background:var(--brand-pale); }
   .req-table tbody td { padding:8px 12px; vertical-align:middle; }
-  .req-thumb { width:48px; height:38px; object-fit:contain; border:1px solid #e0e0e0; border-radius:4px; background:#f5f5f5; }
-  .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:#fff3e0; color:#e65100; }
-  .custom-flag { font-size:.68rem; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:8px; font-weight:600; }
-  .qty-input { width:64px; border:1px solid #ddd; border-radius:6px; padding:3px 6px; font-size:.82rem; text-align:center; }
-  .empty-cart { text-align:center; padding:60px 20px; color:#aaa; }
+  .req-thumb { width:48px; height:38px; object-fit:contain; border:1px solid var(--border-md); border-radius:4px; background:var(--bg); }
+  .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:var(--warning-bg); color:var(--warning); }
+  .custom-flag { font-size:.68rem; background:var(--success-bg); color:var(--success); padding:2px 6px; border-radius:8px; font-weight:600; }
+  .qty-input { width:64px; border:1px solid var(--border-md); border-radius:6px; padding:3px 6px; font-size:.82rem; text-align:center; }
+  .empty-cart { text-align:center; padding:60px 20px; color:var(--text-faint); }
   .empty-cart i { font-size:2.5rem; opacity:.3; display:block; margin-bottom:12px; }
 </style>
 

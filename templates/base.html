@@ -34,6 +34,8 @@
       --success-bg:   #F0FDF4;
       --info:         #2563EB;
       --info-bg:      #EFF6FF;
+      --purple:       #7C3AED;
+      --purple-bg:    #F5F3FF;
       /* ── 재고 상태 ── */
       --status-safe:  #16A34A;
       --status-low:   #D97706;
@@ -80,10 +82,16 @@
       --brand-pale:   rgba(204,22,37,.1);
       --red-light:    rgba(204,22,37,.18);
       --red-pale:     rgba(204,22,37,.1);
+      --warning:      #FCD34D;
       --warning-bg:   rgba(217,119,6,.18);
+      --danger:       #F87171;
       --danger-bg:    rgba(220,38,38,.16);
+      --success:      #4ADE80;
       --success-bg:   rgba(22,163,74,.14);
+      --info:         #60A5FA;
       --info-bg:      rgba(37,99,235,.16);
+      --purple:       #A78BFA;
+      --purple-bg:    rgba(124,58,237,.16);
     }
     [data-theme="dark"] body { background: var(--bg); color: var(--text); }
     [data-theme="dark"] .topbar {
@@ -175,6 +183,26 @@
     [data-theme="dark"] .nav-tabs .nav-link.active { background: var(--card-bg); border-color: var(--border) var(--border) var(--card-bg); }
     [data-theme="dark"] .nav-tabs { border-color: var(--border); }
     [data-theme="dark"] .table-light { --bs-table-bg: rgba(255,255,255,.03); }
+    [data-theme="dark"] .text-dark { color: var(--text) !important; }
+    [data-theme="dark"] .text-success { color: var(--success) !important; }
+    [data-theme="dark"] .text-danger  { color: var(--danger) !important; }
+    [data-theme="dark"] .text-warning { color: var(--warning) !important; }
+    [data-theme="dark"] .text-primary { color: var(--info) !important; }
+    [data-theme="dark"] .text-info    { color: var(--info) !important; }
+    [data-theme="dark"] .badge.bg-secondary { background: #44403C !important; color: var(--text-secondary) !important; }
+    [data-theme="dark"] .badge-status-safe,
+    [data-theme="dark"] .badge-confirmed,
+    [data-theme="dark"] .badge-tx-in  { background: var(--success-bg) !important; color: var(--success) !important; }
+    [data-theme="dark"] .badge-status-low,
+    [data-theme="dark"] .badge-cargo  { background: var(--warning-bg) !important; color: var(--warning) !important; }
+    [data-theme="dark"] .badge-status-empty,
+    [data-theme="dark"] .badge-rejected,
+    [data-theme="dark"] .badge-tx-out { background: var(--danger-bg) !important; color: var(--danger) !important; }
+    [data-theme="dark"] .badge-approved,
+    [data-theme="dark"] .badge-dom,
+    [data-theme="dark"] .badge-tx-transfer { background: var(--info-bg) !important; color: var(--info) !important; }
+    [data-theme="dark"] .badge-intl    { background: var(--purple-bg) !important; color: var(--purple) !important; }
+    [data-theme="dark"] .badge-pending { background: rgba(255,255,255,.08) !important; color: var(--text-muted) !important; }
 
     /* 다크모드 토글 버튼 */
     .theme-toggle {

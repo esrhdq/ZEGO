@@ -5,31 +5,31 @@
 
 {% block content %}
 <style>
-  .req-list-wrap { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .req-list-wrap { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   .req-list-header {
     background:var(--red); color:#fff; padding:11px 16px;
     font-size:.92rem; font-weight:700; display:flex; align-items:center; gap:8px;
   }
   .req-list-table { width:100%; border-collapse:collapse; font-size:.82rem; }
-  .req-list-table thead tr { background:#f7f7f7; }
-  .req-list-table thead th { padding:9px 12px; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; white-space:nowrap; }
-  .req-list-table tbody tr { border-bottom:1px solid #eee; }
-  .req-list-table tbody tr:hover { background:#fef9f9; }
+  .req-list-table thead tr { background:var(--bg); }
+  .req-list-table thead th { padding:9px 12px; font-weight:700; border-bottom:2px solid var(--border-md); color:var(--text-muted); white-space:nowrap; }
+  .req-list-table tbody tr { border-bottom:1px solid var(--border); }
+  .req-list-table tbody tr:hover { background:var(--brand-pale); }
   .req-list-table tbody td { padding:9px 12px; vertical-align:middle; }
 
   .status-badge { font-size:.72rem; padding:3px 10px; border-radius:20px; font-weight:700; white-space:nowrap; }
-  .status-pending   { background:#fff3cd; color:#856404; }
-  .status-approved  { background:#d1fae5; color:#065f46; }
-  .status-rejected  { background:#fee2e2; color:#991b1b; }
+  .status-pending   { background:var(--warning-bg); color:var(--warning); }
+  .status-approved  { background:var(--success-bg); color:var(--success); }
+  .status-rejected  { background:var(--danger-bg);  color:var(--danger); }
 
   .filter-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
-  .filter-btn { font-size:.72rem; padding:3px 12px; border-radius:20px; border:1.5px solid #dee2e6;
-                background:#fff; color:#555; cursor:pointer; transition:all .15s; }
+  .filter-btn { font-size:.72rem; padding:3px 12px; border-radius:20px; border:1.5px solid var(--border-md);
+                background:var(--card-bg); color:var(--text-secondary); cursor:pointer; transition:all .15s; }
   .filter-btn.active { background:var(--red); color:#fff; border-color:var(--red); }
 
   .item-mini-table { width:100%; font-size:.78rem; }
-  .item-mini-table th { background:#fafafa; padding:6px 10px; font-weight:600; color:#666; }
-  .item-mini-table td { padding:6px 10px; border-top:1px solid #f0f0f0; }
+  .item-mini-table th { background:var(--bg); padding:6px 10px; font-weight:600; color:var(--text-muted); }
+  .item-mini-table td { padding:6px 10px; border-top:1px solid var(--border); }
 </style>
 
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -108,13 +108,13 @@
 
         <!-- 상세 행 -->
         <tr id="detail-{{ r.id }}" class="d-none detail-row" data-status="{{ r.status }}">
-          <td colspan="8" style="background:#FAF9F7;padding:18px 24px">
+          <td colspan="8" style="background:var(--bg);padding:18px 24px">
             {% if r.notes %}
             <div class="mb-3">
               <div class="small fw-semibold text-muted mb-1">
                 <i class="fa-solid fa-pen-to-square me-1"></i>비고
               </div>
-              <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
+              <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
                 {{ r.notes }}
               </div>
             </div>
@@ -123,7 +123,7 @@
             <div class="small fw-semibold text-muted mb-1">
               <i class="fa-solid fa-list me-1"></i>신청 항목
             </div>
-            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;overflow:hidden">
               <table class="item-mini-table">
                 <thead>
                   <tr>

@@ -5,29 +5,29 @@
 
 {% block content %}
 <style>
-  .req-detail-card { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+  .req-detail-card { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
   .req-detail-header { background:var(--red); color:#fff; padding:11px 16px; font-size:.92rem; font-weight:700; }
   .req-info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; padding:16px; }
-  .req-info-item { background:#f9f9f9; border-radius:8px; padding:10px 14px; }
-  .req-info-label { font-size:.68rem; color:#888; margin-bottom:2px; }
+  .req-info-item { background:var(--bg); border-radius:8px; padding:10px 14px; }
+  .req-info-label { font-size:.68rem; color:var(--text-muted); margin-bottom:2px; }
   .req-info-value { font-size:.88rem; font-weight:700; }
 
   .status-badge { font-size:.78rem; padding:4px 14px; border-radius:20px; font-weight:700; }
-  .status-pending   { background:#fff3cd; color:#856404; }
-  .status-approved  { background:#d1fae5; color:#065f46; }
-  .status-rejected  { background:#fee2e2; color:#991b1b; }
-  .status-on_hold   { background:#e0e7ff; color:#3730a3; }
+  .status-pending   { background:var(--warning-bg); color:var(--warning); }
+  .status-approved  { background:var(--success-bg); color:var(--success); }
+  .status-rejected  { background:var(--danger-bg);  color:var(--danger); }
+  .status-on_hold   { background:var(--info-bg);    color:var(--info); }
 
   .items-table { width:100%; border-collapse:collapse; font-size:.82rem; }
-  .items-table thead tr { background:#f7f7f7; }
-  .items-table thead th { padding:8px 12px; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; }
-  .items-table tbody tr { border-bottom:1px solid #eee; }
+  .items-table thead tr { background:var(--bg); }
+  .items-table thead th { padding:8px 12px; font-weight:700; border-bottom:2px solid var(--border-md); color:var(--text-muted); }
+  .items-table tbody tr { border-bottom:1px solid var(--border); }
   .items-table tbody td { padding:9px 12px; vertical-align:middle; }
-  .item-thumb { width:52px; height:42px; object-fit:contain; border:1px solid #e0e0e0; border-radius:4px; background:#f5f5f5; }
-  .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:#fff3e0; color:#e65100; }
-  .custom-img-preview { max-width:120px; max-height:80px; object-fit:contain; border:1px solid #ddd; border-radius:4px; cursor:zoom-in; }
+  .item-thumb { width:52px; height:42px; object-fit:contain; border:1px solid var(--border-md); border-radius:4px; background:var(--bg); }
+  .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:var(--warning-bg); color:var(--warning); }
+  .custom-img-preview { max-width:120px; max-height:80px; object-fit:contain; border:1px solid var(--border); border-radius:4px; cursor:zoom-in; }
 
-  .reject-box { background:#fff0f0; border:1px solid #fca5a5; border-radius:8px; padding:12px 16px; }
+  .reject-box { background:var(--danger-bg); border:1px solid var(--danger-bg); border-radius:8px; padding:12px 16px; }
 </style>
 
 <div class="d-flex align-items-center gap-2 mb-3">

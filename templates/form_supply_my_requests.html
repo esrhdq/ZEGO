@@ -65,13 +65,13 @@
 
           <!-- 상세 행 (accordion) -->
           <tr id="detail-{{ r.id }}" class="d-none detail-row" data-status="{{ r.status }}">
-            <td colspan="6" style="background:#FAF9F7;padding:18px 24px">
+            <td colspan="6" style="background:var(--bg);padding:18px 24px">
               {% if r.notes %}
               <div class="mb-3">
                 <div class="small fw-semibold text-muted mb-1">
                   <i class="fa-solid fa-pen-to-square me-1"></i>비고
                 </div>
-                <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
+                <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
                   {{ r.notes }}
                 </div>
               </div>
@@ -81,7 +81,7 @@
               <div class="small fw-semibold text-muted mb-1">
                 <i class="fa-solid fa-list me-1"></i>신청 항목
               </div>
-              <div class="table-scroll" style="background:#fff;border:1px solid var(--border);border-radius:8px">
+              <div class="table-scroll" style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px">
                 <table class="table mb-0" style="font-size:.82rem">
                   <thead>
                     <tr>

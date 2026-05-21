@@ -10,8 +10,8 @@
   <div class="col-sm-4">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#d1fae5;border-radius:10px;padding:14px;">
-          <i class="fa-regular fa-circle-check-fill fs-4 text-success"></i>
+        <div style="background:var(--success-bg);border-radius:10px;padding:14px;">
+          <i class="fa-regular fa-circle-check-fill fs-4" style="color:var(--success)"></i>
         </div>
         <div>
           <div class="stat-num text-success">{{ ok_cnt }}</div>
@@ -23,8 +23,8 @@
   <div class="col-sm-4">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#fee2e2;border-radius:10px;padding:14px;">
-          <i class="fa-regular fa-circle-xmark-fill fs-4 text-danger"></i>
+        <div style="background:var(--danger-bg);border-radius:10px;padding:14px;">
+          <i class="fa-regular fa-circle-xmark-fill fs-4" style="color:var(--danger)"></i>
         </div>
         <div>
           <div class="stat-num text-danger">{{ err_cnt }}</div>
@@ -36,8 +36,8 @@
   <div class="col-sm-4">
     <div class="card stat-card">
       <div class="card-body d-flex align-items-center gap-3">
-        <div style="background:#fef9c3;border-radius:10px;padding:14px;">
-          <i class="fa-solid fa-circle-minus-fill fs-4 text-warning"></i>
+        <div style="background:var(--warning-bg);border-radius:10px;padding:14px;">
+          <i class="fa-solid fa-circle-minus-fill fs-4" style="color:var(--warning)"></i>
         </div>
         <div>
           <div class="stat-num text-warning">{{ skip_cnt }}</div>
