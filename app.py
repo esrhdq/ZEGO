@@ -462,7 +462,8 @@ def check_ip_and_session():
             elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
             days_left = int(180 - elapsed / 86400)
             if days_left <= 0:
-                flash('비밀번호 유효기간이 만료되었습니다. 지금 바로 변경해 주세요.', 'danger')
+                _t = make_T(session.get('lang', 'ko'))
+                flash(_t('chpw.pw_expired_flash'), 'danger')
                 return redirect(url_for('change_password'))
 
     # 30분 유휴 세션 만료 (API 엔드포인트 제외)
@@ -701,8 +702,11 @@ def init_db():
                 except Exception:
                     pass
         else:
-            # 테이블 5개 생성을 단일 쿼리로 (1 round trip)
-            conn.execute('''
+            # 기존 DB 여부 확인 — 존재하면 무거운 CREATE TABLE DDL 건너뜀 (cold start 단축)
+            _r = conn.execute("SELECT to_regclass('public.users') AS t").fetchone()
+            if not (_r and _r['t']):
+                # 첫 배포만: 테이블 전체 생성 (1 round trip)
+                conn.execute('''
                 CREATE TABLE IF NOT EXISTS branches (
                     id   SERIAL PRIMARY KEY,
                     code TEXT NOT NULL UNIQUE,
@@ -845,19 +849,21 @@ def init_db():
                     form_type_id INTEGER NOT NULL REFERENCES form_types(id),
                     quantity     INTEGER NOT NULL DEFAULT 1
                 );
-                ALTER TABLE transfer_requests ADD COLUMN IF NOT EXISTS notify_email TEXT DEFAULT '';
-                ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
             ''')
-
-        # 마이그레이션: branches.email 컬럼 추가
-        try:
-            if USE_SQLITE:
-                conn.execute('ALTER TABLE branches ADD COLUMN email TEXT')
-            else:
-                conn.execute('ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT')
-            conn.commit()
-        except Exception:
-            pass  # 이미 존재하는 컬럼
+            # 콜드스타트마다 실행: 멱등 컬럼 마이그레이션 (IF NOT EXISTS — 빠름)
+            for _mig in [
+                "ALTER TABLE transfer_requests ADD COLUMN IF NOT EXISTS notify_email TEXT DEFAULT ''",
+                "ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            ]:
+                try:
+                    conn.execute(_mig)
+                    conn.commit()
+                except Exception:
+                    pass
 
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
 
@@ -1090,6 +1096,11 @@ def set_lang(code):
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.route('/ping')
+def ping():
+    return '', 204
+
 
 @app.route('/')
 def index():

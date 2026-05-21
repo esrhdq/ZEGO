@@ -745,8 +745,8 @@
     <div class="alert d-flex align-items-center gap-2 mb-3"
          style="background:var(--warning-bg);border:1px solid var(--warning);border-radius:10px;font-size:.88rem">
       <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i>
-      <span>비밀번호 만료까지 <strong>{{ pw_expire_days }}일</strong> 남았습니다.
-        <a href="{{ url_for('change_password') }}" style="color:var(--brand);font-weight:600">지금 변경하기</a>
+      <span>{{ T('chpw.pw_expire_prefix') }}<strong>{{ pw_expire_days }}</strong>{{ T('chpw.pw_expire_suffix') }}
+        <a href="{{ url_for('change_password') }}" style="color:var(--brand);font-weight:600">{{ T('chpw.pw_change_now') }}</a>
       </span>
       <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" style="font-size:.7rem"></button>
     </div>
