@@ -596,7 +596,7 @@
   {% endif %}
   <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
     <img data-img="{{ item.img }}"
-         src="/static/item_images/{{ item.img }}.png"
+         src="/static/item_images/{{ item.img }}.{{ 'png' if item.img in custom_img_set else 'webp' }}"
          {% if item.img in custom_img_set %}data-custom="1"{% endif %}
          loading="lazy" alt="{{ item.name }}">
   </div>
