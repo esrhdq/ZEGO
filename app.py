@@ -2743,6 +2743,29 @@ def _invalidate_catalog_cache():
     _catalog_item_cache['items'] = None
 
 
+def _fast_schema_check(conn):
+    """cold start에서 DDL 쿼리 5개 대신 SELECT 1개로 스키마 확인 (~150ms 절약).
+    테이블/컬럼 존재 시 즉시 반환; 없을 때만 전체 DDL 실행 (첫 배포 시 1회)."""
+    global _catalog_table_ready, _user_deleted_migrated
+    if _catalog_table_ready and _user_deleted_migrated:
+        return
+    if USE_SQLITE:
+        _catalog_table_ready = True
+        _user_deleted_migrated = True
+        return
+    try:
+        conn.execute("SELECT code, user_deleted FROM catalog_defs LIMIT 0")
+        _catalog_table_ready  = True
+        _user_deleted_migrated = True
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        _ensure_catalog_table()
+        _ensure_user_deleted_col()
+
+
 def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬).
     warm 인스턴스에서는 5분 메모리 캐시를 사용해 DB 쿼리를 생략한다."""
@@ -2902,35 +2925,58 @@ def _ensure_catalog_table():
 @app.route('/catalog')
 @login_required
 def catalog():
-    _ensure_user_deleted_col()
-    _ensure_catalog_table()
-    conn = get_db()
     bid  = session.get('branch_id')
     role = session.get('role')
 
-    # 관리자만 지점 목록 필요 (보유현황 저장 바의 지점 선택기)
+    # 캐시 상태 먼저 확인 — warm이면 DB 연결 최소화
+    _now = _time.monotonic()
+    cached_items = (
+        _catalog_item_cache['items']
+        if (_catalog_item_cache['items'] is not None
+            and _now - _catalog_item_cache['ts'] < _CATALOG_ITEM_TTL)
+        else None
+    )
+
+    # DB 연결이 필요한 경우에만 열기
+    needs_conn = cached_items is None or bid or role == 'admin'
+    conn = get_db() if needs_conn else None
+
+    # cold start 스키마 확인 — DDL 5개 대신 SELECT 1개
+    if conn and not (_catalog_table_ready and _user_deleted_migrated):
+        _fast_schema_check(conn)
+
+    # 관리자만 지점 목록 필요
     branches = []
-    if role == 'admin':
-        branches = conn.execute('SELECT id, code, name, type FROM branches ORDER BY type, code').fetchall()
+    if role == 'admin' and conn:
+        branches = conn.execute(
+            'SELECT id, code, name, type FROM branches ORDER BY type, code'
+        ).fetchall()
 
     my_items = {}
     cart_cnt = 0
-    if bid:
-        rows = conn.execute(
-            'SELECT item_code, quantity FROM catalog_branch_items WHERE branch_id=%s', (bid,)
+    if bid and conn:
+        # cart_cnt + my_items 단일 쿼리 — 2 round-trip → 1 round-trip
+        combined = conn.execute(
+            'SELECT cbi.item_code, cbi.quantity, cc.cart_cnt'
+            ' FROM (SELECT COUNT(*) AS cart_cnt'
+            '       FROM catalog_request_items ri'
+            '       JOIN catalog_requests r ON r.id=ri.request_id'
+            '       WHERE r.branch_id=%s AND r.status=%s) cc'
+            ' LEFT JOIN catalog_branch_items cbi ON cbi.branch_id=%s',
+            (bid, 'draft', bid)
         ).fetchall()
-        my_items = {r['item_code']: r['quantity'] for r in rows}
-        cart_cnt = _cart_count(conn, bid)
+        cart_cnt = combined[0]['cart_cnt'] if combined else 0
+        my_items = {r['item_code']: r['quantity'] for r in combined if r['item_code'] is not None}
 
-    # is_custom 필드가 포함된 캐시된 아이템 목록 — 별도 custom_img_set 쿼리 불필요
-    catalog_items = _get_catalog_items(conn)
-    cat_groups    = _get_cat_groups(conn, items=catalog_items)
-    conn.close()
+    catalog_items = cached_items if cached_items is not None else _get_catalog_items(conn)
+    cat_groups    = _get_cat_groups(None, items=catalog_items)
+    if conn:
+        conn.close()
 
-    # 이미지 /tmp 캐시 워밍 — 백그라운드에서 실행해 페이지 응답 지연 없음
     if not _img_tmp_warmed and not USE_SQLITE:
         import threading
         threading.Thread(target=_warm_img_tmp_cache_bg, daemon=True).start()
+
     return render_template('catalog.html',
         catalog_items=catalog_items,
         cat_groups=cat_groups,
