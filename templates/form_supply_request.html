@@ -78,13 +78,7 @@
               <td class="text-center small text-muted">{{ f.unit or '—' }}</td>
               <td class="text-center small text-muted">{{ f.unit_detail or '—' }}</td>
               <td class="text-center">
-                <div class="qty-stepper disabled" data-id="{{ f.id }}">
-                  <button type="button" class="qty-btn qty-minus" tabindex="-1">−</button>
-                  <input type="number" name="qty_{{ f.id }}" class="row-qty"
-                         min="1" max="9999" data-id="{{ f.id }}"
-                         placeholder="0" readonly tabindex="-1">
-                  <button type="button" class="qty-btn qty-plus" tabindex="-1">+</button>
-                </div>
+                <div class="qty-stepper disabled" data-id="{{ f.id }}"><button type="button" class="qty-btn qty-minus" tabindex="-1">−</button><input type="number" name="qty_{{ f.id }}" class="row-qty" min="1" max="9999" data-id="{{ f.id }}" placeholder="0" readonly tabindex="-1"><button type="button" class="qty-btn qty-plus" tabindex="-1">+</button></div>
               </td>
             </tr>
             {% endfor %}
@@ -130,43 +124,44 @@
 .fs-row.checked { background: #fff8f8; }
 
 .qty-stepper {
-  display: inline-flex;
-  align-items: stretch;
-  width: 120px;
-  height: 34px;
-  border: 1.5px solid #ddd;
+  display: inline-block;
+  white-space: nowrap;
+  border: 1.5px solid #ccc;
   border-radius: 7px;
   overflow: hidden;
-  flex-shrink: 0;
+  vertical-align: middle;
+  font-size: 0;
 }
 .qty-stepper.disabled { opacity: .45; pointer-events: none; }
 .qty-stepper:not(.disabled) { border-color: #CC1625; }
 .qty-btn {
-  flex: 0 0 34px;
-  width: 34px;
-  border: none;
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  vertical-align: top;
   background: #CC1625;
   color: #fff;
-  font-size: 1.2rem;
+  border: none;
+  font-size: 18px;
   font-weight: 700;
-  line-height: 1;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 0;
-  flex-shrink: 0;
 }
 .qty-btn:hover { background: #a8101d; }
 .qty-stepper.disabled .qty-btn { background: #bbb; }
 .qty-stepper .row-qty {
-  flex: 1 1 0;
-  width: 0;
+  display: inline-block;
+  width: 54px;
+  height: 32px;
+  line-height: 32px;
+  vertical-align: top;
   border: none;
-  border-left: 1.5px solid #ddd;
-  border-right: 1.5px solid #ddd;
+  border-left: 1.5px solid #ccc;
+  border-right: 1.5px solid #ccc;
   text-align: center;
-  font-size: .88rem;
+  font-size: 14px;
   font-weight: 600;
   padding: 0;
   outline: none;
