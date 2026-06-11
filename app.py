@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from i18n import make_T, SUPPORTED, LANG_LABELS
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 import os
 import hashlib
 import sqlite3
@@ -13,6 +14,7 @@ from functools import wraps
 from io import BytesIO
 from datetime import datetime, timezone, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+import time as _time
 # openpyxl은 다운로드 함수 내에서 지연 import (cold start 150ms 절감)
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
@@ -161,6 +163,12 @@ USE_SQLITE   = not _PG
 _catalog_table_ready   = False  # warm 인스턴스에서 DDL 재실행 방지
 _user_deleted_migrated = False  # user_deleted 컬럼 마이그레이션 완료 여부
 _img_tmp_warmed        = False  # 이미지 /tmp 일괄 캐시 완료 여부
+_DB_INITIALIZED        = False  # cold start당 init_db 1회만 실행
+_PG_POOL               = None   # psycopg2 ThreadedConnectionPool (PG 전용)
+# ── 성능 캐시 설정 ────────────────────────────────────────────────────────────
+_NOTIF_TTL           = 30   # 알림 카운트 세션 캐시 TTL (초) — 매 요청 DB 조회 방지
+_CATALOG_ITEM_TTL    = 300  # 카탈로그 아이템 메모리 캐시 TTL (초, 5분)
+_catalog_item_cache  = {'items': None, 'ts': 0.0}  # {items: list, ts: monotonic}
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
 _local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
 SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
@@ -170,8 +178,10 @@ SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), 
 
 class _DB:
     """psycopg2를 sqlite3 인터페이스처럼 사용하기 위한 래퍼"""
-    def __init__(self, conn):
+    def __init__(self, conn, pool=None):
         self._conn = conn
+        self._pool = pool       # ThreadedConnectionPool 참조 (있으면 putconn으로 반환)
+        self._returned = False  # 이중 반환 방지
 
     def execute(self, sql, params=()):
         cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -185,7 +195,22 @@ class _DB:
         self._conn.rollback()
 
     def close(self):
-        self._conn.close()
+        if self._returned:
+            return
+        self._returned = True
+        if self._pool and not self._conn.closed:
+            try:
+                self._pool.putconn(self._conn)
+            except Exception:
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+        elif not self._conn.closed:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
 
 
 def _pg_to_sqlite(sql):
@@ -224,6 +249,14 @@ class _SQLiteDB:
     def close(self):    self._conn.close()
 
 
+def _get_pg_pool():
+    """모듈 단위 ThreadedConnectionPool을 지연 생성해 반환."""
+    global _PG_POOL
+    if _PG_POOL is None and _PG:
+        _PG_POOL = psycopg2.pool.ThreadedConnectionPool(1, 5, **_PG)
+    return _PG_POOL
+
+
 def get_db():
     if 'db' not in g:
         if USE_SQLITE:
@@ -231,12 +264,17 @@ def get_db():
             conn.row_factory = sqlite3.Row
             g.db = _SQLiteDB(conn)
         else:
-            g.db = _DB(psycopg2.connect(**_PG))
+            pool = _get_pg_pool()
+            g.db = _DB(pool.getconn(), pool=pool)
     else:
-        # 연결이 끊긴 경우(Vercel cold start 등) 재접속
         db = g.db
-        if not USE_SQLITE and hasattr(db, '_conn') and db._conn.closed:
-            g.db = _DB(psycopg2.connect(**_PG))
+        # 연결이 닫혔거나 이미 풀에 반환된 경우 새 연결 획득
+        if not USE_SQLITE and (
+            getattr(db, '_returned', False) or
+            (hasattr(db, '_conn') and db._conn.closed)
+        ):
+            pool = _get_pg_pool()
+            g.db = _DB(pool.getconn(), pool=pool)
     return g.db
 
 @app.teardown_appcontext
@@ -417,30 +455,38 @@ def inject_globals():
             elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
             pw_expire_days = int(180 - elapsed / 86400)
 
-        try:
-            conn = get_db()
-            if role == 'admin':
-                r = conn.execute(
-                    'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
-                    ('PENDING',)
-                ).fetchone()
-                notif_count = int(r['cnt']) if r else 0
-            elif bid:
-                r = conn.execute(
-                    'SELECT '
-                    '  (SELECT COUNT(*) FROM transfer_requests WHERE from_branch_id=%s AND status=%s) AS pending,'
-                    '  (SELECT COUNT(*) FROM notifications WHERE branch_id=%s AND is_read=0) AS unread',
-                    (bid, 'PENDING', bid)
-                ).fetchone()
-                notif_count = (int(r['pending']) + int(r['unread'])) if r else 0
-                notif_list  = conn.execute(
-                    'SELECT id, message, created_at FROM notifications '
-                    'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
-                    (bid,)
-                ).fetchall()
-            conn.close()
-        except Exception:
-            pass
+        now_ts = datetime.now(timezone.utc).timestamp()
+        # 30초 캐시: 매 페이지 요청마다 DB 조회하지 않음
+        if now_ts - session.get('_notif_ts', 0) < _NOTIF_TTL:
+            notif_count = session.get('_notif_count', 0)
+            # notif_list는 캐시 미적용(빈 목록) — 카운트 배지만 캐시
+        else:
+            try:
+                conn = get_db()
+                if role == 'admin':
+                    r = conn.execute(
+                        'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
+                        ('PENDING',)
+                    ).fetchone()
+                    notif_count = int(r['cnt']) if r else 0
+                elif bid:
+                    r = conn.execute(
+                        'SELECT '
+                        '  (SELECT COUNT(*) FROM transfer_requests WHERE from_branch_id=%s AND status=%s) AS pending,'
+                        '  (SELECT COUNT(*) FROM notifications WHERE branch_id=%s AND is_read=0) AS unread',
+                        (bid, 'PENDING', bid)
+                    ).fetchone()
+                    notif_count = (int(r['pending']) + int(r['unread'])) if r else 0
+                    notif_list  = conn.execute(
+                        'SELECT id, message, created_at FROM notifications '
+                        'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
+                        (bid,)
+                    ).fetchall()
+                conn.close()
+            except Exception:
+                pass
+            session['_notif_count'] = notif_count
+            session['_notif_ts']    = now_ts
 
     return {'notif_count': notif_count, 'notif_list': notif_list, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days}
 
@@ -449,8 +495,8 @@ def inject_globals():
 
 @app.before_request
 def check_ip_and_session():
-    # IP 화이트리스트
-    if ALLOWED_IPS:
+    # IP 화이트리스트 (/ping은 Vercel Cron이 호출하므로 제외)
+    if ALLOWED_IPS and request.path != '/ping':
         client_ip = _client_ip()
         if client_ip not in ALLOWED_IPS:
             return render_template('403.html'), 403
@@ -494,7 +540,16 @@ def check_ip_and_session():
 # ── DB 초기화 ─────────────────────────────────────────────────────────────────
 
 def init_db():
-    conn = get_db()
+    global _DB_INITIALIZED
+    if _DB_INITIALIZED:
+        return
+    # init_db 전용 직접 연결 — 풀을 거치지 않아 teardown과 충돌 없음
+    if USE_SQLITE:
+        _raw = sqlite3.connect(SQLITE_DB)
+        _raw.row_factory = sqlite3.Row
+        conn = _SQLiteDB(_raw)
+    else:
+        conn = _DB(psycopg2.connect(**_PG))
     try:
         if USE_SQLITE:
             conn.execute('''
@@ -1079,6 +1134,7 @@ def init_db():
         raise
     finally:
         conn.close()
+    _DB_INITIALIZED = True
 
 
 # ── i18n ──────────────────────────────────────────────────────────────────────
@@ -1099,7 +1155,8 @@ def set_lang(code):
 
 @app.route('/ping')
 def ping():
-    return '', 204
+    """Vercel Cron이 5분마다 호출 — cold start 방지용."""
+    return 'ok', 200
 
 
 @app.route('/')
@@ -2681,12 +2738,23 @@ def _catalog_img_ver():
     return 0
 
 
+def _invalidate_catalog_cache():
+    """카탈로그 메모리 캐시 무효화 — 아이템 추가/수정/삭제 후 호출."""
+    _catalog_item_cache['items'] = None
+
+
 def _get_catalog_items(conn):
-    """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)"""
+    """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬).
+    warm 인스턴스에서는 5분 메모리 캐시를 사용해 DB 쿼리를 생략한다."""
+    now = _time.monotonic()
+    if (_catalog_item_cache['items'] is not None
+            and now - _catalog_item_cache['ts'] < _CATALOG_ITEM_TTL):
+        return _catalog_item_cache['items']
     try:
         rows = conn.execute(
-            'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs '
-            'WHERE user_deleted IS NOT TRUE'
+            "SELECT code, img, name, cat, sub_desc, sort_order, "
+            "CASE WHEN COALESCE(img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
+            'FROM catalog_defs WHERE user_deleted IS NOT TRUE'
         ).fetchall()
     except Exception:
         try:
@@ -2694,11 +2762,15 @@ def _get_catalog_items(conn):
         except Exception:
             pass
         rows = conn.execute(
-            'SELECT code, img, name, cat, sub_desc, sort_order FROM catalog_defs'
+            "SELECT code, img, name, cat, sub_desc, sort_order, "
+            "CASE WHEN COALESCE(img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
+            'FROM catalog_defs'
         ).fetchall()
     items = [dict(r) for r in rows]
     cat_idx = {cat: i for i, cat in enumerate(CAT_ORDER)}
     items.sort(key=lambda x: (cat_idx.get(x['cat'], 999), x.get('sort_order', 0)))
+    _catalog_item_cache['items'] = items
+    _catalog_item_cache['ts']    = now
     return items
 
 
@@ -2834,27 +2906,27 @@ def catalog():
     _ensure_catalog_table()
     conn = get_db()
     bid  = session.get('branch_id')
-    branches = conn.execute('SELECT id, code, name, type FROM branches ORDER BY type, code').fetchall()
+    role = session.get('role')
+
+    # 관리자만 지점 목록 필요 (보유현황 저장 바의 지점 선택기)
+    branches = []
+    if role == 'admin':
+        branches = conn.execute('SELECT id, code, name, type FROM branches ORDER BY type, code').fetchall()
 
     my_items = {}
+    cart_cnt = 0
     if bid:
         rows = conn.execute(
             'SELECT item_code, quantity FROM catalog_branch_items WHERE branch_id=%s', (bid,)
         ).fetchall()
         my_items = {r['item_code']: r['quantity'] for r in rows}
+        cart_cnt = _cart_count(conn, bid)
 
+    # is_custom 필드가 포함된 캐시된 아이템 목록 — 별도 custom_img_set 쿼리 불필요
     catalog_items = _get_catalog_items(conn)
     cat_groups    = _get_cat_groups(conn, items=catalog_items)
-    cart_cnt      = _cart_count(conn, bid) if bid else 0
-    # 커스텀 이미지 코드 목록 (img_data 있는 것만) — 템플릿에서 data-custom 마킹용
-    try:
-        _ci_rows = conn.execute(
-            "SELECT img FROM catalog_defs WHERE img_data IS NOT NULL AND img_data != ''"
-        ).fetchall()
-        custom_img_set = {r['img'] for r in _ci_rows}
-    except Exception:
-        custom_img_set = set()
     conn.close()
+
     # 이미지 /tmp 캐시 워밍 — 백그라운드에서 실행해 페이지 응답 지연 없음
     if not _img_tmp_warmed and not USE_SQLITE:
         import threading
@@ -2866,7 +2938,6 @@ def catalog():
         branches=branches,
         cart_cnt=cart_cnt,
         custom_cats=['X-Banner', '스탠션'],
-        custom_img_set=custom_img_set,
     )
 
 
@@ -3406,18 +3477,8 @@ def cat_img_url(img_stem):
 @app.route('/admin/catalog/edit')
 @login_required
 def catalog_edit():
-    if session.get('role') != 'admin':
-        flash('관리자 권한이 필요합니다.', 'danger')
-        return redirect(url_for('catalog'))
-    _ensure_user_deleted_col()
-    _ensure_catalog_table()
-    conn = get_db()
-    items = _get_catalog_items(conn)
-    conn.close()
-    return render_template('catalog_edit.html',
-        catalog_items=items,
-        cat_order=CAT_ORDER,
-    )
+    """카탈로그 편집 페이지 제거 — 편집 기능은 /catalog 에서 직접 제공."""
+    return redirect(url_for('catalog'))
 
 
 @app.route('/admin/catalog/add', methods=['POST'])
@@ -3428,7 +3489,7 @@ def catalog_add():
         if is_ajax:
             return jsonify({'ok': False, 'msg': msg})
         flash(msg, 'danger')
-        return redirect(url_for('catalog_edit'))
+        return redirect(url_for('catalog'))
 
     if session.get('role') != 'admin':
         return _fail('관리자 권한이 필요합니다.')
@@ -3505,10 +3566,11 @@ def catalog_add():
     )
     conn.commit()
     conn.close()
+    _invalidate_catalog_cache()
     if is_ajax:
         return jsonify({'ok': True, 'msg': f'"{name}" 아이템이 추가되었습니다.'})
     flash(f'"{name}" 아이템이 추가되었습니다.', 'success')
-    return redirect(url_for('catalog_edit'))
+    return redirect(url_for('catalog'))
 
 
 @app.route('/admin/catalog/update', methods=['POST'])
@@ -3602,7 +3664,7 @@ def catalog_update():
     )
     conn.commit()
     conn.close()
-
+    _invalidate_catalog_cache()
     resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code}
     if new_img_url:
         resp['img_url'] = new_img_url
@@ -3623,6 +3685,7 @@ def catalog_delete():
     conn.execute('DELETE FROM catalog_branch_items WHERE item_code=%s', (code,))
     conn.commit()
     conn.close()
+    _invalidate_catalog_cache()
     return jsonify({'ok': True})
 
 

@@ -630,10 +630,6 @@
        class="nav-link {% if endpoint=='manage_users' %}active{% endif %}">
       <i class="fa-solid fa-users-gear"></i>{{ T('nav.user_management') }}
     </a>
-    <a href="{{ url_for('catalog_edit') }}"
-       class="nav-link {% if endpoint=='catalog_edit' %}active{% endif %}">
-      <i class="fa-solid fa-sliders"></i>{{ T('nav.catalog_edit') }}
-    </a>
     <a href="{{ url_for('form_supply_admin_requests') }}"
        class="nav-link {% if endpoint in ('form_supply_admin_requests','form_supply_admin_action') %}active{% endif %}">
       <i class="fa-solid fa-file-invoice"></i>양식 신청 관리

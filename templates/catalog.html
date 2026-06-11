@@ -108,17 +108,22 @@
   }
   .cat-card.is-owned .cat-owned-badge { display:flex; }
 
-  /* 관리자 카드 수정 버튼 */
-  .admin-card-edit {
-    position:absolute; top:6px; left:6px; z-index:6;
+  /* 관리자 카드 수정/삭제 버튼 */
+  .admin-card-edit,
+  .admin-card-del {
+    position:absolute; top:6px; z-index:6;
     background:rgba(255,255,255,.92); border:none; border-radius:6px;
     width:26px; height:26px; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:.7rem; color:var(--red);
-    box-shadow:0 1px 4px rgba(0,0,0,.2); transition:background .15s,color .15s;
-    opacity:0; transition:opacity .15s;
+    cursor:pointer; font-size:.7rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.2);
+    opacity:0; transition:opacity .15s, background .15s, color .15s;
   }
-  .cat-card:hover .admin-card-edit { opacity:1; }
+  .admin-card-edit { left:6px;  color:var(--red); }
+  .admin-card-del  { left:36px; color:#dc3545; }
+  .cat-card:hover .admin-card-edit,
+  .cat-card:hover .admin-card-del { opacity:1; }
   .admin-card-edit:hover { background:var(--red); color:#fff; }
+  .admin-card-del:hover  { background:#dc3545;    color:#fff; }
 
   .cat-edit-panel {
     display:none; background:#f0fdf4; border-top:1px solid #bbf7d0;
@@ -134,16 +139,24 @@
   .cat-qty-label { font-size:.72rem; color:#16a34a; font-weight:600; }
 
   .cat-thumb {
-    background:#f5f5f5; height:155px;
+    background:#f5f5f5; height:100px;
     display:flex; align-items:center; justify-content:center;
     border-bottom:1px solid var(--border);
-    overflow:hidden; padding:8px; cursor:zoom-in; position:relative;
+    overflow:hidden; padding:6px; cursor:zoom-in; position:relative;
   }
   .cat-thumb:hover::after {
-    content:'🔍'; position:absolute; inset:0;
-    background:rgba(0,0,0,.35); color:#fff; font-size:1.6rem;
-    display:flex; align-items:center; justify-content:center;
+    content:''; position:absolute; inset:0;
+    background:rgba(0,0,0,.38);
+    display:block;
   }
+  .cat-thumb:hover .thumb-zoom-hint { opacity:1; color:#fff; }
+  .thumb-zoom-hint {
+    position:absolute; inset:0; z-index:2; pointer-events:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.3rem; color:rgba(0,0,0,.25); opacity:1;
+    transition:opacity .15s, color .15s;
+  }
+  .cat-thumb:not(:hover) .thumb-zoom-hint { color:rgba(0,0,0,.22); }
   .cat-thumb img { max-height:100%; max-width:100%; object-fit:contain; display:block; pointer-events:none; background:#f0f0f0; transition:opacity .3s; }
   .cat-thumb img[src=""] { opacity:0; }
 
@@ -537,11 +550,6 @@
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
   <div class="text-muted small">총 {{ catalog_items|length }}종 운송아이템 &nbsp;·&nbsp; 카탈로그</div>
   <div class="ms-auto d-flex gap-2">
-    {% if session.role == 'admin' %}
-    <a href="{{ url_for('catalog_edit') }}" class="btn btn-sm btn-outline-danger">
-      <i class="fa-solid fa-sliders me-1"></i>카탈로그 편집
-    </a>
-    {% endif %}
     <button id="catEditBtn" class="btn btn-sm btn-outline-success" onclick="catToggleEdit()">
       <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.edit_mode') }}
     </button>
@@ -593,12 +601,20 @@
           title="수정">
     <i class="fa-solid fa-pen"></i>
   </button>
+  <button class="admin-card-del"
+          data-code="{{ item.code }}"
+          data-name="{{ item.name | e }}"
+          onclick="event.stopPropagation(); catDeleteItem(this)"
+          title="삭제">
+    <i class="fa-solid fa-trash"></i>
+  </button>
   {% endif %}
   <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
     <img data-img="{{ item.img }}"
-         src="/static/item_images/{{ item.img }}.{{ 'png' if item.img in custom_img_set else 'webp' }}"
-         {% if item.img in custom_img_set %}data-custom="1"{% endif %}
+         src="/static/item_images/{{ item.img }}.{{ 'png' if item.is_custom else 'webp' }}"
+         {% if item.is_custom %}data-custom="1"{% endif %}
          loading="lazy" alt="{{ item.name }}">
+    <span class="thumb-zoom-hint"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
   </div>
   <div class="cat-body">
     <div class="cat-title">{{ item.name }}</div>
@@ -703,11 +719,13 @@ const catThumbs = Array.from(document.querySelectorAll('.cat-thumb[onclick]'));
 let catIdx = 0;
 
 function catLbSrc(img) {
-  // 커스텀 이미지가 아직 IntersectionObserver로 로드되지 않은 경우 즉시 로드
-  if (img.dataset.custom === '1' && img.src.includes('/static/item_images/')) {
-    img.src = '/ci/' + img.dataset.img + '.png';
+  const stem = img.dataset.img;
+  if (img.dataset.custom === '1') {
+    if (img.src.includes('/static/item_images/')) img.src = '/ci/' + stem + '.png';
+    return '/ci/' + stem + '.png';
   }
-  return img.src || '';
+  // 라이트박스는 원본 PNG 로드 (썸네일은 webp 유지)
+  return '/static/item_images/' + stem + '.png';
 }
 function catOpenLB(el) {
   const img = el.querySelector('img');
@@ -1192,6 +1210,33 @@ async function catSubmitEdit() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>저장';
+  }
+}
+
+/* ── 관리자: 아이템 삭제 ── */
+async function catDeleteItem(btn) {
+  const code = btn.dataset.code;
+  const name = btn.dataset.name;
+  if (!confirm(`"${name}" 을(를) 삭제하시겠습니까?\n\n⚠️ 각 지점의 보유 기록도 함께 삭제됩니다.`)) return;
+  const card = document.getElementById('card-' + code);
+  if (card) card.style.opacity = '0.3';
+  try {
+    const res = await fetch('{{ url_for("catalog_delete") }}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code}),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      if (card) card.remove();
+      catToast(`"${name}" 삭제 완료`, 'success');
+    } else {
+      if (card) card.style.opacity = '';
+      catToast(json.msg || '삭제 실패', 'danger');
+    }
+  } catch(e) {
+    if (card) card.style.opacity = '';
+    catToast('오류: ' + e.message, 'danger');
   }
 }
 
