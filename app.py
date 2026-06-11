@@ -167,8 +167,6 @@ _DB_INITIALIZED        = False  # cold start당 init_db 1회만 실행
 _PG_POOL               = None   # psycopg2 ThreadedConnectionPool (PG 전용)
 # ── 성능 캐시 설정 ────────────────────────────────────────────────────────────
 _NOTIF_TTL           = 30   # 알림 카운트 세션 캐시 TTL (초) — 매 요청 DB 조회 방지
-_CATALOG_ITEM_TTL    = 300  # 카탈로그 아이템 메모리 캐시 TTL (초, 5분)
-_catalog_item_cache  = {'items': None, 'ts': 0.0}  # {items: list, ts: monotonic}
 # Vercel 환경에서는 /tmp만 쓰기 가능 — 로컬은 프로젝트 폴더 사용
 _local_db    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inventory.db')
 SQLITE_DB    = '/tmp/inventory.db' if not os.access(os.path.dirname(_local_db), os.W_OK) else _local_db
@@ -2739,8 +2737,7 @@ def _catalog_img_ver():
 
 
 def _invalidate_catalog_cache():
-    """카탈로그 메모리 캐시 무효화 — 아이템 추가/수정/삭제 후 호출."""
-    _catalog_item_cache['items'] = None
+    pass  # 캐시 제거됨 — 매 요청 DB 직접 조회로 다중 인스턴스 정합성 보장
 
 
 def _fast_schema_check(conn):
@@ -2767,12 +2764,7 @@ def _fast_schema_check(conn):
 
 
 def _get_catalog_items(conn):
-    """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬).
-    warm 인스턴스에서는 5분 메모리 캐시를 사용해 DB 쿼리를 생략한다."""
-    now = _time.monotonic()
-    if (_catalog_item_cache['items'] is not None
-            and now - _catalog_item_cache['ts'] < _CATALOG_ITEM_TTL):
-        return _catalog_item_cache['items']
+    """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)."""
     try:
         rows = conn.execute(
             "SELECT code, img, name, cat, sub_desc, sort_order, "
@@ -2792,8 +2784,6 @@ def _get_catalog_items(conn):
     items = [dict(r) for r in rows]
     cat_idx = {cat: i for i, cat in enumerate(CAT_ORDER)}
     items.sort(key=lambda x: (cat_idx.get(x['cat'], 999), x.get('sort_order', 0)))
-    _catalog_item_cache['items'] = items
-    _catalog_item_cache['ts']    = now
     return items
 
 
@@ -2928,33 +2918,22 @@ def catalog():
     bid  = session.get('branch_id')
     role = session.get('role')
 
-    # 캐시 상태 먼저 확인 — warm이면 DB 연결 최소화
-    _now = _time.monotonic()
-    cached_items = (
-        _catalog_item_cache['items']
-        if (_catalog_item_cache['items'] is not None
-            and _now - _catalog_item_cache['ts'] < _CATALOG_ITEM_TTL)
-        else None
-    )
-
-    # DB 연결이 필요한 경우에만 열기
-    needs_conn = cached_items is None or bid or role == 'admin'
-    conn = get_db() if needs_conn else None
+    conn = get_db()
 
     # cold start 스키마 확인 — DDL 5개 대신 SELECT 1개
-    if conn and not (_catalog_table_ready and _user_deleted_migrated):
+    if not (_catalog_table_ready and _user_deleted_migrated):
         _fast_schema_check(conn)
 
     # 관리자만 지점 목록 필요
     branches = []
-    if role == 'admin' and conn:
+    if role == 'admin':
         branches = conn.execute(
             'SELECT id, code, name, type FROM branches ORDER BY type, code'
         ).fetchall()
 
     my_items = {}
     cart_cnt = 0
-    if bid and conn:
+    if bid:
         # cart_cnt + my_items 단일 쿼리 — 2 round-trip → 1 round-trip
         combined = conn.execute(
             'SELECT cbi.item_code, cbi.quantity, cc.cart_cnt'
@@ -2968,10 +2947,9 @@ def catalog():
         cart_cnt = combined[0]['cart_cnt'] if combined else 0
         my_items = {r['item_code']: r['quantity'] for r in combined if r['item_code'] is not None}
 
-    catalog_items = cached_items if cached_items is not None else _get_catalog_items(conn)
+    catalog_items = _get_catalog_items(conn)
     cat_groups    = _get_cat_groups(None, items=catalog_items)
-    if conn:
-        conn.close()
+    conn.close()
 
     if not _img_tmp_warmed and not USE_SQLITE:
         import threading
