@@ -61,7 +61,7 @@
               <th>양식명</th>
               <th class="text-center" style="width:90px">단위</th>
               <th class="text-center" style="width:120px">단위 상세</th>
-              <th class="text-center" style="width:160px">수량</th>
+              <th class="text-center" style="width:160px;white-space:nowrap">수량</th>
             </tr>
           </thead>
           <tbody>
@@ -127,39 +127,57 @@
 
 {% block styles %}
 <style>
-.fs-row { transition: background .1s; }
-.fs-row.checked { background: var(--brand-pale); }
+.fs-row.checked { background: #fff8f8; }
 
 .qty-stepper {
-  display: inline-flex; align-items: center; flex-wrap: nowrap;
-  white-space: nowrap; width: 130px;
-  border: 1.5px solid var(--border-md); border-radius: 8px;
-  overflow: hidden; height: 36px;
-  transition: border-color .15s, opacity .15s;
+  display: inline-flex;
+  align-items: stretch;
+  width: 120px;
+  height: 34px;
+  border: 1.5px solid #ddd;
+  border-radius: 7px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
-.qty-stepper.disabled { opacity: .4; pointer-events: none; }
-.qty-stepper:not(.disabled) { border-color: var(--brand); }
+.qty-stepper.disabled { opacity: .45; pointer-events: none; }
+.qty-stepper:not(.disabled) { border-color: #CC1625; }
 .qty-btn {
-  flex: 0 0 36px; height: 100%; border: none;
-  background: var(--brand); color: #fff;
-  cursor: pointer; font-size: 1.1rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .1s;
+  flex: 0 0 34px;
+  width: 34px;
+  border: none;
+  background: #CC1625;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
 }
-.qty-btn:hover { background: var(--brand-dark); }
-.qty-stepper.disabled .qty-btn { background: #ccc; }
+.qty-btn:hover { background: #a8101d; }
+.qty-stepper.disabled .qty-btn { background: #bbb; }
 .qty-stepper .row-qty {
-  flex: 1 1 0; min-width: 0; border: none;
-  border-left: 1.5px solid var(--border-md);
-  border-right: 1.5px solid var(--border-md);
-  text-align: center; font-size: .9rem; font-weight: 600;
-  padding: 0; outline: none; background: #fff;
-  color: var(--brand); -moz-appearance: textfield;
+  flex: 1 1 0;
+  width: 0;
+  border: none;
+  border-left: 1.5px solid #ddd;
+  border-right: 1.5px solid #ddd;
+  text-align: center;
+  font-size: .88rem;
+  font-weight: 600;
+  padding: 0;
+  outline: none;
+  background: #fff;
+  color: #CC1625;
+  -moz-appearance: textfield;
 }
 .qty-stepper.disabled .row-qty { background: #f5f5f5; color: #999; }
 .qty-stepper .row-qty::-webkit-outer-spin-button,
 .qty-stepper .row-qty::-webkit-inner-spin-button { -webkit-appearance: none; }
-.qty-stepper .row-qty:focus { background: var(--brand-pale); }
+.qty-stepper .row-qty:focus { background: #fff1f2; }
 </style>
 {% endblock %}
 
