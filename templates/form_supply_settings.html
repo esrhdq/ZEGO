@@ -108,8 +108,9 @@
                   {% endif %}
                 </td>
                 <td class="small text-muted">{{ s.created_by or '—' }}</td>
-                <td class="text-center">
-                  <button type="button" class="btn btn-xs btn-outline-secondary me-1 setting-edit-btn"
+                <td class="text-center" onclick="event.stopPropagation()">
+                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 setting-edit-btn"
+                          style="font-size:.7rem;padding:2px 7px"
                           data-id="{{ s.id }}"
                           data-title="{{ s.title | e }}"
                           data-start="{{ s.period_start }}"
@@ -117,7 +118,8 @@
                           data-enabled="{{ '1' if s.is_enabled else '0' }}">
                     <i class="fa-solid fa-pen-to-square"></i>
                   </button>
-                  <button type="button" class="btn btn-xs btn-outline-danger setting-del-btn"
+                  <button type="button" class="btn btn-sm btn-outline-danger setting-del-btn"
+                          style="font-size:.7rem;padding:2px 7px"
                           data-id="{{ s.id }}" data-title="{{ s.title | e }}">
                     <i class="fa-solid fa-trash"></i>
                   </button>
@@ -267,7 +269,8 @@ document.querySelectorAll('.setting-edit-btn').forEach(function(btn) {
   });
 });
 
-document.getElementById('settingEditSaveBtn').addEventListener('click', function() {
+var _saveBtn = document.getElementById('settingEditSaveBtn');
+if (_saveBtn) _saveBtn.addEventListener('click', function() {
   var start = document.getElementById('editStart').value;
   var end   = document.getElementById('editEnd').value;
   if (!start || !end) { alert('날짜를 입력해주세요.'); return; }
