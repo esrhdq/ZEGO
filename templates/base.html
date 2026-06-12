@@ -38,7 +38,7 @@
       --status-empty: #DC2626;
       /* ── Warm Minimal 레이아웃 ── */
       --bg:           #8C8C8C;
-      --card-bg:      #FFFFFF;
+      --card-bg:      #F0F0F0;
       --border:       #F0EFED;
       --border-md:    #E7E5E4;
       --text:         #1C1917;
@@ -197,16 +197,17 @@
     ════════════════════════════════════════ */
     .card {
       border: 1px solid var(--border);
-      box-shadow: 0 1px 3px rgba(0,0,0,.03), 0 3px 10px rgba(0,0,0,.04);
-      border-radius: 18px; background: var(--card-bg);
+      box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 3px 10px rgba(0,0,0,.08);
+      border-radius: 18px; background: var(--card-bg) !important;
     }
     .card-header {
       border-bottom: 1px solid var(--border);
       border-radius: 18px 18px 0 0 !important;
-      background: #fff; padding: 14px 20px;
+      background: var(--card-bg) !important; padding: 14px 20px;
       font-size: .9rem; color: var(--text);
     }
     .card-body { padding: 20px; }
+    .card .bg-white, .card-header.bg-white { background: var(--card-bg) !important; }
 
     /* 통계 카드 */
     .stat-card { transition: transform .18s, box-shadow .18s; }
