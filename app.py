@@ -311,8 +311,8 @@ def send_mail(to_list, subject, body):
         msg['Subject'] = subject
         msg['From']    = MAIL_FROM
         msg['To']      = ', '.join(recipients)
-        msg.attach(MIMEText(body + _MAIL_FOOTER_TXT, 'plain', 'utf-8'))
-        body_html = '<div style="font-family:sans-serif;font-size:14px;white-space:pre-wrap">' + body.replace('\n', '<br>') + '</div>' + _MAIL_FOOTER_HTML
+        msg.attach(MIMEText(_MAIL_FOOTER_TXT.strip() + '\n\n' + body, 'plain', 'utf-8'))
+        body_html = _MAIL_FOOTER_HTML + '<div style="font-family:sans-serif;font-size:14px;white-space:pre-wrap">' + body.replace('\n', '<br>') + '</div>'
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
         with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
             server.ehlo()
