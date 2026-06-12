@@ -90,14 +90,13 @@
                 <th>신청 기간</th>
                 <th class="text-center">상태</th>
                 <th>설정자</th>
+                <th style="width:80px" class="text-center">관리</th>
               </tr>
             </thead>
             <tbody>
               {% for s in settings_history %}
-              <tr>
-                <td class="small fw-semibold">
-                  {{ s.title if s.title else '—' }}
-                </td>
+              <tr id="setting-row-{{ s.id }}">
+                <td class="small fw-semibold">{{ s.title if s.title else '—' }}</td>
                 <td class="small text-muted" style="white-space:nowrap">
                   {{ s.period_start }} ~ {{ s.period_end }}
                 </td>
@@ -109,6 +108,20 @@
                   {% endif %}
                 </td>
                 <td class="small text-muted">{{ s.created_by or '—' }}</td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-xs btn-outline-secondary me-1 setting-edit-btn"
+                          data-id="{{ s.id }}"
+                          data-title="{{ s.title | e }}"
+                          data-start="{{ s.period_start }}"
+                          data-end="{{ s.period_end }}"
+                          data-enabled="{{ '1' if s.is_enabled else '0' }}">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  <button type="button" class="btn btn-xs btn-outline-danger setting-del-btn"
+                          data-id="{{ s.id }}" data-title="{{ s.title | e }}">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -174,6 +187,42 @@
   </div>
 </div>
 
+<!-- 기간 설정 편집 모달 -->
+<div class="modal fade" id="settingEditModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-pen me-2 text-primary"></i>신청 기간 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">제목</label>
+          <input type="text" id="editTitle" class="form-control" placeholder="예: 2026년 3분기 신청">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">시작일 <span class="text-danger">*</span></label>
+          <input type="date" id="editStart" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">종료일 <span class="text-danger">*</span></label>
+          <input type="date" id="editEnd" class="form-control" required>
+        </div>
+        <div class="form-check form-switch">
+          <input type="checkbox" id="editEnabled" class="form-check-input" role="switch" value="1">
+          <label class="form-check-label fw-semibold" for="editEnabled">신청 기능 활성화</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" id="settingEditSaveBtn">
+          <i class="fa-solid fa-floppy-disk me-1"></i>저장
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 메모 편집 모달 -->
 <div class="modal fade" id="memoModal" tabindex="-1">
   <div class="modal-dialog">
@@ -202,6 +251,58 @@
 </div>
 
 <script>
+// ── 기간 설정 수정/삭제 ──────────────────────────────────────────
+var _editSettingId = null;
+var _editModal = null;
+
+document.querySelectorAll('.setting-edit-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    _editSettingId = parseInt(btn.dataset.id);
+    document.getElementById('editTitle').value   = btn.dataset.title || '';
+    document.getElementById('editStart').value   = btn.dataset.start || '';
+    document.getElementById('editEnd').value     = btn.dataset.end   || '';
+    document.getElementById('editEnabled').checked = btn.dataset.enabled === '1';
+    if (!_editModal) _editModal = new bootstrap.Modal(document.getElementById('settingEditModal'));
+    _editModal.show();
+  });
+});
+
+document.getElementById('settingEditSaveBtn').addEventListener('click', function() {
+  var start = document.getElementById('editStart').value;
+  var end   = document.getElementById('editEnd').value;
+  if (!start || !end) { alert('날짜를 입력해주세요.'); return; }
+  if (start > end) { alert('시작일이 종료일보다 늦을 수 없습니다.'); return; }
+  fetch('/admin/form-supply/settings/' + _editSettingId + '/edit', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      title:        document.getElementById('editTitle').value.trim(),
+      period_start: start,
+      period_end:   end,
+      is_enabled:   document.getElementById('editEnabled').checked
+    })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { _editModal.hide(); location.reload(); }
+    else { alert('저장 실패: ' + (d.error || '')); }
+  }).catch(function() { alert('네트워크 오류'); });
+});
+
+document.querySelectorAll('.setting-del-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var label = btn.dataset.title || ('#' + btn.dataset.id);
+    if (!confirm('"' + label + '" 설정을 삭제하시겠습니까?\n관련 신청 데이터는 삭제되지 않습니다.')) return;
+    fetch('/admin/form-supply/settings/' + btn.dataset.id + '/delete', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.ok) {
+        var row = document.getElementById('setting-row-' + btn.dataset.id);
+        if (row) row.remove();
+      } else { alert('삭제 실패: ' + (d.error || '')); }
+    }).catch(function() { alert('네트워크 오류'); });
+  });
+});
+// ────────────────────────────────────────────────────────────────
+
 var _memoFormId = null;
 var _memoModal  = null;
 
