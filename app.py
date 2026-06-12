@@ -5206,6 +5206,85 @@ def form_supply_my_requests():
     return render_template('form_supply_my_requests.html', requests=result)
 
 
+@app.route('/form-supply/requests/<int:req_id>/edit', methods=['GET', 'POST'])
+@login_required
+def form_supply_request_edit(req_id):
+    """직원 — 대기 중 신청 수정"""
+    bid  = session.get('branch_id')
+    role = session.get('role')
+    if role == 'admin' or not bid:
+        flash('접근 권한이 없습니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    req = conn.execute(
+        f'SELECT * FROM form_supply_requests WHERE id={ph} AND branch_id={ph}',
+        (req_id, bid)
+    ).fetchone()
+    if not req:
+        flash('신청을 찾을 수 없습니다.', 'danger')
+        conn.close()
+        return redirect(url_for('form_supply_my_requests'))
+    if req['status'] != 'pending':
+        flash('대기 중인 신청만 수정할 수 있습니다.', 'warning')
+        conn.close()
+        return redirect(url_for('form_supply_my_requests'))
+
+    if request.method == 'POST':
+        notes = request.form.get('notes', '').strip()
+        items = []
+        for ft in conn.execute('SELECT id FROM form_types').fetchall():
+            fid = ft['id']
+            raw = request.form.get(f'qty_{fid}', '').strip()
+            if not raw:
+                continue
+            try:
+                q = int(raw)
+            except ValueError:
+                continue
+            if q >= 1:
+                items.append((fid, min(q, 9999)))
+
+        if not items:
+            flash('최소 1개 이상의 양식과 수량을 선택해주세요.', 'danger')
+            conn.close()
+            return redirect(request.url)
+
+        # 기존 항목 전부 교체
+        conn.execute(f'DELETE FROM form_supply_request_items WHERE request_id={ph}', (req_id,))
+        conn.execute(
+            f'UPDATE form_supply_requests SET notes={ph}, updated_at={now_sql} WHERE id={ph}',
+            (notes, req_id)
+        )
+        for fid, q in items:
+            conn.execute(
+                f'INSERT INTO form_supply_request_items (request_id, form_type_id, quantity) VALUES ({ph},{ph},{ph})',
+                (req_id, fid, q)
+            )
+        conn.commit()
+        log_action('운송양식_신청수정', f'#{req_id} {len(items)}종')
+        flash(f'신청 #{req_id}이 수정되었습니다.', 'success')
+        conn.close()
+        return redirect(url_for('form_supply_my_requests'))
+
+    # GET — 현재 항목 로드
+    existing = conn.execute(
+        f'SELECT form_type_id, quantity FROM form_supply_request_items WHERE request_id={ph}',
+        (req_id,)
+    ).fetchall()
+    existing_qty = {row['form_type_id']: row['quantity'] for row in existing}
+
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+    conn.close()
+    return render_template('form_supply_request_edit.html',
+                           req=dict(req),
+                           form_types=form_types,
+                           existing_qty=existing_qty)
+
+
 @app.route('/admin/form-supply/requests')
 @login_required
 def form_supply_admin_requests():

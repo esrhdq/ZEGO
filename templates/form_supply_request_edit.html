@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}신청 수정 #{{ req.id }}{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-pen-to-square"></i>{% endblock %}
+{% block page_title %}신청 수정 <span class="text-muted fw-normal" style="font-size:.85em">#{{ req.id }}</span>{% endblock %}
+
+{% block content %}
+<style>
+.fs-row.checked { background: #fff8f8; }
+.row-qty {
+  width: 80px; height: 34px;
+  border: 1.5px solid #ccc; border-radius: 7px;
+  text-align: center; font-size: 14px; font-weight: 600; color: #333;
+  padding: 0; background: #f5f5f5; cursor: not-allowed;
+  -moz-appearance: textfield;
+}
+.row-qty::-webkit-outer-spin-button,
+.row-qty::-webkit-inner-spin-button { -webkit-appearance: none; }
+.row-qty.active {
+  background: #fff; color: #CC1625; border-color: #CC1625; cursor: text;
+}
+</style>
+
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:#fef9c3;border:1px solid #fcd34d;border-radius:12px">
+  <i class="fa-solid fa-pen-to-square" style="color:#b45309;font-size:1.1rem"></i>
+  <div>
+    <strong>신청 #{{ req.id }} 수정 중</strong>
+    <span class="text-muted ms-2 small">대기 중인 신청만 수정할 수 있습니다. 수정 후 저장하면 기존 항목이 모두 교체됩니다.</span>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('form_supply_request_edit', req_id=req.id) }}" id="editForm">
+  <div class="card mb-3">
+    <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
+      <i class="fa-solid fa-list-check text-primary"></i>
+      <strong>신청 양식 선택</strong>
+      <span class="badge bg-secondary ms-1">{{ form_types|length }}종</span>
+      <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-primary ms-2">
+        <i class="fa-solid fa-check-double me-1"></i>전체선택
+      </button>
+      <span class="ms-auto badge"
+            style="background:var(--brand-light);color:var(--brand);font-size:.78rem;padding:6px 12px">
+        선택: <strong id="selectedCount">0</strong>종
+      </span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-scroll">
+        <table class="table table-hover mb-0" id="formTable">
+          <thead>
+            <tr>
+              <th style="width:50px"></th>
+              <th>양식명</th>
+              <th class="text-center" style="width:90px">단위</th>
+              <th class="text-center" style="width:120px">단위 상세</th>
+              <th class="text-center" style="width:160px">수량</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in form_types %}
+            {% set preQty = existing_qty.get(f.id, 0) %}
+            <tr data-row="{{ f.id }}" class="fs-row{% if preQty > 0 %} checked{% endif %}">
+              <td class="text-center">
+                <input type="checkbox" class="form-check-input row-check"
+                       data-id="{{ f.id }}" id="chk-{{ f.id }}"
+                       {% if preQty > 0 %}checked{% endif %}>
+              </td>
+              <td>
+                <label for="chk-{{ f.id }}" class="fw-semibold mb-0" style="cursor:pointer">{{ f.name }}</label>
+                {% if f.memo %}
+                <span class="ms-1" style="color:#e67e22;font-size:13px" title="{{ f.memo | e }}">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                </span>
+                {% endif %}
+              </td>
+              <td class="text-center small text-muted">{{ f.unit or '—' }}</td>
+              <td class="text-center small text-muted">{{ f.unit_detail or '—' }}</td>
+              <td class="text-center">
+                <input type="number" name="qty_{{ f.id }}"
+                       class="row-qty{% if preQty > 0 %} active{% endif %}"
+                       data-id="{{ f.id }}" min="1" max="300"
+                       value="{{ preQty if preQty > 0 else '' }}"
+                       {% if preQty == 0 %}readonly tabindex="-1"{% endif %}>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white d-flex align-items-center gap-2">
+      <i class="fa-solid fa-pen-to-square text-secondary"></i>
+      <strong>비고</strong>
+      <small class="text-muted ms-1">(선택)</small>
+    </div>
+    <div class="card-body">
+      <textarea name="notes" class="form-control" rows="3"
+                placeholder="요청사항이나 특이사항이 있다면 입력해 주세요.">{{ req.notes or '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end">
+    <a href="{{ url_for('form_supply_my_requests') }}" class="btn btn-outline-secondary">취소</a>
+    <button type="submit" class="btn btn-warning px-4" id="submitBtn" data-loading>
+      <i class="fa-solid fa-floppy-disk me-1"></i>수정 저장
+    </button>
+  </div>
+</form>
+
+<script>
+(function() {
+  var counter    = document.getElementById('selectedCount');
+  var submitBtn  = document.getElementById('submitBtn');
+  var selectAllBtn = document.getElementById('selectAllBtn');
+
+  function recount() {
+    var all     = document.querySelectorAll('.row-check');
+    var checked = document.querySelectorAll('.row-check:checked').length;
+    counter.textContent = checked;
+    submitBtn.disabled  = (checked === 0);
+    selectAllBtn.innerHTML = (checked === all.length)
+      ? '<i class="fa-solid fa-xmark me-1"></i>전체해제'
+      : '<i class="fa-solid fa-check-double me-1"></i>전체선택';
+  }
+
+  function activateRow(cb, on) {
+    var qty = document.querySelector('input[data-id="' + cb.dataset.id + '"].row-qty');
+    var row = document.querySelector('tr[data-row="' + cb.dataset.id + '"]');
+    if (on) {
+      cb.checked = true;
+      qty.removeAttribute('readonly'); qty.removeAttribute('tabindex');
+      qty.classList.add('active');
+      if (!qty.value || parseInt(qty.value) < 1) qty.value = '1';
+      row.classList.add('checked');
+    } else {
+      cb.checked = false;
+      qty.setAttribute('readonly', ''); qty.setAttribute('tabindex', '-1');
+      qty.classList.remove('active');
+      qty.value = '';
+      row.classList.remove('checked');
+    }
+  }
+
+  selectAllBtn.addEventListener('click', function() {
+    var all     = document.querySelectorAll('.row-check');
+    var checked = document.querySelectorAll('.row-check:checked').length;
+    var toCheck = (checked < all.length);
+    all.forEach(function(cb) { activateRow(cb, toCheck); });
+    recount();
+  });
+
+  document.querySelectorAll('.row-check').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      activateRow(cb, cb.checked);
+      if (cb.checked) {
+        var qty = document.querySelector('input[data-id="' + cb.dataset.id + '"].row-qty');
+        qty.focus(); qty.select();
+      }
+      recount();
+    });
+  });
+
+  document.querySelectorAll('.row-qty').forEach(function(qty) {
+    qty.addEventListener('input', function() {
+      var v = parseInt(qty.value);
+      if (v > 300) qty.value = 300;
+      if (qty.value !== '' && v < 1) qty.value = 1;
+    });
+    qty.addEventListener('blur', function() {
+      if (qty.classList.contains('active')) {
+        var v = parseInt(qty.value);
+        if (isNaN(v) || v < 1) qty.value = 1;
+      }
+    });
+  });
+
+  recount();
+})();
+</script>
+{% endblock %}
