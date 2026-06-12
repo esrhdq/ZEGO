@@ -1064,6 +1064,11 @@ def init_db():
             fsr_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_requests)').fetchall()]
             if 'approve_reason' not in fsr_cols:
                 conn.execute("ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT ''")
+            if 'period_title' not in fsr_cols:
+                conn.execute("ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT ''")
+            fss_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_settings)').fetchall()]
+            if 'title' not in fss_cols:
+                conn.execute("ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT ''")
             ft_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_types)').fetchall()]
             if 'sort_order' not in ft_cols:
                 conn.execute("ALTER TABLE form_types ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 999")
@@ -1205,6 +1210,18 @@ def init_db():
                         WHERE table_name='form_supply_requests' AND column_name='approve_reason'
                     ) THEN
                         ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT '';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='form_supply_requests' AND column_name='period_title'
+                    ) THEN
+                        ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT '';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='form_supply_settings' AND column_name='title'
+                    ) THEN
+                        ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT '';
                     END IF;
                 END $$
             ''')
@@ -4888,6 +4905,7 @@ def form_supply_settings():
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
 
     if request.method == 'POST':
+        period_title = request.form.get('period_title', '').strip()
         period_start = request.form.get('period_start', '').strip()
         period_end   = request.form.get('period_end', '').strip()
         is_enabled   = 1 if request.form.get('is_enabled') else 0
@@ -4902,12 +4920,12 @@ def form_supply_settings():
             return redirect(url_for('form_supply_settings'))
 
         conn.execute(
-            f"INSERT INTO form_supply_settings (period_start, period_end, is_enabled, created_by, updated_at) "
-            f"VALUES ({ph},{ph},{ph},{ph},{now_sql})",
-            (period_start, period_end, is_enabled, session['username'])
+            f"INSERT INTO form_supply_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
+            f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
+            (period_title, period_start, period_end, is_enabled, session['username'])
         )
         conn.commit()
-        log_action('운송양식_신청기간_설정', f'{period_start}~{period_end} (활성:{is_enabled})')
+        log_action('운송양식_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
         flash('신청 기간 설정이 저장되었습니다.', 'success')
         conn.close()
         return redirect(url_for('form_supply_settings'))
@@ -5035,19 +5053,22 @@ def form_supply_request():
             conn.close()
             return redirect(url_for('form_supply_request'))
 
+        # 현재 기간 제목 가져오기
+        p_title = (active.get('title') or '') if isinstance(active, dict) else (active['title'] if 'title' in active.keys() else '')
+
         # 신청서 INSERT
         if USE_SQLITE:
             cur = conn.execute(
-                f"INSERT INTO form_supply_requests (branch_id, status, notes, requested_by, created_at, updated_at) "
-                f"VALUES ({ph},'pending',{ph},{ph},{now_sql},{now_sql})",
-                (bid, notes, session['username'])
+                f"INSERT INTO form_supply_requests (branch_id, status, notes, period_title, requested_by, created_at, updated_at) "
+                f"VALUES ({ph},'pending',{ph},{ph},{ph},{now_sql},{now_sql})",
+                (bid, notes, p_title, session['username'])
             )
             req_id = cur.lastrowid
         else:
             row = conn.execute(
-                "INSERT INTO form_supply_requests (branch_id, status, notes, requested_by) "
-                "VALUES (%s,'pending',%s,%s) RETURNING id",
-                (bid, notes, session['username'])
+                "INSERT INTO form_supply_requests (branch_id, status, notes, period_title, requested_by) "
+                "VALUES (%s,'pending',%s,%s,%s) RETURNING id",
+                (bid, notes, p_title, session['username'])
             ).fetchone()
             req_id = row['id']
 
@@ -5144,8 +5165,18 @@ def form_supply_admin_requests():
         d = dict(r)
         d['items'] = [dict(x) for x in items]
         result.append(d)
+
+    # 기간별 제목 목록 (중복 제거, 최신순)
+    seen = set()
+    period_titles = []
+    for r in result:
+        t = r.get('period_title') or ''
+        if t and t not in seen:
+            seen.add(t)
+            period_titles.append(t)
+
     conn.close()
-    return render_template('form_supply_admin_requests.html', requests=result)
+    return render_template('form_supply_admin_requests.html', requests=result, period_titles=period_titles)
 
 
 @app.route('/admin/form-supply/requests/<int:req_id>/action', methods=['POST'])
@@ -5270,35 +5301,48 @@ def form_supply_matrix():
     ).fetchall()
 
     rows = conn.execute(
-        'SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.id AS req_id '
+        'SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title '
         'FROM form_supply_request_items i '
         'JOIN form_supply_requests r ON r.id = i.request_id '
         'ORDER BY r.created_at'
     ).fetchall()
     conn.close()
 
-    # pivot[form_type_id][branch_id] = [{'qty', 'date', 'status'}]
-    pivot = {ft['id']: {} for ft in form_types}
+    # 기간 제목 목록 (중복 제거)
+    seen_t = set()
+    period_titles = []
     for row in rows:
-        fid = row['form_type_id']
-        bid = row['branch_id']
-        if fid not in pivot:
-            continue
-        if bid not in pivot[fid]:
-            pivot[fid][bid] = []
-        raw = str(row['created_at'] or '')
-        date_label = raw[5:10].replace('-', '.')  # MM.DD
-        pivot[fid][bid].append({
-            'qty': row['quantity'],
-            'date': date_label,
-            'status': row['status'],
-        })
+        t = row['period_title'] or ''
+        if t and t not in seen_t:
+            seen_t.add(t)
+            period_titles.append(t)
+
+    # pivot[period_title or ''][form_type_id][branch_id] = [{'qty','date','status'}]
+    # 전체용 pivot도 별도 구성
+    def build_pivot(filtered_rows):
+        p = {ft['id']: {} for ft in form_types}
+        for row in filtered_rows:
+            fid = row['form_type_id']
+            bid = row['branch_id']
+            if fid not in p:
+                continue
+            if bid not in p[fid]:
+                p[fid][bid] = []
+            raw = str(row['created_at'] or '')
+            date_label = raw[5:10].replace('-', '.')
+            p[fid][bid].append({'qty': row['quantity'], 'date': date_label, 'status': row['status']})
+        return p
+
+    pivot_all = build_pivot(rows)
+    pivot_by_title = {t: build_pivot([r for r in rows if (r['period_title'] or '') == t]) for t in period_titles}
 
     return render_template('form_supply_matrix.html',
                            form_types=form_types,
                            branches_dom=branches_dom,
                            branches_intl=branches_intl,
-                           pivot=pivot)
+                           pivot_all=pivot_all,
+                           pivot_by_title=pivot_by_title,
+                           period_titles=period_titles)
 
 
 if __name__ == '__main__':

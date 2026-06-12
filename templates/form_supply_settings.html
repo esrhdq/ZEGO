@@ -21,6 +21,17 @@
         <form method="post" action="{{ url_for('form_supply_settings') }}">
           <div class="mb-3">
             <label class="form-label fw-semibold">
+              <i class="fa-solid fa-tag me-1 text-warning"></i>
+              제목 <span class="text-muted fw-normal">(예: 2026년 3분기)</span>
+            </label>
+            <input type="text" name="period_title" class="form-control"
+                   placeholder="예: 2026년 3분기 신청"
+                   value="{{ current.title if current and current.title else '' }}">
+            <div class="form-text">신청 목록에서 기간 구분 탭으로 사용됩니다.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
               <i class="fa-solid fa-calendar-day me-1 text-primary"></i>
               신청 시작일 <span class="text-danger">*</span>
             </label>
@@ -75,7 +86,7 @@
           <table class="table table-hover mb-0">
             <thead>
               <tr>
-                <th>설정일시</th>
+                <th>제목</th>
                 <th>신청 기간</th>
                 <th class="text-center">상태</th>
                 <th>설정자</th>
@@ -84,13 +95,11 @@
             <tbody>
               {% for s in settings_history %}
               <tr>
-                <td class="small text-muted" style="white-space:nowrap">
-                  {{ s.created_at | dt if s.created_at else '—' }}
+                <td class="small fw-semibold">
+                  {{ s.title if s.title else '—' }}
                 </td>
-                <td class="small">
-                  <span class="fw-semibold">{{ s.period_start }}</span>
-                  <span class="text-muted mx-1">~</span>
-                  <span class="fw-semibold">{{ s.period_end }}</span>
+                <td class="small text-muted" style="white-space:nowrap">
+                  {{ s.period_start }} ~ {{ s.period_end }}
                 </td>
                 <td class="text-center">
                   {% if s.is_enabled %}

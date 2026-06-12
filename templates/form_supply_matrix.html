@@ -100,14 +100,26 @@
   th.col-total { background: #334155 !important; }
 </style>
 
-<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
   <a href="{{ url_for('form_supply_admin_requests') }}" class="btn btn-sm btn-outline-secondary">
     <i class="fa-solid fa-list me-1"></i>신청 목록
   </a>
   <a href="{{ url_for('form_supply_settings') }}" class="btn btn-sm btn-outline-secondary">
     <i class="fa-solid fa-gear me-1"></i>설정
   </a>
-  <div class="ms-auto d-flex gap-1 flex-wrap" id="statusFilter">
+</div>
+
+{% if period_titles %}
+<div class="d-flex gap-1 flex-wrap mb-2" id="periodTabs">
+  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="switchPeriod(this)">전체 기간</button>
+  {% for t in period_titles %}
+  <button class="btn btn-sm btn-outline-primary" data-period="{{ t | e }}" onclick="switchPeriod(this)">{{ t }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <div class="d-flex gap-1 flex-wrap" id="statusFilter">
     <button class="btn btn-xs btn-outline-secondary active" data-s="ALL">전체</button>
     <button class="btn btn-xs" style="background:#fef3c7;border:1.5px solid #d97706;color:#92400e" data-s="pending">대기</button>
     <button class="btn btn-xs" style="background:#d1fae5;border:1.5px solid #059669;color:#065f46" data-s="approved">승인</button>
@@ -141,67 +153,83 @@
         <th class="hd-branch-intl col-total">소계</th>
       </tr>
     </thead>
-    <tbody>
-      {% for ft in form_types %}
-      {% set ft_pivot = pivot.get(ft.id, {}) %}
-      {% set has_any = ft_pivot|length > 0 %}
-      <tr{% if not has_any %} class="row-empty"{% endif %}>
-        <td class="col-form">{{ ft.name }}</td>
-
-        {# 국내 #}
-        {% set dom_total = namespace(v=0) %}
-        {% for b in branches_dom %}
-          {% set entries = ft_pivot.get(b.id, []) %}
-          {% set has_entries = entries|length > 0 %}
-          <td>
-            {% for e in entries %}
-              {% set dom_total.v = dom_total.v + e.qty %}
-              <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
-                <span class="qty">{{ e.qty }}</span>
-                <span class="datel">({{ e.date }})</span>
-              </span>
-            {% endfor %}
-          </td>
-        {% endfor %}
-        <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
-
-        {# 국제 #}
-        {% set intl_total = namespace(v=0) %}
-        {% for b in branches_intl %}
-          {% set entries = ft_pivot.get(b.id, []) %}
-          <td>
-            {% for e in entries %}
-              {% set intl_total.v = intl_total.v + e.qty %}
-              <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
-                <span class="qty">{{ e.qty }}</span>
-                <span class="datel">({{ e.date }})</span>
-              </span>
-            {% endfor %}
-          </td>
-        {% endfor %}
-        <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
-      </tr>
+    {# ── 전체 tbody ── #}
+    {% macro render_tbody(pv) %}
+    {% for ft in form_types %}
+    {% set ft_pivot = pv.get(ft.id, {}) %}
+    {% set has_any = ft_pivot|length > 0 %}
+    <tr{% if not has_any %} class="row-empty"{% endif %}>
+      <td class="col-form">{{ ft.name }}</td>
+      {% set dom_total = namespace(v=0) %}
+      {% for b in branches_dom %}
+        {% set entries = ft_pivot.get(b.id, []) %}
+        <td>
+          {% for e in entries %}
+            {% set dom_total.v = dom_total.v + e.qty %}
+            <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
+              <span class="qty">{{ e.qty }}</span>
+              <span class="datel">({{ e.date }})</span>
+            </span>
+          {% endfor %}
+        </td>
       {% endfor %}
-    </tbody>
+      <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
+      {% set intl_total = namespace(v=0) %}
+      {% for b in branches_intl %}
+        {% set entries = ft_pivot.get(b.id, []) %}
+        <td>
+          {% for e in entries %}
+            {% set intl_total.v = intl_total.v + e.qty %}
+            <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
+              <span class="qty">{{ e.qty }}</span>
+              <span class="datel">({{ e.date }})</span>
+            </span>
+          {% endfor %}
+        </td>
+      {% endfor %}
+      <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    {% endmacro %}
+
+    <tbody class="matrix-body" data-period="ALL">{{ render_tbody(pivot_all) }}</tbody>
+    {% for t in period_titles %}
+    <tbody class="matrix-body d-none" data-period="{{ t | e }}">{{ render_tbody(pivot_by_title[t]) }}</tbody>
+    {% endfor %}
   </table>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// 빈 행 토글
-var showEmpty = false;
+// 빈 행 숨김 초기화
 document.querySelectorAll('.row-empty').forEach(r => r.style.display = 'none');
 
+// 기간 탭 전환
+function switchPeriod(btn) {
+  document.querySelectorAll('#periodTabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  var p = btn.dataset.period;
+  document.querySelectorAll('.matrix-body').forEach(tb => {
+    tb.classList.toggle('d-none', tb.dataset.period !== p);
+  });
+  // 상태 필터 재적용
+  var s = (document.querySelector('#statusFilter button.active') || {}).dataset || {};
+  applyStatusFilter(s.s || 'ALL');
+}
+
 // 상태 필터
+function applyStatusFilter(s) {
+  document.querySelectorAll('.matrix-body:not(.d-none) .cell-entry').forEach(el => {
+    el.style.display = (s === 'ALL' || el.dataset.status === s) ? '' : 'none';
+  });
+}
+
 document.querySelectorAll('#statusFilter button').forEach(btn => {
   btn.addEventListener('click', function() {
     document.querySelectorAll('#statusFilter button').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    var s = this.dataset.s;
-    document.querySelectorAll('.cell-entry').forEach(el => {
-      el.style.display = (s === 'ALL' || el.dataset.status === s) ? '' : 'none';
-    });
+    applyStatusFilter(this.dataset.s);
   });
 });
 </script>

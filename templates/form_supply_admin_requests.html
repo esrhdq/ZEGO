@@ -41,6 +41,16 @@
   </a>
 </div>
 
+<!-- 기간 탭 -->
+{% if period_titles %}
+<div class="d-flex gap-1 flex-wrap mb-2" id="periodTabs">
+  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="filterPeriod(this)">전체 기간</button>
+  {% for t in period_titles %}
+  <button class="btn btn-sm btn-outline-primary" data-period="{{ t | e }}" onclick="filterPeriod(this)">{{ t }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="filter-bar">
   <button class="filter-btn active" data-filter="ALL" onclick="filterReqs(this)">전체</button>
   <button class="filter-btn" data-filter="pending"  onclick="filterReqs(this)">대기중</button>
@@ -72,9 +82,12 @@
       </thead>
       <tbody>
         {% for r in requests %}
-        <tr data-status="{{ r.status }}" class="req-row" data-target="detail-{{ r.id }}" style="cursor:pointer">
+        <tr data-status="{{ r.status }}" data-period="{{ r.period_title | e }}" class="req-row" data-target="detail-{{ r.id }}" style="cursor:pointer">
           <td style="color:#aaa;font-size:.75rem">{{ r.id }}</td>
-          <td><strong>{{ r.branch_code }}</strong> <span style="color:#888;font-size:.75rem">{{ r.branch_name }}</span></td>
+          <td>
+            <strong>{{ r.branch_code }}</strong> <span style="color:#888;font-size:.75rem">{{ r.branch_name }}</span>
+            {% if r.period_title %}<span class="badge rounded-pill ms-1" style="background:#ede9fe;color:#5b21b6;font-size:.65rem">{{ r.period_title }}</span>{% endif %}
+          </td>
           <td>
             {% if r.status == 'pending' %}
               <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i>대기중</span>
@@ -220,16 +233,33 @@ document.querySelectorAll('.req-row').forEach(row => {
   });
 });
 
+var _activePeriod = 'ALL';
+var _activeStatus = 'ALL';
+
+function applyFilters() {
+  document.querySelectorAll('#reqTable tbody tr').forEach(tr => {
+    const pOk = (_activePeriod === 'ALL' || tr.dataset.period === _activePeriod);
+    const sOk = (_activeStatus === 'ALL' || tr.dataset.status === _activeStatus);
+    const show = pOk && sOk;
+    tr.style.display = show ? '' : 'none';
+    if (tr.classList.contains('detail-row') && !show) tr.classList.add('d-none');
+  });
+}
+
+// 기간 탭
+function filterPeriod(btn) {
+  document.querySelectorAll('#periodTabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _activePeriod = btn.dataset.period;
+  applyFilters();
+}
+
 // 상태 필터
 function filterReqs(btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const f = btn.dataset.filter;
-  document.querySelectorAll('#reqTable tbody tr').forEach(tr => {
-    const show = (f === 'ALL' || tr.dataset.status === f);
-    tr.style.display = show ? '' : 'none';
-    if (tr.classList.contains('detail-row') && !show) tr.classList.add('d-none');
-  });
+  _activeStatus = btn.dataset.filter;
+  applyFilters();
 }
 
 // 승인 모달
