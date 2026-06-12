@@ -63,6 +63,22 @@
   th.hd-branch-intl { background: #7c3aed; }
   th.hd-formname { background: #1e293b; color: #fff; text-align: left; padding: 4px 10px; }
 
+  /* 분기 구분 행 */
+  .period-divider-row td {
+    background: #1e293b !important;
+    color: #fff !important;
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 6px 12px !important;
+    text-align: left !important;
+    border: none !important;
+    letter-spacing: .03em;
+  }
+  .period-divider-row td.col-form {
+    background: #1e293b !important;
+    border-right: 2px solid #334155 !important;
+  }
+
   /* 데이터 행 */
   .matrix-table tbody td {
     border: 1px solid #e5e7eb;
@@ -90,7 +106,6 @@
     padding: 1px 0;
   }
   .cell-entry .qty   { font-weight: 700; font-size: 12px; }
-  .cell-entry .datel { font-size: 9px; color: #6b7280; }
   .cell-pending  .qty { color: #b45309; }
   .cell-approved .qty { color: #15803d; }
   .cell-rejected .qty { color: #b91c1c; text-decoration: line-through; opacity:.6; }
@@ -129,10 +144,49 @@
   </span>
 </div>
 
+{# ── 컬럼 수 계산 (분기 구분 행 colspan용) ── #}
+{% set total_cols = (branches_dom|length) + (branches_intl|length) + 3 %}
+
+{# ── 데이터 행 렌더 매크로 ── #}
+{% macro render_rows(pv) %}
+{% for ft in form_types %}
+{% set ft_pivot = pv.get(ft.id, {}) %}
+{% set has_any = ft_pivot|length > 0 %}
+<tr{% if not has_any %} class="row-empty"{% endif %}>
+  <td class="col-form">{{ ft.name }}</td>
+  {% set dom_total = namespace(v=0) %}
+  {% for b in branches_dom %}
+    {% set entries = ft_pivot.get(b.id, []) %}
+    <td>
+      {% for e in entries %}
+        {% set dom_total.v = dom_total.v + e.qty %}
+        <span class="cell-entry cell-{{ e.status }}">
+          <span class="qty">{{ e.qty }}</span>
+        </span>
+      {% endfor %}
+    </td>
+  {% endfor %}
+  <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
+  {% set intl_total = namespace(v=0) %}
+  {% for b in branches_intl %}
+    {% set entries = ft_pivot.get(b.id, []) %}
+    <td>
+      {% for e in entries %}
+        {% set intl_total.v = intl_total.v + e.qty %}
+        <span class="cell-entry cell-{{ e.status }}">
+          <span class="qty">{{ e.qty }}</span>
+        </span>
+      {% endfor %}
+    </td>
+  {% endfor %}
+  <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
+</tr>
+{% endfor %}
+{% endmacro %}
+
 <div class="matrix-wrap">
   <table class="matrix-table" id="matrixTable">
     <thead>
-      <!-- 그룹 행 -->
       <tr class="row-group">
         <th class="col-form hd-formname" rowspan="2">양식명</th>
         {% if branches_dom %}
@@ -142,7 +196,6 @@
         <th class="hd-intl" colspan="{{ branches_intl|length + 1 }}">국제</th>
         {% endif %}
       </tr>
-      <!-- 지점 행 -->
       <tr class="row-branch">
         {% for b in branches_dom %}
         <th class="hd-branch-dom" title="{{ b.name }}">{{ b.code }}</th>
@@ -154,47 +207,31 @@
         <th class="hd-branch-intl col-total">소계</th>
       </tr>
     </thead>
-    {# ── 전체 tbody ── #}
-    {% macro render_tbody(pv) %}
-    {% for ft in form_types %}
-    {% set ft_pivot = pv.get(ft.id, {}) %}
-    {% set has_any = ft_pivot|length > 0 %}
-    <tr{% if not has_any %} class="row-empty"{% endif %}>
-      <td class="col-form">{{ ft.name }}</td>
-      {% set dom_total = namespace(v=0) %}
-      {% for b in branches_dom %}
-        {% set entries = ft_pivot.get(b.id, []) %}
-        <td>
-          {% for e in entries %}
-            {% set dom_total.v = dom_total.v + e.qty %}
-            <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
-              <span class="qty">{{ e.qty }}</span>
-            </span>
-          {% endfor %}
-        </td>
-      {% endfor %}
-      <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
-      {% set intl_total = namespace(v=0) %}
-      {% for b in branches_intl %}
-        {% set entries = ft_pivot.get(b.id, []) %}
-        <td>
-          {% for e in entries %}
-            {% set intl_total.v = intl_total.v + e.qty %}
-            <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
-              <span class="qty">{{ e.qty }}</span>
-            </span>
-          {% endfor %}
-        </td>
-      {% endfor %}
-      <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
-    </tr>
-    {% endfor %}
-    {% endmacro %}
 
-    <tbody class="matrix-body" data-period="ALL">{{ render_tbody(pivot_all) }}</tbody>
+    {# ── 전체 기간: 분기별 구분선 포함 ── #}
+    <tbody class="matrix-body" data-period="ALL">
+      {% if period_titles %}
+        {% for t in period_titles %}
+        <tr class="period-divider-row">
+          <td class="col-form">
+            <i class="fa-solid fa-calendar-days me-1" style="color:#60a5fa"></i>{{ t }}
+          </td>
+          <td colspan="{{ total_cols - 1 }}"></td>
+        </tr>
+        {{ render_rows(pivot_by_title[t]) }}
+        {% endfor %}
+      {% else %}
+        {{ render_rows(pivot_all) }}
+      {% endif %}
+    </tbody>
+
+    {# ── 개별 분기 탭 ── #}
     {% for t in period_titles %}
-    <tbody class="matrix-body d-none" data-period="{{ t | e }}">{{ render_tbody(pivot_by_title[t]) }}</tbody>
+    <tbody class="matrix-body d-none" data-period="{{ t | e }}">
+      {{ render_rows(pivot_by_title[t]) }}
+    </tbody>
     {% endfor %}
+
   </table>
 </div>
 {% endblock %}
