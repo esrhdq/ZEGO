@@ -1280,14 +1280,47 @@ def init_db():
                 'NOTOC',
             ):
                 conn.execute('UPDATE form_types SET is_active=FALSE WHERE name=%s', (_deactivate,))
-            # 신규 지점 추가 (이미 있으면 무시)
-            for _bc, _bn, _bt in [('KOJ', '가고시마', 'INTL'), ('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
+            # 신규 지점 추가 (이미 있으면 무시) — KOJ는 아래 KOR 병합에서 처리
+            for _bc, _bn, _bt in [('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
                 conn.execute(
                     'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
                     (_bc, _bn, _bt)
                 )
-            # KOR → KOJ 코드 오류 수정
-            conn.execute("UPDATE branches SET code='KOJ' WHERE code='KOR' AND name='가고시마'")
+            # KOR → KOJ 병합 마이그레이션
+            # KOJ를 먼저 INSERT한 뒤 UPDATE하면 UNIQUE 충돌 — 경우별 처리
+            _kor = conn.execute("SELECT id FROM branches WHERE code='KOR'").fetchone()
+            _koj = conn.execute("SELECT id FROM branches WHERE code='KOJ'").fetchone()
+            if _kor and _koj:
+                # 둘 다 존재: KOR 참조를 KOJ로 이전 후 KOR 삭제
+                _kor_id, _koj_id = _kor['id'], _koj['id']
+                for _tbl, _col in [
+                    ('form_supply_requests',    'branch_id'),
+                    ('form_supply_branch_quotas','branch_id'),
+                    ('notifications',           'branch_id'),
+                    ('demand_forecasts',        'branch_id'),
+                    ('cargo_requests',          'branch_id'),
+                    ('catalog_items',           'branch_id'),
+                    ('users',                   'branch_id'),
+                ]:
+                    try:
+                        conn.execute(f'UPDATE {_tbl} SET {_col}=%s WHERE {_col}=%s', (_koj_id, _kor_id))
+                    except Exception:
+                        pass
+                try:
+                    conn.execute('UPDATE transfer_requests SET from_branch_id=%s WHERE from_branch_id=%s', (_koj_id, _kor_id))
+                    conn.execute('UPDATE transfer_requests SET to_branch_id=%s WHERE to_branch_id=%s', (_koj_id, _kor_id))
+                except Exception:
+                    pass
+                conn.execute('DELETE FROM branches WHERE id=%s', (_kor_id,))
+            elif _kor and not _koj:
+                # KOR만 존재: 코드 변경으로 충분
+                conn.execute("UPDATE branches SET code='KOJ', name='가고시마' WHERE code='KOR'")
+            elif not _kor and not _koj:
+                # 둘 다 없으면 신규 삽입
+                conn.execute(
+                    'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
+                    ('KOJ', '가고시마', 'INTL')
+                )
         conn.commit()
 
         # catalog_defs 시딩 (DO UPDATE — 코드 변경사항 배포 시 자동 반영)
