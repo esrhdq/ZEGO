@@ -4,6 +4,9 @@
 {% block page_title %}내 양식 신청 현황{% endblock %}
 
 {% block content %}
+<style>
+  .badge-partial { background:#ede9fe; color:#6d28d9; }
+</style>
 <div class="card">
   <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
     <i class="fa-solid fa-clock-rotate-left text-primary"></i>
@@ -16,6 +19,7 @@
       <button class="btn btn-sm btn-outline-warning" data-filter="pending" onclick="filterMyReqs(this)">대기</button>
       <button class="btn btn-sm btn-outline-success" data-filter="approved" onclick="filterMyReqs(this)">승인</button>
       <button class="btn btn-sm btn-outline-danger" data-filter="rejected" onclick="filterMyReqs(this)">반려</button>
+      <button class="btn btn-sm" style="border:1px solid #6d28d9;color:#6d28d9" data-filter="partial" onclick="filterMyReqs(this)">부분승인</button>
     </div>
   </div>
   <div class="card-body p-0">
@@ -47,6 +51,8 @@
                 <span class="badge badge-confirmed rounded-pill">승인</span>
               {% elif r.status == 'rejected' %}
                 <span class="badge badge-rejected rounded-pill">반려</span>
+              {% elif r.status == 'partial' %}
+                <span class="badge badge-partial rounded-pill"><i class="fa-solid fa-sliders me-1"></i>부분승인</span>
               {% else %}
                 <span class="badge badge-pending rounded-pill">{{ r.status }}</span>
               {% endif %}
@@ -58,6 +64,8 @@
                 <span style="color:#991b1b">{{ r.reject_reason }}</span>
               {% elif r.status == 'approved' and r.approve_reason %}
                 <span style="color:#15803d">{{ r.approve_reason }}</span>
+              {% elif r.status == 'partial' and r.approve_reason %}
+                <span style="color:#6d28d9">{{ r.approve_reason }}</span>
               {% elif r.processed_at %}
                 <span class="text-muted">{{ r.processed_at | dt }}</span>
               {% else %}
@@ -103,6 +111,9 @@
                       <th class="text-center" style="width:100px">단위</th>
                       <th class="text-center" style="width:120px">단위 상세</th>
                       <th class="text-center" style="width:100px">수량</th>
+                      {% if r.status == 'partial' %}
+                      <th class="text-center" style="width:100px">처리</th>
+                      {% endif %}
                     </tr>
                   </thead>
                   <tbody>
@@ -112,6 +123,20 @@
                       <td class="text-center text-muted">{{ it.unit or '—' }}</td>
                       <td class="text-center text-muted">{{ it.unit_detail or '—' }}</td>
                       <td class="text-center fw-bold">{{ it.quantity }}</td>
+                      {% if r.status == 'partial' %}
+                      <td class="text-center">
+                        {% if it.item_status == 'approved' %}
+                          <span style="color:#15803d;font-size:.78rem;font-weight:600">● 승인</span>
+                        {% elif it.item_status == 'rejected' %}
+                          <span style="color:#b91c1c;font-size:.78rem;font-weight:600">● 반려</span>
+                          {% if it.item_reject_reason %}
+                          <div style="color:#b91c1c;font-size:.72rem">{{ it.item_reject_reason }}</div>
+                          {% endif %}
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
+                      </td>
+                      {% endif %}
                     </tr>
                     {% endfor %}
                   </tbody>
