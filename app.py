@@ -5484,22 +5484,45 @@ def form_supply_matrix():
         "WHERE r.status = 'approved' "
         "ORDER BY r.created_at"
     ).fetchall()
+
+    # 설정 이력 — period_title 없는 기존 건 소급 추론에 사용
+    settings_hist = conn.execute(
+        "SELECT title, period_start, period_end FROM form_supply_settings "
+        "WHERE title IS NOT NULL AND title != '' ORDER BY period_start"
+    ).fetchall()
     conn.close()
 
-    # 기간 제목 목록 (중복 제거)
-    seen_t = set()
-    period_titles = []
+    settings_list = [dict(s) for s in settings_hist]
+
+    def resolve_period(row):
+        """period_title 없는 행은 신청일 기준으로 설정 기간 제목 소급 적용"""
+        pt = (row['period_title'] or '').strip()
+        if pt:
+            return pt
+        date_str = str(row['created_at'] or '')[:10]
+        if not date_str:
+            return ''
+        for s in settings_list:
+            ps = str(s['period_start'])[:10]
+            pe = str(s['period_end'])[:10]
+            if ps <= date_str <= pe and s['title']:
+                return s['title']
+        return ''
+
+    # 기간 제목 목록 (삽입 순서 유지, 중복 제거)
+    seen_t: set = set()
+    period_titles: list = []
+    resolved_rows = []
     for row in rows:
-        t = row['period_title'] or ''
+        t = resolve_period(row)
+        resolved_rows.append((row, t))
         if t and t not in seen_t:
             seen_t.add(t)
             period_titles.append(t)
 
-    # pivot[period_title or ''][form_type_id][branch_id] = [{'qty','date','status'}]
-    # 전체용 pivot도 별도 구성
-    def build_pivot(filtered_rows):
+    def build_pivot(filtered_pairs):
         p = {ft['id']: {} for ft in form_types}
-        for row in filtered_rows:
+        for row, _ in filtered_pairs:
             fid = row['form_type_id']
             bid = row['branch_id']
             if fid not in p:
@@ -5511,8 +5534,11 @@ def form_supply_matrix():
             p[fid][bid].append({'qty': row['quantity'], 'date': date_label, 'status': row['status']})
         return p
 
-    pivot_all = build_pivot(rows)
-    pivot_by_title = {t: build_pivot([r for r in rows if (r['period_title'] or '') == t]) for t in period_titles}
+    pivot_all       = build_pivot(resolved_rows)
+    pivot_by_title  = {
+        t: build_pivot([(r, rt) for r, rt in resolved_rows if rt == t])
+        for t in period_titles
+    }
 
     return render_template('form_supply_matrix.html',
                            form_types=form_types,

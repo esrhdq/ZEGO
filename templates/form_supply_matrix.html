@@ -225,9 +225,15 @@
       {% endif %}
     </tbody>
 
-    {# ── 개별 분기 탭 ── #}
+    {# ── 개별 분기 탭 — 상단에 기간 제목 행 포함 ── #}
     {% for t in period_titles %}
     <tbody class="matrix-body d-none" data-period="{{ t | e }}">
+      <tr class="period-divider-row">
+        <td class="col-form">
+          <i class="fa-solid fa-calendar-days me-1" style="color:#60a5fa"></i>{{ t }}
+        </td>
+        <td colspan="{{ total_cols - 1 }}"></td>
+      </tr>
       {{ render_rows(pivot_by_title[t]) }}
     </tbody>
     {% endfor %}
