@@ -1225,6 +1225,10 @@ def init_db():
                     END IF;
                 END $$
             ''')
+            # DO $$ 블록 외부에서 개별 실행 — IF NOT EXISTS 지원으로 멱등성 보장
+            conn.execute("ALTER TABLE form_supply_settings ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT ''")
+            conn.execute("ALTER TABLE form_supply_requests ADD COLUMN IF NOT EXISTS period_title TEXT NOT NULL DEFAULT ''")
+            conn.execute("ALTER TABLE form_supply_requests ADD COLUMN IF NOT EXISTS approve_reason TEXT NOT NULL DEFAULT ''")
             # form_types 이름 변경 + sort_order + 비활성 마이그레이션 (PostgreSQL)
             _form_renames = [
                 ('비상구열 스티커',          'Exit-Seat Sticker'),
