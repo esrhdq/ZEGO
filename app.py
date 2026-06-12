@@ -4908,6 +4908,24 @@ def form_supply_settings():
     ph = '%s' if not USE_SQLITE else '?'
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
 
+    # lazy migration — 컬럼이 없으면 즉시 추가
+    try:
+        if USE_SQLITE:
+            _cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_settings)').fetchall()]
+            if 'title' not in _cols:
+                conn.execute("ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT ''")
+            _cols2 = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_requests)').fetchall()]
+            if 'period_title' not in _cols2:
+                conn.execute("ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT ''")
+        else:
+            conn.execute("ALTER TABLE form_supply_settings ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT ''")
+            conn.execute("ALTER TABLE form_supply_requests ADD COLUMN IF NOT EXISTS period_title TEXT NOT NULL DEFAULT ''")
+        conn.commit()
+    except Exception as _me:
+        app.logger.warning(f'[lazy-migrate] {_me}')
+        try: conn.rollback()
+        except Exception: pass
+
     if request.method == 'POST':
         period_title = request.form.get('period_title', '').strip()
         period_start = request.form.get('period_start', '').strip()
