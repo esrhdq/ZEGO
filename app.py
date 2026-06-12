@@ -5262,7 +5262,8 @@ def form_supply_my_requests():
     result = []
     for r in reqs:
         items = conn.execute(
-            'SELECT i.form_type_id, i.quantity, f.name AS form_name, f.unit, f.unit_detail '
+            'SELECT i.form_type_id, i.quantity, i.item_status, i.item_reject_reason, '
+            'f.name AS form_name, f.unit, f.unit_detail '
             'FROM form_supply_request_items i '
             'JOIN form_types f ON f.id = i.form_type_id '
             'WHERE i.request_id=%s ORDER BY f.name',
