@@ -151,8 +151,7 @@
 {% macro render_rows(pv) %}
 {% for ft in form_types %}
 {% set ft_pivot = pv.get(ft.id, {}) %}
-{% set has_any = ft_pivot|length > 0 %}
-<tr{% if not has_any %} class="row-empty"{% endif %}>
+<tr>
   <td class="col-form">{{ ft.name }}</td>
   {% set dom_total = namespace(v=0) %}
   {% for b in branches_dom %}
@@ -244,9 +243,6 @@
 
 {% block scripts %}
 <script>
-// 빈 행 숨김 초기화
-document.querySelectorAll('.row-empty').forEach(r => r.style.display = 'none');
-
 // 기간 탭 전환
 function switchPeriod(btn) {
   document.querySelectorAll('#periodTabs button').forEach(b => b.classList.remove('active'));
