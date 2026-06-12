@@ -5196,74 +5196,28 @@ def form_supply_admin_action(req_id):
 
         if action == 'approved':
             mail_subject = f'[이스타항공] 운송양식 신청 #{req_id} 승인 안내'
-            status_label = '승인'
-            status_color = '#15803d'
-            reason_html  = (
-                f'<p style="margin:8px 0 0"><strong>전달사항:</strong> '
-                f'{approve_reason}</p>'
-                if approve_reason else ''
-            )
         else:
             mail_subject = f'[이스타항공] 운송양식 신청 #{req_id} 반려 안내'
-            status_label = '반려'
-            status_color = '#b91c1c'
-            reason_html  = (
-                f'<p style="margin:8px 0 0"><strong>반려 사유:</strong> '
-                f'{reject_reason}</p>'
-                if reject_reason else ''
-            )
 
-        rows_html = ''.join(
-            f'<tr><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb">{it["form_name"]}</td>'
-            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">{it["unit"] or "—"}</td>'
-            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">{it["unit_detail"] or "—"}</td>'
-            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700">{it["quantity"]}</td></tr>'
+        item_lines = '\n'.join(
+            f"  - {it['form_name']} / {it['unit'] or '—'} / {it['unit_detail'] or '—'} / {it['quantity']}개"
             for it in items
         )
-
-        body_html = f"""<div style="font-family:sans-serif;max-width:540px;margin:0 auto">
-  <div style="background:#cc1625;padding:16px 20px;border-radius:8px 8px 0 0">
-    <h2 style="margin:0;color:#fff;font-size:16px">운송양식 신청 {status_label} 안내</h2>
-  </div>
-  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px">
-    <p style="margin:0 0 4px">안녕하세요, <strong>{req["branch_name"]}</strong>.</p>
-    <p style="margin:0 0 16px">신청 번호 <strong>#{req_id}</strong>에 대한 처리 결과를 안내드립니다.</p>
-    <div style="background:#f9fafb;border-left:4px solid {status_color};padding:10px 14px;border-radius:4px;margin-bottom:16px">
-      <p style="margin:0;font-size:15px"><strong>처리 결과: <span style="color:{status_color}">{status_label}</span></strong></p>
-      {reason_html}
-    </div>
-    <h4 style="margin:0 0 8px;font-size:13px;color:#6b7280">신청 항목</h4>
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr style="background:#f3f4f6">
-          <th style="padding:6px 10px;text-align:left">양식명</th>
-          <th style="padding:6px 10px;text-align:center;width:80px">단위</th>
-          <th style="padding:6px 10px;text-align:center;width:100px">단위 상세</th>
-          <th style="padding:6px 10px;text-align:center;width:60px">수량</th>
-        </tr>
-      </thead>
-      <tbody>{rows_html}</tbody>
-    </table>
-    <p style="margin:20px 0 0;font-size:12px;color:#9ca3af">본 메일은 ZEGO 시스템에서 자동 발송되었습니다.</p>
-  </div>
-</div>"""
-
-        try:
-            msg_obj = MIMEMultipart('alternative')
-            msg_obj['Subject'] = mail_subject
-            msg_obj['From']    = MAIL_FROM
-            msg_obj['To']      = branch_email
-            msg_obj.attach(MIMEText(body_html, 'html', 'utf-8'))
-            if MAIL_HOST and MAIL_USER:
-                with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as srv:
-                    srv.ehlo(); srv.starttls(); srv.ehlo()
-                    srv.login(MAIL_USER, MAIL_PASS)
-                    srv.sendmail(MAIL_FROM, [branch_email], msg_obj.as_string())
-                app.logger.info(f'[form_supply] 메일 발송: {branch_email} ({action})')
-            else:
-                app.logger.warning('[form_supply] MAIL_HOST/MAIL_USER 미설정 — 메일 생략')
-        except Exception as _mail_err:
-            app.logger.error(f'[form_supply] 메일 발송 실패: {_mail_err}')
+        if action == 'approved':
+            mail_body = (
+                f"{req['branch_name']} 지점의 운송양식 신청 #{req_id}이 승인되었습니다.\n\n"
+                + (f"전달사항: {approve_reason}\n\n" if approve_reason else '')
+                + f"[신청 항목]\n{item_lines}\n\n"
+                f"ZEGO에 로그인하여 내 신청 내역에서 확인해 주세요."
+            )
+        else:
+            mail_body = (
+                f"{req['branch_name']} 지점의 운송양식 신청 #{req_id}이 반려되었습니다.\n\n"
+                f"반려 사유: {reject_reason}\n\n"
+                f"[신청 항목]\n{item_lines}\n\n"
+                f"ZEGO에 로그인하여 내 신청 내역에서 확인해 주세요."
+            )
+        send_mail([branch_email], mail_subject, mail_body)
     # ─────────────────────────────────────────────────────────────────
 
     log_action(f'운송양식_{action}', f'#{req_id} {req["branch_name"]}')
