@@ -1273,6 +1273,13 @@ def init_db():
                 conn.execute('UPDATE form_types SET sort_order=%s WHERE name=%s', (order, name))
             for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate,))
+            for _deactivate in (
+                '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
+                '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
+                '총기인수인계서 (Firearm handover form)',
+                'NOTOC',
+            ):
+                conn.execute('UPDATE form_types SET is_active=FALSE WHERE name=%s', (_deactivate,))
             # 신규 지점 추가 (이미 있으면 무시)
             for _bc, _bn, _bt in [('KOJ', '가고시마', 'INTL'), ('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
                 conn.execute(
