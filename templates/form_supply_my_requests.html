@@ -132,6 +132,8 @@
                           {% if it.item_reject_reason %}
                           <div style="color:#b91c1c;font-size:.72rem">{{ it.item_reject_reason }}</div>
                           {% endif %}
+                        {% elif it.item_status == 'pending' %}
+                          <span style="color:#b45309;font-size:.78rem;font-weight:600">● 대기</span>
                         {% else %}
                           <span class="text-muted">—</span>
                         {% endif %}

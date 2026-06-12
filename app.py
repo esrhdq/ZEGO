@@ -5565,12 +5565,16 @@ def form_supply_partial_action(req_id):
         f'SELECT item_status FROM form_supply_request_items WHERE request_id={ph}', (req_id,)
     ).fetchall()]
 
+    has_approved = any(s == 'approved' for s in all_statuses)
+    has_rejected = any(s == 'rejected' for s in all_statuses)
     if all(s == 'approved' for s in all_statuses):
         new_status = 'approved'
     elif all(s == 'rejected' for s in all_statuses):
         new_status = 'rejected'
-    else:
+    elif has_approved or has_rejected:
         new_status = 'partial'
+    else:
+        new_status = 'pending'
 
     conn.execute(
         f"UPDATE form_supply_requests "
