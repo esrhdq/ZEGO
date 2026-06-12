@@ -37,8 +37,8 @@
       --status-low:   #D97706;
       --status-empty: #DC2626;
       /* ── Warm Minimal 레이아웃 ── */
-      --bg:           #8C8C8C;
-      --card-bg:      #F0F0F0;
+      --bg:           #FAF9F7;
+      --card-bg:      #FFFFFF;
       --border:       #F0EFED;
       --border-md:    #E7E5E4;
       --text:         #1C1917;
@@ -46,13 +46,13 @@
       --text-muted:   #A8A29E;
       --text-faint:   #C7C3C0;
       /* 사이드바 */
-      --sidebar-bg:   #808080;
-      --sidebar-border: #6E6E6E;
-      --sidebar-text: #000000;
-      --sidebar-muted: #000000;
-      --sidebar-hover: #949494;
+      --sidebar-bg:   #EDEBE5;
+      --sidebar-border: #D9D6CF;
+      --sidebar-text: #57534E;
+      --sidebar-muted: #A8A29E;
+      --sidebar-hover: #E2DED8;
       --sidebar-active-bg: #FFF1F2;
-      --sidebar-active-text: #000000;
+      --sidebar-active-text: #CC1625;
     }
 
     * { font-family: 'Pretendard', -apple-system, sans-serif; box-sizing: border-box; }
@@ -94,7 +94,7 @@
     .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 4px; }
 
     .section-label {
-      color: #000000;
+      color: var(--text-faint);
       font-size: .58rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: .14em;
       padding: 14px 18px 4px;
@@ -110,16 +110,16 @@
       transition: all .14s; gap: 9px;
       position: relative; text-decoration: none;
     }
-    .sidebar .nav-link i { width: 16px; text-align: center; font-size: .82rem; flex-shrink: 0; color: #D20015; transition: color .14s; }
-    .sidebar .nav-link:hover { background: var(--sidebar-hover); color: #000000; }
-    .sidebar .nav-link:hover i { color: #D20015; }
+    .sidebar .nav-link i { width: 16px; text-align: center; font-size: .82rem; flex-shrink: 0; color: var(--text-faint); transition: color .14s; }
+    .sidebar .nav-link:hover { background: var(--sidebar-hover); color: var(--text); }
+    .sidebar .nav-link:hover i { color: var(--text-secondary); }
     .sidebar .nav-link.active {
       background: var(--sidebar-active-bg);
       color: var(--sidebar-active-text);
       font-weight: 700;
-      box-shadow: inset 3px 0 0 #D20015;
+      box-shadow: inset 3px 0 0 var(--brand);
     }
-    .sidebar .nav-link.active i { color: #D20015; }
+    .sidebar .nav-link.active i { color: var(--brand); }
 
     .sidebar-footer {
       padding: 8px 8px 10px;
@@ -155,7 +155,7 @@
     .main-content { margin-left: 240px; min-height: 100vh; display: flex; flex-direction: column; }
 
     .topbar {
-      background: rgba(140,140,140,.96);
+      background: rgba(250,249,247,.96);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
       padding: 0 28px; height: 58px;
@@ -197,17 +197,16 @@
     ════════════════════════════════════════ */
     .card {
       border: 1px solid var(--border);
-      box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 3px 10px rgba(0,0,0,.08);
-      border-radius: 18px; background: var(--card-bg) !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,.03), 0 3px 10px rgba(0,0,0,.04);
+      border-radius: 18px; background: var(--card-bg);
     }
     .card-header {
       border-bottom: 1px solid var(--border);
       border-radius: 18px 18px 0 0 !important;
-      background: var(--card-bg) !important; padding: 14px 20px;
+      background: #fff; padding: 14px 20px;
       font-size: .9rem; color: var(--text);
     }
     .card-body { padding: 20px; }
-    .card .bg-white, .card-header.bg-white { background: var(--card-bg) !important; }
 
     /* 통계 카드 */
     .stat-card { transition: transform .18s, box-shadow .18s; }
@@ -260,12 +259,12 @@
     .table thead th {
       font-size: .7rem; font-weight: 700; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: .06em;
-      white-space: nowrap; background: #F0F0F0; padding: 10px 14px;
+      white-space: nowrap; background: #FAF9F7; padding: 10px 14px;
       border-bottom: 1px solid var(--border);
     }
     .table tbody td { padding: 12px 14px; vertical-align: middle; border-color: var(--border); color: var(--text); }
     .table-hover tbody tr { transition: background .1s; }
-    .table-hover tbody tr:hover { background: #F0F0F0 !important; }
+    .table-hover tbody tr:hover { background: #FAF9F7 !important; }
 
     /* ════════════════════════════════════════
        폼 & 버튼
@@ -548,7 +547,7 @@
         <div class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:320px;padding:0;border-radius:12px;overflow:hidden"
              id="notifDropdown">
           <div class="d-flex align-items-center justify-content-between px-3 py-2"
-               style="border-bottom:1px solid var(--border);background:#8C8C8C">
+               style="border-bottom:1px solid var(--border);background:#FAF9F7">
             <span style="font-size:.82rem;font-weight:700;color:var(--text)">
               알림 {% if notif_count > 0 %}<span class="badge" style="background:var(--warning)">{{ notif_count }}</span>{% endif %}
             </span>
