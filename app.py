@@ -5370,10 +5370,11 @@ def form_supply_matrix():
     ).fetchall()
 
     rows = conn.execute(
-        'SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title '
-        'FROM form_supply_request_items i '
-        'JOIN form_supply_requests r ON r.id = i.request_id '
-        'ORDER BY r.created_at'
+        "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
+        "FROM form_supply_request_items i "
+        "JOIN form_supply_requests r ON r.id = i.request_id "
+        "WHERE r.status = 'approved' "
+        "ORDER BY r.created_at"
     ).fetchall()
     conn.close()
 

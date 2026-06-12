@@ -118,14 +118,10 @@
 </div>
 {% endif %}
 
-<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-  <div class="d-flex gap-1 flex-wrap" id="statusFilter">
-    <button class="btn btn-xs btn-outline-secondary active" data-s="ALL">전체</button>
-    <button class="btn btn-xs" style="background:#fef3c7;border:1.5px solid #d97706;color:#92400e" data-s="pending">대기</button>
-    <button class="btn btn-xs" style="background:#d1fae5;border:1.5px solid #059669;color:#065f46" data-s="approved">승인</button>
-    <button class="btn btn-xs" style="background:#fee2e2;border:1.5px solid #dc2626;color:#991b1b" data-s="rejected">반려</button>
-  </div>
-  <small class="text-muted ms-2">* 색상: <span style="color:#b45309;font-weight:700">대기</span> / <span style="color:#15803d;font-weight:700">승인</span> / <span style="color:#b91c1c;font-weight:700">반려</span></small>
+<div class="mb-3">
+  <span class="badge rounded-pill" style="background:#d1fae5;color:#065f46;font-size:.8rem;padding:5px 12px">
+    <i class="fa-solid fa-check me-1"></i>승인된 신청 건만 표시
+  </span>
 </div>
 
 <div class="matrix-wrap">
@@ -168,7 +164,6 @@
             {% set dom_total.v = dom_total.v + e.qty %}
             <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
               <span class="qty">{{ e.qty }}</span>
-              <span class="datel">({{ e.date }})</span>
             </span>
           {% endfor %}
         </td>
@@ -182,7 +177,6 @@
             {% set intl_total.v = intl_total.v + e.qty %}
             <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
               <span class="qty">{{ e.qty }}</span>
-              <span class="datel">({{ e.date }})</span>
             </span>
           {% endfor %}
         </td>
@@ -213,24 +207,6 @@ function switchPeriod(btn) {
   document.querySelectorAll('.matrix-body').forEach(tb => {
     tb.classList.toggle('d-none', tb.dataset.period !== p);
   });
-  // 상태 필터 재적용
-  var s = (document.querySelector('#statusFilter button.active') || {}).dataset || {};
-  applyStatusFilter(s.s || 'ALL');
 }
-
-// 상태 필터
-function applyStatusFilter(s) {
-  document.querySelectorAll('.matrix-body:not(.d-none) .cell-entry').forEach(el => {
-    el.style.display = (s === 'ALL' || el.dataset.status === s) ? '' : 'none';
-  });
-}
-
-document.querySelectorAll('#statusFilter button').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('#statusFilter button').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    applyStatusFilter(this.dataset.s);
-  });
-});
 </script>
 {% endblock %}
