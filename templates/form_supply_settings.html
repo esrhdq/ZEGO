@@ -297,10 +297,8 @@ document.querySelectorAll('.setting-del-btn').forEach(function(btn) {
     fetch('/admin/form-supply/settings/' + btn.dataset.id + '/delete', {
       method: 'POST', headers: {'Content-Type': 'application/json'}
     }).then(function(r) { return r.json(); }).then(function(d) {
-      if (d.ok) {
-        var row = document.getElementById('setting-row-' + btn.dataset.id);
-        if (row) row.remove();
-      } else { alert('삭제 실패: ' + (d.error || '')); }
+      if (d.ok) { location.reload(); }
+      else { alert('삭제 실패: ' + (d.error || '')); }
     }).catch(function() { alert('네트워크 오류'); });
   });
 });

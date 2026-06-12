@@ -4977,39 +4977,47 @@ def form_supply_settings():
 @login_required
 def form_supply_setting_edit(setting_id):
     if session.get('role') != 'admin':
-        return {'ok': False, 'error': '권한 없음'}, 403
+        return jsonify({'ok': False, 'error': '권한 없음'}), 403
     data = request.get_json(force=True)
     title        = data.get('title', '').strip()
     period_start = data.get('period_start', '').strip()
     period_end   = data.get('period_end', '').strip()
     is_enabled   = 1 if data.get('is_enabled') else 0
     if not period_start or not period_end or period_start > period_end:
-        return {'ok': False, 'error': '날짜가 올바르지 않습니다.'}, 400
+        return jsonify({'ok': False, 'error': '날짜가 올바르지 않습니다.'}), 400
     ph = '%s' if not USE_SQLITE else '?'
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
-    conn = get_db()
-    conn.execute(
-        f'UPDATE form_supply_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, updated_at={now_sql} WHERE id={ph}',
-        (title, period_start, period_end, is_enabled, setting_id)
-    )
-    conn.commit()
-    conn.close()
-    log_action('운송양식_신청기간_수정', f'#{setting_id} [{title}] {period_start}~{period_end}')
-    return {'ok': True}
+    try:
+        conn = get_db()
+        conn.execute(
+            f'UPDATE form_supply_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, updated_at={now_sql} WHERE id={ph}',
+            (title, period_start, period_end, is_enabled, setting_id)
+        )
+        conn.commit()
+        conn.close()
+        log_action('운송양식_신청기간_수정', f'#{setting_id} [{title}] {period_start}~{period_end}')
+        return jsonify({'ok': True})
+    except Exception as e:
+        app.logger.error(f'[setting_edit] {e}')
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/admin/form-supply/settings/<int:setting_id>/delete', methods=['POST'])
 @login_required
 def form_supply_setting_delete(setting_id):
     if session.get('role') != 'admin':
-        return {'ok': False, 'error': '권한 없음'}, 403
+        return jsonify({'ok': False, 'error': '권한 없음'}), 403
     ph = '%s' if not USE_SQLITE else '?'
-    conn = get_db()
-    conn.execute(f'DELETE FROM form_supply_settings WHERE id={ph}', (setting_id,))
-    conn.commit()
-    conn.close()
-    log_action('운송양식_신청기간_삭제', f'#{setting_id}')
-    return {'ok': True}
+    try:
+        conn = get_db()
+        conn.execute(f'DELETE FROM form_supply_settings WHERE id={ph}', (setting_id,))
+        conn.commit()
+        conn.close()
+        log_action('운송양식_신청기간_삭제', f'#{setting_id}')
+        return jsonify({'ok': True})
+    except Exception as e:
+        app.logger.error(f'[setting_delete] {e}')
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/admin/form-type/<int:form_id>/memo', methods=['POST'])
