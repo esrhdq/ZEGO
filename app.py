@@ -5687,6 +5687,271 @@ def form_supply_matrix():
                            period_titles=period_titles)
 
 
+@app.route('/admin/form-supply/matrix/export')
+@login_required
+def form_supply_matrix_export():
+    """매트릭스 엑셀 다운로드"""
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    if session.get('role') != 'admin':
+        flash('관리자만 접근 가능합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    period_param = request.args.get('period', 'ALL').strip()
+
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+
+    form_types = conn.execute(
+        'SELECT id, name FROM form_types WHERE is_active ORDER BY sort_order'
+    ).fetchall()
+    branches_dom  = conn.execute(
+        "SELECT id, code, name FROM branches WHERE type='DOM' ORDER BY code"
+    ).fetchall()
+    branches_intl = conn.execute(
+        "SELECT id, code, name FROM branches WHERE type='INTL' ORDER BY code"
+    ).fetchall()
+    rows = conn.execute(
+        "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
+        "FROM form_supply_request_items i "
+        "JOIN form_supply_requests r ON r.id = i.request_id "
+        "WHERE (r.status = 'approved' OR (r.status = 'partial' AND i.item_status = 'approved')) "
+        "ORDER BY r.created_at"
+    ).fetchall()
+    settings_hist = conn.execute(
+        "SELECT title, period_start, period_end FROM form_supply_settings "
+        "WHERE title IS NOT NULL AND title != '' ORDER BY period_start"
+    ).fetchall()
+    conn.close()
+
+    settings_list = [dict(s) for s in settings_hist]
+
+    def resolve_period(row):
+        pt = (row['period_title'] or '').strip()
+        if pt:
+            return pt
+        date_str = str(row['created_at'] or '')[:10]
+        if not date_str:
+            return ''
+        for s in settings_list:
+            ps = str(s['period_start'])[:10]
+            pe = str(s['period_end'])[:10]
+            if ps <= date_str <= pe and s['title']:
+                return s['title']
+        return ''
+
+    seen_t: set = set()
+    period_titles: list = []
+    resolved_rows = []
+    for row in rows:
+        t = resolve_period(row)
+        resolved_rows.append((row, t))
+        if t and t not in seen_t:
+            seen_t.add(t)
+            period_titles.append(t)
+
+    def build_pivot(filtered_pairs):
+        p = {ft['id']: {} for ft in form_types}
+        for row, _ in filtered_pairs:
+            fid = row['form_type_id']
+            bid = row['branch_id']
+            if fid not in p:
+                continue
+            if bid not in p[fid]:
+                p[fid][bid] = 0
+            p[fid][bid] += row['quantity']
+        return p
+
+    if period_param == 'ALL':
+        pivot = build_pivot(resolved_rows)
+        export_periods = period_titles
+    else:
+        pivot = build_pivot([(r, rt) for r, rt in resolved_rows if rt == period_param])
+        export_periods = [period_param] if period_param in period_titles else []
+
+    # ── 스타일 정의 ──────────────────────────────────────────────
+    def _fill(hex_color):
+        return PatternFill('solid', fgColor=hex_color.lstrip('#'))
+
+    def _font(bold=False, color='000000', size=9):
+        return Font(bold=bold, color=color, size=size)
+
+    def _center():
+        return Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    def _left():
+        return Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+    thin = Side(style='thin', color='D1D5DB')
+    border_thin = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    NAVY  = '1E293B'; WHITE = 'FFFFFF'
+    BLUE  = '1D4ED8'; BLUE2 = '2563EB'
+    PURP  = '6D28D9'; PURP2 = '7C3AED'
+    GRAY  = 'F8FAFC'; GRAY2 = '334155'
+    DIVBG = '1E293B'
+
+    # ── 워크북 생성 ──────────────────────────────────────────────
+    wb = Workbook()
+    ws = wb.active
+    sheet_title = period_param if period_param != 'ALL' else '전체 기간'
+    ws.title = sheet_title[:31]
+
+    dom_cnt  = len(branches_dom)
+    intl_cnt = len(branches_intl)
+    total_data_cols = dom_cnt + 1 + intl_cnt + 1  # 소계 포함
+
+    # 열 너비
+    ws.column_dimensions['A'].width = 30
+    for col_idx in range(2, 2 + total_data_cols):
+        ws.column_dimensions[get_column_letter(col_idx)].width = 9
+
+    # ── 행 1: 그룹 헤더 (양식명 | 국내 | 국제) ─────────────────
+    ws.row_dimensions[1].height = 20
+    cell = ws.cell(1, 1, '양식명')
+    cell.fill = _fill(NAVY); cell.font = _font(True, WHITE, 9)
+    cell.alignment = _center(); cell.border = border_thin
+
+    dom_start_col = 2
+    if dom_cnt > 0:
+        dom_end_col = dom_start_col + dom_cnt  # 소계 포함
+        ws.merge_cells(start_row=1, start_column=dom_start_col,
+                       end_row=1,   end_column=dom_end_col)
+        c = ws.cell(1, dom_start_col, '국내')
+        c.fill = _fill(BLUE); c.font = _font(True, WHITE, 9)
+        c.alignment = _center(); c.border = border_thin
+
+    intl_start_col = dom_start_col + dom_cnt + 1
+    if intl_cnt > 0:
+        intl_end_col = intl_start_col + intl_cnt  # 소계 포함
+        ws.merge_cells(start_row=1, start_column=intl_start_col,
+                       end_row=1,   end_column=intl_end_col)
+        c = ws.cell(1, intl_start_col, '국제')
+        c.fill = _fill(PURP); c.font = _font(True, WHITE, 9)
+        c.alignment = _center(); c.border = border_thin
+
+    # ── 행 2: 지점 코드 헤더 ────────────────────────────────────
+    ws.row_dimensions[2].height = 18
+    cell = ws.cell(2, 1, '')
+    cell.fill = _fill(NAVY); cell.border = border_thin
+
+    col = dom_start_col
+    for b in branches_dom:
+        c = ws.cell(2, col, b['code'])
+        c.fill = _fill(BLUE2); c.font = _font(True, WHITE, 8)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    # 국내 소계
+    c = ws.cell(2, col, '소계')
+    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
+    c.alignment = _center(); c.border = border_thin
+    col += 1
+
+    for b in branches_intl:
+        c = ws.cell(2, col, b['code'])
+        c.fill = _fill(PURP2); c.font = _font(True, WHITE, 8)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    # 국제 소계
+    c = ws.cell(2, col, '소계')
+    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
+    c.alignment = _center(); c.border = border_thin
+
+    # ── 데이터 행 ────────────────────────────────────────────────
+    cur_row = 3
+    bid_dom  = [b['id'] for b in branches_dom]
+    bid_intl = [b['id'] for b in branches_intl]
+
+    def write_data_rows(ws_ref, pv, start_row):
+        r = start_row
+        for ft in form_types:
+            ws_ref.row_dimensions[r].height = 15
+            ft_data = pv.get(ft['id'], {})
+
+            # 양식명
+            c = ws_ref.cell(r, 1, ft['name'])
+            c.font = _font(False, '374151', 9); c.alignment = _left()
+            c.border = border_thin
+
+            col = dom_start_col
+            dom_total = 0
+            for bid in bid_dom:
+                qty = ft_data.get(bid, 0)
+                dom_total += qty
+                c = ws_ref.cell(r, col, qty if qty else '')
+                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
+                c.alignment = _center(); c.border = border_thin
+                col += 1
+            # 국내 소계
+            c = ws_ref.cell(r, col, dom_total if dom_total else '')
+            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
+            c.alignment = _center(); c.border = border_thin
+            col += 1
+
+            intl_total = 0
+            for bid in bid_intl:
+                qty = ft_data.get(bid, 0)
+                intl_total += qty
+                c = ws_ref.cell(r, col, qty if qty else '')
+                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
+                c.alignment = _center(); c.border = border_thin
+                col += 1
+            # 국제 소계
+            c = ws_ref.cell(r, col, intl_total if intl_total else '')
+            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
+            c.alignment = _center(); c.border = border_thin
+
+            r += 1
+        return r
+
+    if period_param == 'ALL' and export_periods:
+        for t in export_periods:
+            # 기간 구분 행
+            ws.row_dimensions[cur_row].height = 16
+            ws.merge_cells(start_row=cur_row, start_column=1,
+                           end_row=cur_row,   end_column=1 + total_data_cols)
+            c = ws.cell(cur_row, 1, f'  {t}')
+            c.fill = _fill(DIVBG); c.font = _font(True, WHITE, 9)
+            c.alignment = _left(); c.border = border_thin
+            cur_row += 1
+
+            period_pairs = [(r, rt) for r, rt in resolved_rows if rt == t]
+            period_pivot = build_pivot(period_pairs)
+            cur_row = write_data_rows(ws, period_pivot, cur_row)
+    elif period_param == 'ALL':
+        cur_row = write_data_rows(ws, pivot, cur_row)
+    else:
+        # 단일 기간 — 기간 제목 한 줄
+        if export_periods:
+            ws.row_dimensions[cur_row].height = 16
+            ws.merge_cells(start_row=cur_row, start_column=1,
+                           end_row=cur_row,   end_column=1 + total_data_cols)
+            c = ws.cell(cur_row, 1, f'  {export_periods[0]}')
+            c.fill = _fill(DIVBG); c.font = _font(True, WHITE, 9)
+            c.alignment = _left(); c.border = border_thin
+            cur_row += 1
+        cur_row = write_data_rows(ws, pivot, cur_row)
+
+    # 1행 고정 (헤더 2행 고정)
+    ws.freeze_panes = 'B3'
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    from urllib.parse import quote
+    safe_title = quote(f'양식신청현황_{sheet_title}.xlsx')
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'양식신청현황_{sheet_title}.xlsx'
+    )
+
+
+
 if __name__ == '__main__':
     pass
     _port = int(os.environ.get('PORT', '5000'))
