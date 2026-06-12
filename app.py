@@ -289,6 +289,16 @@ def hash_pw(pw):
     return generate_password_hash(pw, method='pbkdf2:sha256:600000')
 
 
+_MAIL_FOOTER_TXT = (
+    '\n\n※ 본 메일은 발신전용입니다. '
+    '문의사항은 해당 담당자에게 직접 연락하여 주시기 바랍니다.'
+)
+_MAIL_FOOTER_HTML = (
+    '<p style="margin-top:20px;font-size:12px;color:#cc1625;">'
+    '※ 본 메일은 발신전용입니다. '
+    '문의사항은 해당 담당자에게 직접 연락하여 주시기 바랍니다.</p>'
+)
+
 def send_mail(to_list, subject, body):
     """to_list: 이메일 주소 리스트. MAIL_HOST 미설정 시 무시."""
     if not MAIL_HOST or not MAIL_USER or not to_list:
@@ -301,7 +311,9 @@ def send_mail(to_list, subject, body):
         msg['Subject'] = subject
         msg['From']    = MAIL_FROM
         msg['To']      = ', '.join(recipients)
-        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        msg.attach(MIMEText(body + _MAIL_FOOTER_TXT, 'plain', 'utf-8'))
+        body_html = '<div style="font-family:sans-serif;font-size:14px;white-space:pre-wrap">' + body.replace('\n', '<br>') + '</div>' + _MAIL_FOOTER_HTML
+        msg.attach(MIMEText(body_html, 'html', 'utf-8'))
         with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
             server.ehlo()
             server.starttls()
