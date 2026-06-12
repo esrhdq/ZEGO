@@ -5323,6 +5323,20 @@ def form_supply_admin_requests():
         return redirect(url_for('dashboard'))
 
     conn = get_db()
+
+    # lazy migration: item_status / item_reject_reason
+    if USE_SQLITE:
+        cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_request_items)').fetchall()]
+        if 'item_status' not in cols:
+            conn.execute("ALTER TABLE form_supply_request_items ADD COLUMN item_status TEXT NOT NULL DEFAULT 'pending'")
+        if 'item_reject_reason' not in cols:
+            conn.execute("ALTER TABLE form_supply_request_items ADD COLUMN item_reject_reason TEXT NOT NULL DEFAULT ''")
+        conn.commit()
+    else:
+        conn.execute("ALTER TABLE form_supply_request_items ADD COLUMN IF NOT EXISTS item_status TEXT NOT NULL DEFAULT 'pending'")
+        conn.execute("ALTER TABLE form_supply_request_items ADD COLUMN IF NOT EXISTS item_reject_reason TEXT NOT NULL DEFAULT ''")
+        conn.commit()
+
     reqs = conn.execute(
         'SELECT r.*, b.code AS branch_code, b.name AS branch_name '
         'FROM form_supply_requests r '
@@ -5333,7 +5347,9 @@ def form_supply_admin_requests():
     result = []
     for r in reqs:
         items = conn.execute(
-            'SELECT i.form_type_id, i.quantity, f.name AS form_name, f.unit, f.unit_detail '
+            'SELECT i.id AS item_id, i.form_type_id, i.quantity, '
+            'i.item_status, i.item_reject_reason, '
+            'f.name AS form_name, f.unit, f.unit_detail '
             'FROM form_supply_request_items i '
             'JOIN form_types f ON f.id = i.form_type_id '
             'WHERE i.request_id=%s ORDER BY f.name',
@@ -5402,6 +5418,11 @@ def form_supply_admin_action(req_id):
          approve_reason if action == 'approved' else '',
          session['username'], req_id)
     )
+    # 항목별 item_status 일괄 동기화
+    conn.execute(
+        f"UPDATE form_supply_request_items SET item_status={ph} WHERE request_id={ph}",
+        (action, req_id)
+    )
 
     if action == 'approved':
         notif = f"[운송양식 신청 승인] 신청 #{req_id}가 승인되었습니다."
@@ -5456,6 +5477,123 @@ def form_supply_admin_action(req_id):
     return redirect(url_for('form_supply_admin_requests'))
 
 
+@app.route('/admin/form-supply/requests/<int:req_id>/partial', methods=['POST'])
+@login_required
+def form_supply_partial_action(req_id):
+    """관리자 — 항목별 부분 승인/반려"""
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'ok': False, 'error': '잘못된 요청'}), 400
+
+    items_data    = data.get('items', [])
+    approve_reason = data.get('approve_reason', '').strip()
+    if not items_data:
+        return jsonify({'ok': False, 'error': '항목 데이터 없음'}), 400
+
+    conn = get_db()
+    ph      = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    req = conn.execute(
+        f'SELECT r.*, b.name AS branch_name, b.email AS branch_email '
+        f'FROM form_supply_requests r JOIN branches b ON b.id = r.branch_id '
+        f'WHERE r.id={ph}', (req_id,)
+    ).fetchone()
+    if not req:
+        conn.close(); return jsonify({'ok': False, 'error': '신청 없음'}), 404
+    if req['status'] not in ('pending', 'partial'):
+        conn.close(); return jsonify({'ok': False, 'error': '이미 처리된 신청'}), 400
+
+    for it in items_data:
+        iid     = it.get('id')
+        istatus = it.get('status', 'approved')
+        ireason = it.get('reason', '').strip()
+        if istatus not in ('approved', 'rejected') or not iid:
+            continue
+        conn.execute(
+            f"UPDATE form_supply_request_items "
+            f"SET item_status={ph}, item_reject_reason={ph} "
+            f"WHERE id={ph} AND request_id={ph}",
+            (istatus, ireason, iid, req_id)
+        )
+
+    all_statuses = [r['item_status'] for r in conn.execute(
+        f'SELECT item_status FROM form_supply_request_items WHERE request_id={ph}', (req_id,)
+    ).fetchall()]
+
+    if all(s == 'approved' for s in all_statuses):
+        new_status = 'approved'
+    elif all(s == 'rejected' for s in all_statuses):
+        new_status = 'rejected'
+    else:
+        new_status = 'partial'
+
+    conn.execute(
+        f"UPDATE form_supply_requests "
+        f"SET status={ph}, approve_reason={ph}, processed_by={ph}, processed_at={now_sql}, updated_at={now_sql} "
+        f"WHERE id={ph}",
+        (new_status, approve_reason, session['username'], req_id)
+    )
+
+    approved_cnt = all_statuses.count('approved')
+    rejected_cnt = all_statuses.count('rejected')
+    if new_status == 'approved':
+        notif = f"[운송양식 신청 승인] 신청 #{req_id}가 승인되었습니다."
+    elif new_status == 'rejected':
+        notif = f"[운송양식 신청 반려] 신청 #{req_id}가 반려되었습니다."
+    else:
+        notif = (f"[운송양식 부분승인] 신청 #{req_id} — "
+                 f"승인 {approved_cnt}종 / 반려 {rejected_cnt}종")
+    conn.execute(
+        f"INSERT INTO notifications (branch_id, message) VALUES ({ph},{ph})",
+        (req['branch_id'], notif)
+    )
+    conn.commit()
+
+    branch_email = (req.get('branch_email') or '').strip()
+    if branch_email:
+        approved_items = conn.execute(
+            f"SELECT i.quantity, ft.name AS form_name "
+            f"FROM form_supply_request_items i "
+            f"JOIN form_types ft ON ft.id = i.form_type_id "
+            f"WHERE i.request_id={ph} AND i.item_status='approved' ORDER BY ft.sort_order",
+            (req_id,)
+        ).fetchall()
+        rejected_items = conn.execute(
+            f"SELECT i.quantity, i.item_reject_reason, ft.name AS form_name "
+            f"FROM form_supply_request_items i "
+            f"JOIN form_types ft ON ft.id = i.form_type_id "
+            f"WHERE i.request_id={ph} AND i.item_status='rejected' ORDER BY ft.sort_order",
+            (req_id,)
+        ).fetchall()
+
+        subj_map = {'approved': '승인', 'rejected': '반려', 'partial': '부분승인'}
+        mail_subject = f"[이스타항공] 운송양식 신청 #{req_id} {subj_map[new_status]} 안내"
+        lines = [f"{req['branch_name']} 지점 운송양식 신청 #{req_id} 처리 결과입니다.\n"]
+        if approve_reason:
+            lines.append(f"전달사항: {approve_reason}\n")
+        if approved_items:
+            lines.append("[✔ 승인 항목]")
+            for it in approved_items:
+                lines.append(f"  {it['form_name']} / {it['quantity']}개")
+            lines.append("")
+        if rejected_items:
+            lines.append("[✘ 반려 항목]")
+            for it in rejected_items:
+                rsn = f" — {it['item_reject_reason']}" if it['item_reject_reason'] else ''
+                lines.append(f"  {it['form_name']} / {it['quantity']}개{rsn}")
+            lines.append("")
+        lines.append("ZEGO에 로그인하여 내 신청 내역에서 확인해 주세요.")
+        send_mail([branch_email], mail_subject, '\n'.join(lines))
+
+    log_action('운송양식_부분승인', f'#{req_id} → {new_status}')
+    conn.close()
+    return jsonify({'ok': True, 'status': new_status})
+
+
 @app.route('/admin/form-supply/matrix')
 @login_required
 def form_supply_matrix():
@@ -5481,7 +5619,7 @@ def form_supply_matrix():
         "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
         "FROM form_supply_request_items i "
         "JOIN form_supply_requests r ON r.id = i.request_id "
-        "WHERE r.status = 'approved' "
+        "WHERE (r.status = 'approved' OR (r.status = 'partial' AND i.item_status = 'approved')) "
         "ORDER BY r.created_at"
     ).fetchall()
 

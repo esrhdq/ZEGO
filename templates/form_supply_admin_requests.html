@@ -21,6 +21,7 @@
   .status-pending   { background:var(--warning-bg); color:var(--warning); }
   .status-approved  { background:var(--success-bg); color:var(--success); }
   .status-rejected  { background:var(--danger-bg);  color:var(--danger); }
+  .status-partial   { background:#ede9fe; color:#6d28d9; }
 
   .filter-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
   .filter-btn { font-size:.72rem; padding:3px 12px; border-radius:20px; border:1.5px solid var(--border-md);
@@ -30,6 +31,30 @@
   .item-mini-table { width:100%; font-size:.78rem; }
   .item-mini-table th { background:var(--bg); padding:6px 10px; font-weight:600; color:var(--text-muted); }
   .item-mini-table td { padding:6px 10px; border-top:1px solid var(--border); }
+
+  /* 부분승인 모달 */
+  .partial-item-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+  .partial-item-row:last-child { border-bottom:none; }
+  .partial-item-name { flex:1; font-weight:600; color:var(--text); }
+  .partial-item-qty  { font-size:.75rem; color:#888; white-space:nowrap; }
+  .partial-toggle { display:flex; gap:4px; }
+  .partial-toggle label { cursor:pointer; }
+  .partial-toggle input[type=radio] { display:none; }
+  .partial-toggle .tog-btn {
+    font-size:.68rem; padding:2px 9px; border-radius:12px; border:1.5px solid var(--border-md);
+    background:var(--bg); color:var(--text-secondary); transition:all .12s; user-select:none;
+  }
+  .partial-toggle input[value=approved]:checked + .tog-btn { background:#dcfce7; color:#15803d; border-color:#86efac; }
+  .partial-toggle input[value=rejected]:checked + .tog-btn { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
+  .partial-reason-input { font-size:.75rem; margin-top:4px; border-radius:6px; padding:3px 7px;
+                          border:1px solid var(--border-md); width:100%; display:none; }
+  .partial-reason-input.show { display:block; }
+
+  /* 항목별 상태 표시 */
+  .item-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+  .item-status-dot.approved { background:#22c55e; }
+  .item-status-dot.rejected { background:#ef4444; }
+  .item-status-dot.pending  { background:#f59e0b; }
 </style>
 
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -52,9 +77,10 @@
 {% endif %}
 
 <div class="filter-bar">
-  <button class="filter-btn active" data-filter="ALL" onclick="filterReqs(this)">전체</button>
+  <button class="filter-btn active" data-filter="ALL"      onclick="filterReqs(this)">전체</button>
   <button class="filter-btn" data-filter="pending"  onclick="filterReqs(this)">대기중</button>
   <button class="filter-btn" data-filter="approved" onclick="filterReqs(this)">승인</button>
+  <button class="filter-btn" data-filter="partial"  onclick="filterReqs(this)">부분승인</button>
   <button class="filter-btn" data-filter="rejected" onclick="filterReqs(this)">반려</button>
 </div>
 
@@ -76,8 +102,8 @@
           <th>신청일</th>
           <th class="text-center">항목수</th>
           <th>처리자</th>
-          <th>처리일/반려사유</th>
-          <th style="text-align:center;width:140px">액션</th>
+          <th>처리일/사유</th>
+          <th style="text-align:center;width:180px">액션</th>
         </tr>
       </thead>
       <tbody>
@@ -95,6 +121,8 @@
               <span class="status-badge status-approved"><i class="fa-solid fa-check me-1"></i>승인</span>
             {% elif r.status == 'rejected' %}
               <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>반려</span>
+            {% elif r.status == 'partial' %}
+              <span class="status-badge status-partial"><i class="fa-solid fa-sliders me-1"></i>부분승인</span>
             {% else %}
               <span class="status-badge status-pending">{{ r.status }}</span>
             {% endif %}
@@ -102,10 +130,10 @@
           <td style="font-size:.78rem;color:#666;white-space:nowrap">{{ r.created_at | dt }}</td>
           <td class="text-center fw-semibold">{{ r['items']|length }}종</td>
           <td style="font-size:.78rem;color:#666">{{ r.processed_by or '—' }}</td>
-          <td style="font-size:.78rem;color:#555;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <td style="font-size:.78rem;color:#555;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             {% if r.status == 'rejected' and r.reject_reason %}
               <span style="color:#991b1b">{{ r.reject_reason }}</span>
-            {% elif r.status == 'approved' and r.approve_reason %}
+            {% elif r.status in ('approved', 'partial') and r.approve_reason %}
               <span style="color:#15803d">{{ r.approve_reason }}</span>
             {% elif r.processed_at %}
               {{ r.processed_at | dt }}
@@ -117,6 +145,8 @@
                       onclick="openApprove({{ r.id }})">승인</button>
               <button class="btn btn-xs btn-danger ms-1" style="font-size:.68rem;padding:2px 7px"
                       onclick="openReject({{ r.id }})">반려</button>
+              <button class="btn btn-xs ms-1" style="font-size:.68rem;padding:2px 7px;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd"
+                      onclick="openPartial({{ r.id }})">부분승인</button>
             {% else %}—{% endif %}
           </td>
         </tr>
@@ -145,7 +175,9 @@
                     <th>양식명</th>
                     <th class="text-center" style="width:100px">단위</th>
                     <th class="text-center" style="width:120px">단위 상세</th>
-                    <th class="text-center" style="width:100px">수량</th>
+                    <th class="text-center" style="width:80px">수량</th>
+                    <th class="text-center" style="width:90px">항목 상태</th>
+                    <th style="width:180px">항목 반려 사유</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -155,6 +187,14 @@
                     <td class="text-center text-muted">{{ it.unit or '—' }}</td>
                     <td class="text-center text-muted">{{ it.unit_detail or '—' }}</td>
                     <td class="text-center fw-bold">{{ it.quantity }}</td>
+                    <td class="text-center">
+                      {% set ist = it.get('item_status', 'pending') %}
+                      <span class="item-status-dot {{ ist }}"></span>
+                      {% if ist == 'approved' %}<span style="color:#15803d;font-size:.75rem">승인</span>
+                      {% elif ist == 'rejected' %}<span style="color:#b91c1c;font-size:.75rem">반려</span>
+                      {% else %}<span style="color:#b45309;font-size:.75rem">대기</span>{% endif %}
+                    </td>
+                    <td style="font-size:.75rem;color:#888">{{ it.get('item_reject_reason', '') or '—' }}</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -220,10 +260,56 @@
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+<!-- 부분승인 모달 -->
+<div class="modal fade" id="partialModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#6d28d9;color:#fff;padding:10px 16px">
+        <h6 class="modal-title m-0"><i class="fa-solid fa-sliders me-1"></i>부분 승인 처리 — 신청 <span id="partialReqIdLabel"></span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="max-height:65vh;overflow-y:auto">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">전달사항 (선택)</label>
+          <textarea id="partialApproveReason" class="form-control form-control-sm" rows="2"
+                    placeholder="승인 전달사항을 입력해주세요."></textarea>
+        </div>
+        <div class="small fw-semibold text-muted mb-2">
+          <i class="fa-solid fa-list me-1"></i>항목별 승인/반려 설정
+        </div>
+        <div id="partialItemList"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-sm" id="partialSetAll"
+                style="background:#dcfce7;color:#15803d;border:1px solid #86efac"
+                onclick="setAllPartial('approved')">전체 승인</button>
+        <button type="button" class="btn btn-sm ms-1" id="partialSetNone"
+                style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5"
+                onclick="setAllPartial('rejected')">전체 반려</button>
+        <button type="button" class="btn btn-sm btn-primary ms-2" onclick="submitPartial()">부분승인 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 항목 데이터 (JS용) -->
 <script>
+var PARTIAL_ITEMS = {
+  {% for r in requests %}
+  {{ r.id }}: [
+    {% for it in r['items'] %}
+    { id: {{ it.item_id }}, name: {{ it.form_name | tojson }}, qty: {{ it.quantity }},
+      status: {{ (it.get('item_status') or 'pending') | tojson }},
+      reason: {{ (it.get('item_reject_reason') or '') | tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
+
+var _partialReqId = null;
+
 // 행 토글
 document.querySelectorAll('.req-row').forEach(row => {
   row.addEventListener('click', function() {
@@ -246,7 +332,6 @@ function applyFilters() {
   });
 }
 
-// 기간 탭
 function filterPeriod(btn) {
   document.querySelectorAll('#periodTabs button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -254,7 +339,6 @@ function filterPeriod(btn) {
   applyFilters();
 }
 
-// 상태 필터
 function filterReqs(btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -262,21 +346,111 @@ function filterReqs(btn) {
   applyFilters();
 }
 
-// 승인 모달
 function openApprove(reqId) {
   const form = document.getElementById('approveForm');
   form.action = '/admin/form-supply/requests/' + reqId + '/action';
   form.querySelector('textarea').value = '';
-  const modal = new bootstrap.Modal(document.getElementById('approveModal'));
-  modal.show();
+  new bootstrap.Modal(document.getElementById('approveModal')).show();
 }
 
-// 반려 모달
 function openReject(reqId) {
   const form = document.getElementById('rejectForm');
   form.action = '/admin/form-supply/requests/' + reqId + '/action';
-  const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
-  modal.show();
+  new bootstrap.Modal(document.getElementById('rejectModal')).show();
+}
+
+function openPartial(reqId) {
+  _partialReqId = reqId;
+  document.getElementById('partialReqIdLabel').textContent = '#' + reqId;
+  document.getElementById('partialApproveReason').value = '';
+
+  const items = PARTIAL_ITEMS[reqId] || [];
+  const list  = document.getElementById('partialItemList');
+  list.innerHTML = '';
+
+  items.forEach(function(it) {
+    const initStatus  = it.status === 'rejected' ? 'rejected' : 'approved';
+    const initReason  = it.reason || '';
+    const showReason  = initStatus === 'rejected' ? 'show' : '';
+
+    const div = document.createElement('div');
+    div.className = 'partial-item-row';
+    div.dataset.itemId = it.id;
+    div.innerHTML =
+      '<div class="partial-item-name">' + escHtml(it.name) +
+        '<span class="partial-item-qty ms-2">' + it.qty + '개</span>' +
+      '</div>' +
+      '<div>' +
+        '<div class="partial-toggle">' +
+          '<label>' +
+            '<input type="radio" name="pi_' + it.id + '" value="approved" ' + (initStatus==='approved'?'checked':'') + ' onchange="onPartialChange(this)">' +
+            '<span class="tog-btn">✔ 승인</span>' +
+          '</label>' +
+          '<label class="ms-1">' +
+            '<input type="radio" name="pi_' + it.id + '" value="rejected" ' + (initStatus==='rejected'?'checked':'') + ' onchange="onPartialChange(this)">' +
+            '<span class="tog-btn">✘ 반려</span>' +
+          '</label>' +
+        '</div>' +
+        '<input class="partial-reason-input ' + showReason + '" data-item-id="' + it.id + '"' +
+               ' placeholder="반려 사유 (선택)" value="' + escHtml(initReason) + '">' +
+      '</div>';
+    list.appendChild(div);
+  });
+
+  new bootstrap.Modal(document.getElementById('partialModal')).show();
+}
+
+function onPartialChange(radio) {
+  const row = radio.closest('.partial-item-row');
+  const reasonInput = row.querySelector('.partial-reason-input');
+  if (radio.value === 'rejected') {
+    reasonInput.classList.add('show');
+  } else {
+    reasonInput.classList.remove('show');
+    reasonInput.value = '';
+  }
+}
+
+function setAllPartial(status) {
+  document.querySelectorAll('#partialItemList input[type=radio][value=' + status + ']').forEach(function(r) {
+    r.checked = true;
+    onPartialChange(r);
+  });
+}
+
+function submitPartial() {
+  if (!_partialReqId) return;
+  const items = [];
+  document.querySelectorAll('#partialItemList .partial-item-row').forEach(function(row) {
+    const iid    = row.dataset.itemId;
+    const radios = row.querySelectorAll('input[type=radio]');
+    let status   = 'approved';
+    radios.forEach(function(r) { if (r.checked) status = r.value; });
+    const reason = (row.querySelector('.partial-reason-input').value || '').trim();
+    items.push({ id: parseInt(iid), status: status, reason: reason });
+  });
+
+  const approveReason = document.getElementById('partialApproveReason').value.trim();
+
+  fetch('/admin/form-supply/requests/' + _partialReqId + '/partial', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items, approve_reason: approveReason })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('partialModal')).hide();
+      location.reload();
+    } else {
+      alert('오류: ' + (data.error || '알 수 없는 오류'));
+    }
+  })
+  .catch(function(e) { alert('요청 실패: ' + e); });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 {% endblock %}
