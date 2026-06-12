@@ -50,11 +50,13 @@
                 <span class="badge badge-pending rounded-pill">{{ r.status }}</span>
               {% endif %}
             </td>
-            <td class="text-center fw-semibold">{{ r.items|length if r.items else 0 }}종</td>
+            <td class="text-center fw-semibold">{{ r['items']|length if r['items'] else 0 }}종</td>
             <td class="small text-muted">{{ r.processed_by or '—' }}</td>
             <td class="small">
               {% if r.status == 'rejected' and r.reject_reason %}
                 <span style="color:#991b1b">{{ r.reject_reason }}</span>
+              {% elif r.status == 'approved' and r.approve_reason %}
+                <span style="color:#15803d">{{ r.approve_reason }}</span>
               {% elif r.processed_at %}
                 <span class="text-muted">{{ r.processed_at | dt }}</span>
               {% else %}
@@ -77,7 +79,7 @@
               </div>
               {% endif %}
 
-              {% if r.items %}
+              {% if r['items'] %}
               <div class="small fw-semibold text-muted mb-1">
                 <i class="fa-solid fa-list me-1"></i>신청 항목
               </div>
@@ -92,7 +94,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {% for it in r.items %}
+                    {% for it in r['items'] %}
                     <tr>
                       <td>{{ it.form_name }}</td>
                       <td class="text-center text-muted">{{ it.unit or '—' }}</td>

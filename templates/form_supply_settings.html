@@ -116,4 +116,113 @@
     </div>
   </div>
 </div>
+
+<!-- ── 카드 3: 양식 메모 관리 ───────────────────────────────── -->
+<div class="card mt-3">
+  <div class="card-header bg-white d-flex align-items-center gap-2">
+    <i class="fa-solid fa-note-sticky text-warning"></i>
+    <strong>양식 메모 관리</strong>
+    <small class="text-muted ms-1">직원 신청 페이지에 느낌표(!) 아이콘으로 표시됩니다.</small>
+  </div>
+  <div class="card-body p-0">
+    {% if form_types %}
+    <div class="table-scroll">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="width:40px">#</th>
+            <th>양식명</th>
+            <th>메모</th>
+            <th style="width:80px" class="text-center">관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in form_types %}
+          <tr id="memo-row-{{ f.id }}">
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td class="fw-semibold small">{{ f.name }}</td>
+            <td class="small text-muted memo-text-{{ f.id }}">
+              {{ f.memo if f.memo else '—' }}
+            </td>
+            <td class="text-center">
+              <button type="button" class="btn btn-sm btn-outline-secondary memo-edit-btn"
+                      data-id="{{ f.id }}"
+                      data-name="{{ f.name | e }}"
+                      data-memo="{{ f.memo | e }}">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h6>등록된 양식이 없습니다</h6>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 메모 편집 모달 -->
+<div class="modal fade" id="memoModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-note-sticky me-2 text-warning"></i>메모 편집</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fw-semibold mb-2" id="memoModalName"></p>
+        <textarea id="memoModalText" class="form-control" rows="4"
+                  placeholder="직원에게 보여줄 메모를 입력하세요."></textarea>
+        <div class="form-text mt-1">비워두면 아이콘이 표시되지 않습니다.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger me-auto" id="memoDeleteBtn" onclick="saveMemo(true)">
+          <i class="fa-solid fa-trash me-1"></i>삭제
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" onclick="saveMemo(false)">
+          <i class="fa-solid fa-floppy-disk me-1"></i>저장
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _memoFormId = null;
+var _memoModal  = null;
+
+document.querySelectorAll('.memo-edit-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    _memoFormId = parseInt(btn.dataset.id);
+    document.getElementById('memoModalName').textContent = btn.dataset.name;
+    document.getElementById('memoModalText').value = btn.dataset.memo || '';
+    if (!_memoModal) _memoModal = new bootstrap.Modal(document.getElementById('memoModal'));
+    _memoModal.show();
+  });
+});
+
+function saveMemo(del) {
+  var text = del ? '' : document.getElementById('memoModalText').value.trim();
+  fetch('/admin/form-type/' + _memoFormId + '/memo', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({memo: text})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      document.querySelector('.memo-text-' + _memoFormId).textContent = text || '—';
+      _memoModal.hide();
+    } else {
+      alert('저장 실패: ' + (d.error || '알 수 없는 오류'));
+    }
+  })
+  .catch(function() { alert('네트워크 오류'); });
+}
+</script>
 {% endblock %}

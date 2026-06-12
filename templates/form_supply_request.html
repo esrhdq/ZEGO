@@ -7,6 +7,57 @@
 {# ── 신청 기간 상태 판단 ──────────────────────────────────────────── #}
 {% set is_active = period and period.is_enabled and period.in_range %}
 
+<style>
+.fs-row.checked { background: #fff8f8; }
+.row-qty {
+  width: 80px;
+  height: 34px;
+  border: 1.5px solid #ccc;
+  border-radius: 7px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  padding: 0;
+  background: #f5f5f5;
+  cursor: not-allowed;
+  -moz-appearance: textfield;
+}
+.row-qty::-webkit-outer-spin-button,
+.row-qty::-webkit-inner-spin-button { -webkit-appearance: none; }
+.row-qty.active {
+  background: #fff;
+  color: #CC1625;
+  border-color: #CC1625;
+  cursor: text;
+}
+.btn-memo-icon {
+  border: none; background: none; padding: 0 0 0 4px;
+  color: #e67e22; cursor: pointer; vertical-align: middle;
+  font-size: 14px; line-height: 1;
+}
+.btn-memo-icon:hover { color: #d35400; }
+.memo-popup-overlay {
+  position: fixed; inset: 0; z-index: 1040;
+}
+.memo-popup {
+  position: fixed; z-index: 1050;
+  background: #fff; border: 1px solid #e0e0e0;
+  border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.15);
+  padding: 14px 16px; max-width: 280px; min-width: 180px;
+  font-size: 14px; line-height: 1.5; color: #333;
+}
+.memo-popup-title {
+  font-weight: 700; color: #e67e22; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.memo-popup-close {
+  position: absolute; top: 8px; right: 10px;
+  border: none; background: none; font-size: 16px;
+  color: #aaa; cursor: pointer; line-height: 1;
+}
+</style>
+
 <!-- 상태 배너 -->
 {% if is_active %}
 <div class="alert d-flex align-items-center gap-2 mb-3"
@@ -39,13 +90,16 @@
 
 {% if is_active %}
 <!-- ── 신청 폼 ───────────────────────────────────────────────────────── -->
-<form method="post" action="{{ url_for('form_supply_request') }}">
+<form method="post" action="{{ url_for('form_supply_request') }}" id="supplyForm">
   <div class="card mb-3">
     <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
       <i class="fa-solid fa-list-check text-primary"></i>
       <strong>신청 양식 선택</strong>
       <span class="badge bg-secondary ms-1">{{ form_types|length }}종</span>
       <small class="text-muted ms-2">필요한 양식의 수량을 입력해 주세요.</small>
+      <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-primary ms-2">
+        <i class="fa-solid fa-check-double me-1"></i>전체선택
+      </button>
       <span class="ms-auto badge"
             style="background:var(--brand-light);color:var(--brand);font-size:.78rem;padding:6px 12px">
         선택: <strong id="selectedCount">0</strong>종
@@ -74,16 +128,19 @@
               <td>
                 <label for="chk-{{ f.id }}" class="fw-semibold mb-0"
                        style="cursor:pointer">{{ f.name }}</label>
+                {% if f.memo %}
+                <button type="button" class="btn-memo-icon"
+                        data-memo="{{ f.memo | e }}"
+                        onclick="showMemoPopup(this)">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                </button>
+                {% endif %}
               </td>
               <td class="text-center small text-muted">{{ f.unit or '—' }}</td>
               <td class="text-center small text-muted">{{ f.unit_detail or '—' }}</td>
               <td class="text-center">
-                <div class="qty-stepper" data-id="{{ f.id }}">
-                  <button type="button" class="qty-minus" disabled>−</button>
-                  <input type="number" name="qty_{{ f.id }}" class="row-qty"
-                         min="1" max="9999" data-id="{{ f.id }}" value="" readonly>
-                  <button type="button" class="qty-plus" disabled>+</button>
-                </div>
+                <input type="number" name="qty_{{ f.id }}" class="row-qty"
+                       data-id="{{ f.id }}" min="1" max="300" value="" readonly tabindex="-1">
               </td>
             </tr>
             {% endfor %}
@@ -121,121 +178,129 @@
     </button>
   </div>
 </form>
-{% endif %}
-{% endblock %}
 
-{% block styles %}
-<style>
-.fs-row.checked { background: #fff8f8; }
-.qty-stepper {
-  display: inline-flex; align-items: stretch;
-  width: 120px; height: 34px;
-  border: 1.5px solid #ddd; border-radius: 7px;
-  overflow: hidden; margin: 0 auto;
-}
-.qty-stepper button {
-  flex: 0 0 34px; width: 34px; height: 34px;
-  border: none; padding: 0; margin: 0;
-  background: #CC1625; color: #fff;
-  font-size: 17px; font-weight: 700; line-height: 1;
-  cursor: pointer;
-}
-.qty-stepper button:disabled { background: #ccc; cursor: default; }
-.qty-stepper button:not(:disabled):hover { background: #a8101d; }
-.qty-stepper .row-qty {
-  flex: 1; width: 0;
-  border: none; border-left: 1.5px solid #ddd; border-right: 1.5px solid #ddd;
-  text-align: center; font-size: 14px; font-weight: 600;
-  color: #999; background: #f8f8f8;
-  padding: 0; outline: none; -moz-appearance: textfield;
-}
-.qty-stepper .row-qty:not([readonly]) { color: #CC1625; background: #fff; }
-.qty-stepper .row-qty::-webkit-outer-spin-button,
-.qty-stepper .row-qty::-webkit-inner-spin-button { -webkit-appearance: none; }
-</style>
-{% endblock %}
-
-{% block scripts %}
-{% if is_active %}
 <script>
 (function() {
-  const counter   = document.getElementById('selectedCount');
-  const submitBtn = document.getElementById('submitBtn');
+  var counter   = document.getElementById('selectedCount');
+  var submitBtn = document.getElementById('submitBtn');
+
+  var selectAllBtn = document.getElementById('selectAllBtn');
 
   function recount() {
-    const n = document.querySelectorAll('.row-check:checked').length;
-    counter.textContent = n;
-    submitBtn.disabled = (n === 0);
+    var all   = document.querySelectorAll('.row-check');
+    var checked = document.querySelectorAll('.row-check:checked').length;
+    counter.textContent = checked;
+    submitBtn.disabled  = (checked === 0);
+    selectAllBtn.innerHTML = (checked === all.length)
+      ? '<i class="fa-solid fa-xmark me-1"></i>전체해제'
+      : '<i class="fa-solid fa-check-double me-1"></i>전체선택';
   }
 
-  // 체크박스 변경 시 스테퍼 활성/비활성
+  function activateRow(cb, on) {
+    var qty = document.querySelector('input[data-id="' + cb.dataset.id + '"].row-qty');
+    var row = document.querySelector('tr[data-row="' + cb.dataset.id + '"]');
+    if (on) {
+      cb.checked = true;
+      qty.removeAttribute('readonly');
+      qty.removeAttribute('tabindex');
+      qty.classList.add('active');
+      if (!qty.value || parseInt(qty.value) < 1) qty.value = '1';
+      row.classList.add('checked');
+    } else {
+      cb.checked = false;
+      qty.setAttribute('readonly', '');
+      qty.setAttribute('tabindex', '-1');
+      qty.classList.remove('active');
+      qty.value = '';
+      row.classList.remove('checked');
+    }
+  }
+
+  selectAllBtn.addEventListener('click', function() {
+    var all     = document.querySelectorAll('.row-check');
+    var checked = document.querySelectorAll('.row-check:checked').length;
+    var toCheck = (checked < all.length);
+    all.forEach(function(cb) { activateRow(cb, toCheck); });
+    recount();
+  });
+
   document.querySelectorAll('.row-check').forEach(function(cb) {
     cb.addEventListener('change', function() {
-      const id      = cb.dataset.id;
-      const stepper = document.querySelector('.qty-stepper[data-id="' + id + '"]');
-      const qty     = stepper.querySelector('.row-qty');
-      const minus   = stepper.querySelector('.qty-minus');
-      const plus    = stepper.querySelector('.qty-plus');
-      const row     = document.querySelector('tr[data-row="' + id + '"]');
-
+      activateRow(cb, cb.checked);
       if (cb.checked) {
-        qty.readOnly  = false;
-        minus.disabled = false;
-        plus.disabled  = false;
-        if (!qty.value || parseInt(qty.value) < 1) qty.value = 1;
-        row.classList.add('checked');
-        qty.focus();
-        qty.select();
-      } else {
-        qty.readOnly  = true;
-        minus.disabled = true;
-        plus.disabled  = true;
-        qty.value = '';
-        row.classList.remove('checked');
+        var qty = document.querySelector('input[data-id="' + cb.dataset.id + '"].row-qty');
+        qty.focus(); qty.select();
       }
       recount();
     });
   });
 
-  // − 버튼
-  document.querySelectorAll('.qty-minus').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const qty = btn.parentElement.querySelector('.row-qty');
-      qty.value = Math.max(1, (parseInt(qty.value) || 1) - 1);
-    });
-  });
-
-  // + 버튼
-  document.querySelectorAll('.qty-plus').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      const qty = btn.parentElement.querySelector('.row-qty');
-      qty.value = Math.min(9999, (parseInt(qty.value) || 0) + 1);
-    });
-  });
-
-  // 직접 입력
   document.querySelectorAll('.row-qty').forEach(function(qty) {
     qty.addEventListener('input', function() {
-      const v = parseInt(qty.value);
-      if (isNaN(v) || v < 1) qty.value = '';
-      else if (v > 9999) qty.value = 9999;
+      var v = parseInt(qty.value);
+      if (v > 300) qty.value = 300;
+      if (qty.value !== '' && v < 1) qty.value = 1;
     });
     qty.addEventListener('blur', function() {
-      if (!qty.readOnly && (isNaN(parseInt(qty.value)) || parseInt(qty.value) < 1)) qty.value = 1;
+      if (qty.classList.contains('active')) {
+        var v = parseInt(qty.value);
+        if (isNaN(v) || v < 1) qty.value = 1;
+      }
     });
   });
 
-  // 제출 검증
-  document.querySelector('form').addEventListener('submit', function(e) {
-    let valid = false;
+  document.getElementById('supplyForm').addEventListener('submit', function(e) {
+    var valid = false;
     document.querySelectorAll('.row-check').forEach(function(cb) {
-      const qty = document.querySelector('.qty-stepper[data-id="' + cb.dataset.id + '"] .row-qty');
-      if (cb.checked && parseInt(qty.value) >= 1) valid = true;
-      if (!cb.checked) qty.value = '';
+      var qty = document.querySelector('input[data-id="' + cb.dataset.id + '"].row-qty');
+      if (cb.checked && parseInt(qty.value) >= 1) {
+        valid = true;
+      } else {
+        qty.value = '';
+      }
     });
     if (!valid) { e.preventDefault(); alert('최소 1개 이상의 양식과 수량을 선택해 주세요.'); }
   });
+
+  var _memoPopup = null;
+  var _memoOverlay = null;
+
+  window.showMemoPopup = function(btn) {
+    closeMemoPopup();
+    var memo = btn.getAttribute('data-memo');
+    var rect = btn.getBoundingClientRect();
+
+    var overlay = document.createElement('div');
+    overlay.className = 'memo-popup-overlay';
+    overlay.onclick = closeMemoPopup;
+
+    var popup = document.createElement('div');
+    popup.className = 'memo-popup';
+    popup.innerHTML =
+      '<div class="memo-popup-title"><i class="fa-solid fa-circle-exclamation me-1"></i>메모</div>' +
+      '<div>' + memo.replace(/\n/g, '<br>') + '</div>' +
+      '<button class="memo-popup-close" onclick="closeMemoPopup()">&times;</button>';
+
+    var top = rect.bottom + 6;
+    var left = rect.left;
+    if (left + 280 > window.innerWidth) left = window.innerWidth - 290;
+
+    popup.style.top  = top  + 'px';
+    popup.style.left = left + 'px';
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(popup);
+    _memoPopup    = popup;
+    _memoOverlay  = overlay;
+  };
+
+  window.closeMemoPopup = function() {
+    if (_memoPopup)   { _memoPopup.remove();   _memoPopup   = null; }
+    if (_memoOverlay) { _memoOverlay.remove(); _memoOverlay = null; }
+  };
 })();
 </script>
 {% endif %}
 {% endblock %}
+
+{% block scripts %}{% endblock %}

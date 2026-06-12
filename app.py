@@ -941,52 +941,53 @@ def init_db():
                 )
 
             form_types = [
-                ('DOM BOARDING PASS (롤)',        'BOX', '50롤',    60000,  3),
-                ('INTL BOARDING PASS(QR)',         'BOX', '5,000장', 175000, 3),
-                ('INTL BOARDING PASS(QR, ICN)',    'BOX', '5,000장', 175000, 2),
-                ('AUTO BAG TAG',                   'BOX', '10롤',   118000,  5),
-                ('BAG TIPS',                       'BOX', '5,000장',  50000, 3),
-                ('BAG TIPS (SNOOPY, DOM)',         'BOX', '5,000장',  57000, 2),
-                ('MANUAL BAG TAG',                 'BOX', '5,000장', 180000, 2),
-                ('Carry on Bag TAG (INTL)',        'BOX', '5,000장', 145000, 2),
-                ('SRI 봉투(大)',                   'BOX', '500장',   330000, 1),
-                ('CO-MAIL 봉투(NEW)',              'BOX', '200장',   160000, 1),
-                ('유상비닐(小/PPS)',               '포대', '100개',  110000, 2),
-                ('유상비닐(大/PPL)',               '포대', '100개',  130000, 2),
-                ('BOX TAPE',                       'BOX', '50개',    55000, 3),
-                ('PREMIUM TAG(D/S)',               'BOX', '5,000장',  80000, 2),
-                ('FRAGILE TAG(NEW)',               'BOX', '5,000장',  80000, 2),
-                ('HEAVY TAG',                      'BOX', '5,000장',  80000, 2),
-                ('GTOG TAG',                       'BOX', '5,000장',  80000, 2),
-                ('TRANSFER TAG',                   'BOX', '5,000장',  80000, 1),
-                ('비상구열 스티커',                'BOX', '20,000장',110000, 1),
-                ('AOC LABEL',                      'BOX', '5,000장',  80000, 1),
-                ('POB LABEL',                      'BOX', '5,000장',  80000, 1),
-                ('COB LABEL',                      'BOX', '5,000장',  80000, 1),
-                ('UP SIDE LABEL',                  'BOX', '5,000장',  80000, 1),
-                ('휠체어 배터리 분리 L/B',         'BOX', '5,000장',  80000, 1),
-                ('CORROSIVE LABEL',                'BOX', '5,000장',  80000, 1),
-                ('Dry Ice LABEL',                  'BOX', '5,000장',  80000, 1),
-                ('한국 입국신고서 (ENG/CNA)',       'BOX', '5,000장', 150000, 1),
-                ('제주 E/D카드',                   'BOX', '5,000장', 150000, 1),
-                ('한국 세관신고서 (ENG/CNA)',       'BOX', '5,000장', 150000, 1),
-                ('한국 세관신고서 (ENG/JPN)',       'BOX', '5,000장', 150000, 1),
-                ('서약서',                         '권',  '100조',    8500, 3),
-                ('합의서',                         '권',  '100조',    8500, 2),
-                ('반려동물 서약서',                '권',  '100조',   10000, 2),
-                ('악기서약서',                     '권',  '100조',   10000, 1),
-                ('보호자 서약서',                  '권',  '100조',    8500, 1),
-                ('총기인수인계서',                 '권',  '100조',   10000, 1),
-                ('PIR',                            '권',  '100조',   10000, 2),
-                ('SHR',                            '권',  '100조',   14000, 1),
-                ('NOTOC',                          '권',  '100조',   10000, 1),
-                ('BAG BINGO CHART(양면)',          '권',  '100조',    3200, 5),
+                ('DOM BOARDING PASS (롤)',                                         'BOX', '50롤',     60000, 3,  1),
+                ('INTL BOARDING PASS(QR)',                                         'BOX', '5,000장', 175000, 3,  2),
+                ('INTL BOARDING PASS(QR, ICN)',                                    'BOX', '5,000장', 175000, 2,  3),
+                ('AUTO BAG TAG',                                                   'BOX', '10롤',    118000, 5,  4),
+                ('BAG TIPS',                                                       'BOX', '5,000장',  50000, 3,  5),
+                ('BAG TIPS (SNOOPY, DOM)',                                         'BOX', '5,000장',  57000, 2,  6),
+                ('MANUAL BAG TAG',                                                 'BOX', '5,000장', 180000, 2,  7),
+                ('Carry on Bag TAG (INTL)',                                        'BOX', '5,000장', 145000, 2,  8),
+                ('SRI 봉투(大)',                                                   'BOX', '500장',   330000, 1,  9),
+                ('CO-MAIL 봉투(NEW)',                                              'BOX', '200장',   160000, 1, 10),
+                ('유상비닐(小/PPS)',                                               '포대', '100개',  110000, 2, 11),
+                ('유상비닐(大/PPL)',                                               '포대', '100개',  130000, 2, 12),
+                ('BOX TAPE',                                                       'BOX', '50개',     55000, 3, 13),
+                ('PREMIUM TAG(D/S)',                                               'BOX', '5,000장',  80000, 2, 14),
+                ('FRAGILE TAG(NEW)',                                               'BOX', '5,000장',  80000, 2, 15),
+                ('HEAVY TAG',                                                      'BOX', '5,000장',  80000, 2, 16),
+                ('GTOG TAG',                                                       'BOX', '5,000장',  80000, 2, 17),
+                ('Exit-Seat Sticker',                                              'BOX', '20,000장', 110000, 1, 18),
+                ('COB LABEL',                                                      'BOX', '5,000장',  80000, 1, 19),
+                ('UP SIDE LABEL',                                                  'BOX', '5,000장',  80000, 1, 20),
+                ('WCHR Battery LABEL',                                             'BOX', '5,000장',  80000, 1, 21),
+                ('CORROSIVE LABEL',                                                'BOX', '5,000장',  80000, 1, 22),
+                ('Dry Ice LABEL',                                                  'BOX', '5,000장',  80000, 1, 23),
+                ('한국 입국신고서 (ENG/CNA)',                                      'BOX', '5,000장', 150000, 1, 24),
+                ('제주 E/D카드',                                                   'BOX', '5,000장', 150000, 1, 25),
+                ('한국 세관신고서 (ENG/CNA)',                                      'BOX', '5,000장', 150000, 1, 26),
+                ('한국 세관신고서 (ENG/JPN)',                                      'BOX', '5,000장', 150000, 1, 27),
+                ('서약서 (DECLARATION OF INDEMNITY)',                              '권',  '100조',    8500, 3, 28),
+                ('합의서 (Release And Indemnity Letter)',                           '권',  '100조',    8500, 2, 29),
+                ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)',                 '권',  '100조',   10000, 2, 30),
+                ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',      '권',  '100조',   10000, 1, 31),
+                ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',                 '권',  '100조',    8500, 1, 32),
+                ('총기인수인계서 (Firearm handover form)',                          '권',  '100조',   10000, 1, 33),
+                ('PIR',                                                            '권',  '100조',   10000, 2, 34),
+                ('SHR',                                                            '권',  '100조',   14000, 1, 35),
+                ('NOTOC',                                                          '권',  '100조',   10000, 1, 36),
+                ('BAG(BINGO) CHART (양면)',                                        '권',  '100조',    3200, 5, 37),
+                # 비활성 항목 (데이터 보존용)
+                ('TRANSFER TAG',                                                   'BOX', '5,000장',  80000, 1, 999),
+                ('AOC LABEL',                                                      'BOX', '5,000장',  80000, 1, 999),
+                ('POB LABEL',                                                      'BOX', '5,000장',  80000, 1, 999),
             ]
-            for name, unit, ud, price, thr in form_types:
+            for name, unit, ud, price, thr, sort_order in form_types:
                 conn.execute(
-                    'INSERT INTO form_types (name, unit, unit_detail, unit_price, min_threshold) '
-                    'VALUES (%s,%s,%s,%s,%s) ON CONFLICT(name) DO NOTHING',
-                    (name, unit, ud, price, thr)
+                    'INSERT INTO form_types (name, unit, unit_detail, unit_price, min_threshold, sort_order) '
+                    'VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT(name) DO UPDATE SET sort_order=EXCLUDED.sort_order',
+                    (name, unit, ud, price, thr, sort_order)
                 )
         else:
             conn.execute("UPDATE branches SET type='DOM' WHERE code='ICN' AND type != 'DOM'")
@@ -1046,6 +1047,61 @@ def init_db():
                 conn.execute("ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT ''")
             if 'user_deleted' not in cat_cols:
                 conn.execute("ALTER TABLE catalog_defs ADD COLUMN user_deleted INTEGER NOT NULL DEFAULT 0")
+            fsr_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_requests)').fetchall()]
+            if 'approve_reason' not in fsr_cols:
+                conn.execute("ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT ''")
+            ft_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_types)').fetchall()]
+            if 'sort_order' not in ft_cols:
+                conn.execute("ALTER TABLE form_types ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 999")
+            if 'is_active' not in ft_cols:
+                conn.execute("ALTER TABLE form_types ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+            if 'memo' not in ft_cols:
+                conn.execute("ALTER TABLE form_types ADD COLUMN memo TEXT NOT NULL DEFAULT ''")
+            # 이름 변경 마이그레이션
+            _form_renames = [
+                ('비상구열 스티커',          'Exit-Seat Sticker'),
+                ('휠체어 배터리 분리 L/B',   'WCHR Battery LABEL'),
+                ('서약서',                   '서약서 (DECLARATION OF INDEMNITY)'),
+                ('합의서',                   '합의서 (Release And Indemnity Letter)'),
+                ('반려동물 서약서',           '반려동물 서약서 (DECLARATION OF INDEMNITY,PET)'),
+                ('악기서약서',               '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)'),
+                ('보호자 서약서',             '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)'),
+                ('총기인수인계서',             '총기인수인계서 (Firearm handover form)'),
+                ('BAG BINGO CHART(양면)',     'BAG(BINGO) CHART (양면)'),
+            ]
+            for old, new in _form_renames:
+                conn.execute('UPDATE form_types SET name=? WHERE name=?', (new, old))
+            # sort_order 설정
+            _form_orders = [
+                ('DOM BOARDING PASS (롤)', 1), ('INTL BOARDING PASS(QR)', 2),
+                ('INTL BOARDING PASS(QR, ICN)', 3), ('AUTO BAG TAG', 4),
+                ('BAG TIPS', 5), ('BAG TIPS (SNOOPY, DOM)', 6),
+                ('MANUAL BAG TAG', 7), ('Carry on Bag TAG (INTL)', 8),
+                ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
+                ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
+                ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
+                ('FRAGILE TAG(NEW)', 15), ('HEAVY TAG', 16),
+                ('GTOG TAG', 17), ('TRANSFER TAG', 18),
+                ('Exit-Seat Sticker', 19),
+                ('AOC LABEL', 20), ('POB LABEL', 21),
+                ('COB LABEL', 22), ('UP SIDE LABEL', 23),
+                ('WCHR Battery LABEL', 24), ('CORROSIVE LABEL', 25),
+                ('Dry Ice LABEL', 26), ('한국 입국신고서 (ENG/CNA)', 27),
+                ('제주 E/D카드', 28), ('한국 세관신고서 (ENG/CNA)', 29),
+                ('한국 세관신고서 (ENG/JPN)', 30),
+                ('서약서 (DECLARATION OF INDEMNITY)', 31),
+                ('합의서 (Release And Indemnity Letter)', 32),
+                ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)', 33),
+                ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)', 34),
+                ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)', 35),
+                ('총기인수인계서 (Firearm handover form)', 36),
+                ('PIR', 37), ('SHR', 38), ('NOTOC', 39),
+                ('BAG(BINGO) CHART (양면)', 40),
+            ]
+            for name, order in _form_orders:
+                conn.execute('UPDATE form_types SET sort_order=? WHERE name=?', (order, name))
+            for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
+                conn.execute('UPDATE form_types SET is_active=1 WHERE name=?', (_reactivate,))
         else:
             conn.execute('''
                 DO $$
@@ -1112,8 +1168,76 @@ def init_db():
                     ) THEN
                         ALTER TABLE catalog_defs ADD COLUMN user_deleted BOOLEAN NOT NULL DEFAULT FALSE;
                     END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='form_types' AND column_name='sort_order'
+                    ) THEN
+                        ALTER TABLE form_types ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 999;
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='form_types' AND column_name='is_active'
+                    ) THEN
+                        ALTER TABLE form_types ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='form_types' AND column_name='memo'
+                    ) THEN
+                        ALTER TABLE form_types ADD COLUMN memo TEXT NOT NULL DEFAULT '';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='form_supply_requests' AND column_name='approve_reason'
+                    ) THEN
+                        ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT '';
+                    END IF;
                 END $$
             ''')
+            # form_types 이름 변경 + sort_order + 비활성 마이그레이션 (PostgreSQL)
+            _form_renames = [
+                ('비상구열 스티커',          'Exit-Seat Sticker'),
+                ('휠체어 배터리 분리 L/B',   'WCHR Battery LABEL'),
+                ('서약서',                   '서약서 (DECLARATION OF INDEMNITY)'),
+                ('합의서',                   '합의서 (Release And Indemnity Letter)'),
+                ('반려동물 서약서',           '반려동물 서약서 (DECLARATION OF INDEMNITY,PET)'),
+                ('악기서약서',               '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)'),
+                ('보호자 서약서',             '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)'),
+                ('총기인수인계서',             '총기인수인계서 (Firearm handover form)'),
+                ('BAG BINGO CHART(양면)',     'BAG(BINGO) CHART (양면)'),
+            ]
+            for old, new in _form_renames:
+                conn.execute('UPDATE form_types SET name=%s WHERE name=%s', (new, old))
+            _form_orders = [
+                ('DOM BOARDING PASS (롤)', 1), ('INTL BOARDING PASS(QR)', 2),
+                ('INTL BOARDING PASS(QR, ICN)', 3), ('AUTO BAG TAG', 4),
+                ('BAG TIPS', 5), ('BAG TIPS (SNOOPY, DOM)', 6),
+                ('MANUAL BAG TAG', 7), ('Carry on Bag TAG (INTL)', 8),
+                ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
+                ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
+                ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
+                ('FRAGILE TAG(NEW)', 15), ('HEAVY TAG', 16),
+                ('GTOG TAG', 17), ('TRANSFER TAG', 18),
+                ('Exit-Seat Sticker', 19),
+                ('AOC LABEL', 20), ('POB LABEL', 21),
+                ('COB LABEL', 22), ('UP SIDE LABEL', 23),
+                ('WCHR Battery LABEL', 24), ('CORROSIVE LABEL', 25),
+                ('Dry Ice LABEL', 26), ('한국 입국신고서 (ENG/CNA)', 27),
+                ('제주 E/D카드', 28), ('한국 세관신고서 (ENG/CNA)', 29),
+                ('한국 세관신고서 (ENG/JPN)', 30),
+                ('서약서 (DECLARATION OF INDEMNITY)', 31),
+                ('합의서 (Release And Indemnity Letter)', 32),
+                ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)', 33),
+                ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)', 34),
+                ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)', 35),
+                ('총기인수인계서 (Firearm handover form)', 36),
+                ('PIR', 37), ('SHR', 38), ('NOTOC', 39),
+                ('BAG(BINGO) CHART (양면)', 40),
+            ]
+            for name, order in _form_orders:
+                conn.execute('UPDATE form_types SET sort_order=%s WHERE name=%s', (order, name))
+            for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
+                conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate,))
         conn.commit()
 
         # catalog_defs 시딩 (DO UPDATE — 코드 변경사항 배포 시 자동 반영)
@@ -1346,7 +1470,7 @@ def dashboard():
 def inventory():
     conn = get_db()
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
 
     bf = request.args.get('branch_id', '')
     ff = request.args.get('form_type_id', '')
@@ -1519,7 +1643,7 @@ def inbound():
         return redirect(url_for('inbound'))
 
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
     conn.close()
     from datetime import date
     return render_template('inbound.html', branches=branches, form_types=form_types,
@@ -1594,7 +1718,7 @@ def outbound():
         return redirect(url_for('outbound'))
 
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
     conn.close()
     from datetime import date
     return render_template('outbound.html', branches=branches, form_types=form_types,
@@ -1720,7 +1844,7 @@ def transfer():
             pass
 
     branches   = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
 
     if role == 'admin':
         inbox = []   # 관리자는 받은신청(inbox) 미사용
@@ -1977,7 +2101,7 @@ def confirm_transfer(req_id):
 def transactions():
     conn = get_db()
     branches   = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
 
     bf        = request.args.get('branch_id', '')
     ff        = request.args.get('form_type_id', '')
@@ -3890,7 +4014,7 @@ def change_password():
 def inbound_template():
     conn = get_db()
     branches   = conn.execute('SELECT code, name, type FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT name, unit, unit_detail FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT name, unit, unit_detail FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
 
     my_branch_code = ''
     if session.get('role') != 'admin' and session.get('branch_id'):
@@ -4779,10 +4903,26 @@ def form_supply_settings():
         d = dict(s)
         d['created_at'] = d.get('updated_at')
         history_list.append(d)
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
     conn.close()
     return render_template('form_supply_settings.html',
                            current=current,
-                           settings_history=history_list)
+                           settings_history=history_list,
+                           form_types=form_types)
+
+
+@app.route('/admin/form-type/<int:form_id>/memo', methods=['POST'])
+@login_required
+def admin_form_type_memo(form_id):
+    if session.get('role') != 'admin':
+        return {'ok': False, 'error': '권한 없음'}, 403
+    memo = request.get_json(force=True).get('memo', '').strip()
+    ph = '%s' if not USE_SQLITE else '?'
+    conn = get_db()
+    conn.execute(f'UPDATE form_types SET memo={ph} WHERE id={ph}', (memo, form_id))
+    conn.commit()
+    conn.close()
+    return {'ok': True}
 
 
 @app.route('/api/form-supply/period')
@@ -4912,7 +5052,7 @@ def form_supply_request():
         return redirect(url_for('form_supply_my_requests'))
 
     # GET — 폼 렌더
-    form_types = conn.execute('SELECT * FROM form_types ORDER BY name').fetchall()
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
     conn.close()
     return render_template('form_supply_request.html',
                            period=period_ctx,
@@ -4995,7 +5135,8 @@ def form_supply_admin_action(req_id):
         return redirect(url_for('dashboard'))
 
     action = request.form.get('action', '').strip()
-    reject_reason = request.form.get('reject_reason', '').strip()
+    reject_reason  = request.form.get('reject_reason', '').strip()
+    approve_reason = request.form.get('approve_reason', '').strip()
 
     if action not in ('approved', 'rejected'):
         flash('잘못된 요청입니다.', 'danger')
@@ -5009,7 +5150,7 @@ def form_supply_admin_action(req_id):
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
 
     req = conn.execute(
-        'SELECT r.*, b.name AS branch_name FROM form_supply_requests r '
+        'SELECT r.*, b.name AS branch_name, b.email AS branch_email FROM form_supply_requests r '
         'JOIN branches b ON b.id = r.branch_id WHERE r.id=%s',
         (req_id,)
     ).fetchone()
@@ -5024,9 +5165,12 @@ def form_supply_admin_action(req_id):
 
     conn.execute(
         f"UPDATE form_supply_requests "
-        f"SET status={ph}, reject_reason={ph}, processed_by={ph}, processed_at={now_sql}, updated_at={now_sql} "
+        f"SET status={ph}, reject_reason={ph}, approve_reason={ph}, processed_by={ph}, processed_at={now_sql}, updated_at={now_sql} "
         f"WHERE id={ph}",
-        (action, reject_reason if action == 'rejected' else '', session['username'], req_id)
+        (action,
+         reject_reason if action == 'rejected' else '',
+         approve_reason if action == 'approved' else '',
+         session['username'], req_id)
     )
 
     if action == 'approved':
@@ -5038,6 +5182,90 @@ def form_supply_admin_action(req_id):
         (req['branch_id'], notif)
     )
     conn.commit()
+
+    # ── 이메일 발송 ──────────────────────────────────────────────────
+    branch_email = (req.get('branch_email') or '').strip()
+    if branch_email:
+        items = conn.execute(
+            'SELECT i.quantity, ft.name AS form_name, ft.unit, ft.unit_detail '
+            'FROM form_supply_request_items i '
+            'JOIN form_types ft ON ft.id = i.form_type_id '
+            'WHERE i.request_id=%s ORDER BY ft.sort_order',
+            (req_id,)
+        ).fetchall()
+
+        if action == 'approved':
+            mail_subject = f'[이스타항공] 운송양식 신청 #{req_id} 승인 안내'
+            status_label = '승인'
+            status_color = '#15803d'
+            reason_html  = (
+                f'<p style="margin:8px 0 0"><strong>전달사항:</strong> '
+                f'{approve_reason}</p>'
+                if approve_reason else ''
+            )
+        else:
+            mail_subject = f'[이스타항공] 운송양식 신청 #{req_id} 반려 안내'
+            status_label = '반려'
+            status_color = '#b91c1c'
+            reason_html  = (
+                f'<p style="margin:8px 0 0"><strong>반려 사유:</strong> '
+                f'{reject_reason}</p>'
+                if reject_reason else ''
+            )
+
+        rows_html = ''.join(
+            f'<tr><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb">{it["form_name"]}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">{it["unit"] or "—"}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">{it["unit_detail"] or "—"}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700">{it["quantity"]}</td></tr>'
+            for it in items
+        )
+
+        body_html = f"""<div style="font-family:sans-serif;max-width:540px;margin:0 auto">
+  <div style="background:#cc1625;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;color:#fff;font-size:16px">운송양식 신청 {status_label} 안내</h2>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px">
+    <p style="margin:0 0 4px">안녕하세요, <strong>{req["branch_name"]}</strong>.</p>
+    <p style="margin:0 0 16px">신청 번호 <strong>#{req_id}</strong>에 대한 처리 결과를 안내드립니다.</p>
+    <div style="background:#f9fafb;border-left:4px solid {status_color};padding:10px 14px;border-radius:4px;margin-bottom:16px">
+      <p style="margin:0;font-size:15px"><strong>처리 결과: <span style="color:{status_color}">{status_label}</span></strong></p>
+      {reason_html}
+    </div>
+    <h4 style="margin:0 0 8px;font-size:13px;color:#6b7280">신청 항목</h4>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f3f4f6">
+          <th style="padding:6px 10px;text-align:left">양식명</th>
+          <th style="padding:6px 10px;text-align:center;width:80px">단위</th>
+          <th style="padding:6px 10px;text-align:center;width:100px">단위 상세</th>
+          <th style="padding:6px 10px;text-align:center;width:60px">수량</th>
+        </tr>
+      </thead>
+      <tbody>{rows_html}</tbody>
+    </table>
+    <p style="margin:20px 0 0;font-size:12px;color:#9ca3af">본 메일은 ZEGO 시스템에서 자동 발송되었습니다.</p>
+  </div>
+</div>"""
+
+        try:
+            msg_obj = MIMEMultipart('alternative')
+            msg_obj['Subject'] = mail_subject
+            msg_obj['From']    = MAIL_FROM
+            msg_obj['To']      = branch_email
+            msg_obj.attach(MIMEText(body_html, 'html', 'utf-8'))
+            if MAIL_HOST and MAIL_USER:
+                with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as srv:
+                    srv.ehlo(); srv.starttls(); srv.ehlo()
+                    srv.login(MAIL_USER, MAIL_PASS)
+                    srv.sendmail(MAIL_FROM, [branch_email], msg_obj.as_string())
+                app.logger.info(f'[form_supply] 메일 발송: {branch_email} ({action})')
+            else:
+                app.logger.warning('[form_supply] MAIL_HOST/MAIL_USER 미설정 — 메일 생략')
+        except Exception as _mail_err:
+            app.logger.error(f'[form_supply] 메일 발송 실패: {_mail_err}')
+    # ─────────────────────────────────────────────────────────────────
+
     log_action(f'운송양식_{action}', f'#{req_id} {req["branch_name"]}')
     flash(f'신청 #{req_id} 처리 완료 ({action}).', 'success')
     conn.close()

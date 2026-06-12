@@ -84,22 +84,21 @@
             {% endif %}
           </td>
           <td style="font-size:.78rem;color:#666;white-space:nowrap">{{ r.created_at | dt }}</td>
-          <td class="text-center fw-semibold">{{ r.items|length }}종</td>
+          <td class="text-center fw-semibold">{{ r['items']|length }}종</td>
           <td style="font-size:.78rem;color:#666">{{ r.processed_by or '—' }}</td>
           <td style="font-size:.78rem;color:#555;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             {% if r.status == 'rejected' and r.reject_reason %}
               <span style="color:#991b1b">{{ r.reject_reason }}</span>
+            {% elif r.status == 'approved' and r.approve_reason %}
+              <span style="color:#15803d">{{ r.approve_reason }}</span>
             {% elif r.processed_at %}
               {{ r.processed_at | dt }}
             {% else %}—{% endif %}
           </td>
           <td style="text-align:center" onclick="event.stopPropagation()">
             {% if r.status == 'pending' %}
-              <form method="post" action="{{ url_for('form_supply_admin_action', req_id=r.id) }}"
-                    style="display:inline" onsubmit="return confirm('승인하시겠습니까?')">
-                <input type="hidden" name="action" value="approved">
-                <button class="btn btn-xs btn-success" style="font-size:.68rem;padding:2px 7px">승인</button>
-              </form>
+              <button class="btn btn-xs btn-success" style="font-size:.68rem;padding:2px 7px"
+                      onclick="openApprove({{ r.id }})">승인</button>
               <button class="btn btn-xs btn-danger ms-1" style="font-size:.68rem;padding:2px 7px"
                       onclick="openReject({{ r.id }})">반려</button>
             {% else %}—{% endif %}
@@ -119,7 +118,7 @@
               </div>
             </div>
             {% endif %}
-            {% if r.items %}
+            {% if r['items'] %}
             <div class="small fw-semibold text-muted mb-1">
               <i class="fa-solid fa-list me-1"></i>신청 항목
             </div>
@@ -134,7 +133,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {% for it in r.items %}
+                  {% for it in r['items'] %}
                   <tr>
                     <td>{{ it.form_name }}</td>
                     <td class="text-center text-muted">{{ it.unit or '—' }}</td>
@@ -158,6 +157,29 @@
     신청 내역이 없습니다.
   </div>
   {% endif %}
+</div>
+
+<!-- 승인 사유 모달 -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--success);color:#fff;padding:10px 16px">
+        <h6 class="modal-title m-0"><i class="fa-solid fa-check me-1"></i>승인 처리</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="approveForm">
+        <input type="hidden" name="action" value="approved">
+        <div class="modal-body">
+          <textarea name="approve_reason" class="form-control" rows="3"
+                    placeholder="승인 사유 또는 전달사항 (선택)"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-sm btn-success">승인 처리</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- 반려 사유 모달 -->
@@ -205,6 +227,15 @@ function filterReqs(btn) {
     tr.style.display = show ? '' : 'none';
     if (tr.classList.contains('detail-row') && !show) tr.classList.add('d-none');
   });
+}
+
+// 승인 모달
+function openApprove(reqId) {
+  const form = document.getElementById('approveForm');
+  form.action = '/admin/form-supply/requests/' + reqId + '/action';
+  form.querySelector('textarea').value = '';
+  const modal = new bootstrap.Modal(document.getElementById('approveModal'));
+  modal.show();
 }
 
 // 반려 모달
