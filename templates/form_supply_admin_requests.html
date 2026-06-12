@@ -140,11 +140,13 @@
             {% else %}—{% endif %}
           </td>
           <td style="text-align:center" onclick="event.stopPropagation()">
-            {% if r.status == 'pending' %}
+            {% if r.status in ('pending', 'partial') %}
+              {% if r.status == 'pending' %}
               <button class="btn btn-xs btn-success" style="font-size:.68rem;padding:2px 7px"
                       onclick="openApprove({{ r.id }})">승인</button>
               <button class="btn btn-xs btn-danger ms-1" style="font-size:.68rem;padding:2px 7px"
                       onclick="openReject({{ r.id }})">반려</button>
+              {% endif %}
               <button class="btn btn-xs ms-1" style="font-size:.68rem;padding:2px 7px;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd"
                       onclick="openPartial({{ r.id }})">부분승인</button>
             {% else %}—{% endif %}
