@@ -37,7 +37,7 @@
       --status-low:   #D97706;
       --status-empty: #DC2626;
       /* ── Warm Minimal 레이아웃 ── */
-      --bg:           #FAF9F7;
+      --bg:           #8C8C8C;
       --card-bg:      #FFFFFF;
       --border:       #F0EFED;
       --border-md:    #E7E5E4;
@@ -46,11 +46,11 @@
       --text-muted:   #A8A29E;
       --text-faint:   #C7C3C0;
       /* 사이드바 */
-      --sidebar-bg:   #EDEBE5;
-      --sidebar-border: #D9D6CF;
-      --sidebar-text: #57534E;
-      --sidebar-muted: #A8A29E;
-      --sidebar-hover: #E2DED8;
+      --sidebar-bg:   #808080;
+      --sidebar-border: #6E6E6E;
+      --sidebar-text: #111111;
+      --sidebar-muted: #333333;
+      --sidebar-hover: #949494;
       --sidebar-active-bg: #FFF1F2;
       --sidebar-active-text: #CC1625;
     }
@@ -155,7 +155,7 @@
     .main-content { margin-left: 240px; min-height: 100vh; display: flex; flex-direction: column; }
 
     .topbar {
-      background: rgba(250,249,247,.96);
+      background: rgba(140,140,140,.96);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
       padding: 0 28px; height: 58px;
@@ -259,12 +259,12 @@
     .table thead th {
       font-size: .7rem; font-weight: 700; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: .06em;
-      white-space: nowrap; background: #FAF9F7; padding: 10px 14px;
+      white-space: nowrap; background: #F0F0F0; padding: 10px 14px;
       border-bottom: 1px solid var(--border);
     }
     .table tbody td { padding: 12px 14px; vertical-align: middle; border-color: var(--border); color: var(--text); }
     .table-hover tbody tr { transition: background .1s; }
-    .table-hover tbody tr:hover { background: #FAF9F7 !important; }
+    .table-hover tbody tr:hover { background: #F0F0F0 !important; }
 
     /* ════════════════════════════════════════
        폼 & 버튼
@@ -547,7 +547,7 @@
         <div class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:320px;padding:0;border-radius:12px;overflow:hidden"
              id="notifDropdown">
           <div class="d-flex align-items-center justify-content-between px-3 py-2"
-               style="border-bottom:1px solid var(--border);background:#FAF9F7">
+               style="border-bottom:1px solid var(--border);background:#8C8C8C">
             <span style="font-size:.82rem;font-weight:700;color:var(--text)">
               알림 {% if notif_count > 0 %}<span class="badge" style="background:var(--warning)">{{ notif_count }}</span>{% endif %}
             </span>
