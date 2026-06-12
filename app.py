@@ -487,7 +487,7 @@ def inject_globals():
             session['_notif_ts']    = now_ts
 
     return {'notif_count': notif_count, 'notif_list': notif_list, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days,
-            'today': datetime.now(timezone.utc).astimezone()}
+            'now_dt': datetime.now(timezone.utc).astimezone()}
 
 
 # ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
