@@ -933,6 +933,7 @@ def init_db():
                 ('PQC', '푸꾸옥', 'INTL'), ('MDC', '마나도', 'INTL'), ('PVG', '상하이', 'INTL'),
                 ('YNJ', '연길', 'INTL'), ('CGO', '정저우', 'INTL'), ('YNT', '옌타이', 'INTL'),
                 ('HKG', '홍콩', 'INTL'), ('ALA', '알마티', 'INTL'),
+                ('KOR', '가고시마', 'INTL'), ('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL'),
                 ('CARGO', '화물파트', 'CARGO'),
             ]
             for code, name, btype in branches:
@@ -1239,6 +1240,12 @@ def init_db():
                 conn.execute('UPDATE form_types SET sort_order=%s WHERE name=%s', (order, name))
             for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate,))
+            # 신규 지점 추가 (이미 있으면 무시)
+            for _bc, _bn, _bt in [('KOR', '가고시마', 'INTL'), ('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
+                conn.execute(
+                    'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
+                    (_bc, _bn, _bt)
+                )
         conn.commit()
 
         # catalog_defs 시딩 (DO UPDATE — 코드 변경사항 배포 시 자동 반영)
