@@ -5248,6 +5248,59 @@ def form_supply_admin_action(req_id):
     return redirect(url_for('form_supply_admin_requests'))
 
 
+@app.route('/admin/form-supply/matrix')
+@login_required
+def form_supply_matrix():
+    """관리자 — 전 지점 양식 신청 현황 매트릭스"""
+    if session.get('role') != 'admin':
+        flash('관리자만 접근 가능합니다.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+
+    form_types = conn.execute(
+        'SELECT id, name FROM form_types WHERE is_active ORDER BY sort_order'
+    ).fetchall()
+
+    branches_dom  = conn.execute(
+        "SELECT id, code, name FROM branches WHERE type='DOM' ORDER BY code"
+    ).fetchall()
+    branches_intl = conn.execute(
+        "SELECT id, code, name FROM branches WHERE type='INTL' ORDER BY code"
+    ).fetchall()
+
+    rows = conn.execute(
+        'SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.id AS req_id '
+        'FROM form_supply_request_items i '
+        'JOIN form_supply_requests r ON r.id = i.request_id '
+        'ORDER BY r.created_at'
+    ).fetchall()
+    conn.close()
+
+    # pivot[form_type_id][branch_id] = [{'qty', 'date', 'status'}]
+    pivot = {ft['id']: {} for ft in form_types}
+    for row in rows:
+        fid = row['form_type_id']
+        bid = row['branch_id']
+        if fid not in pivot:
+            continue
+        if bid not in pivot[fid]:
+            pivot[fid][bid] = []
+        raw = str(row['created_at'] or '')
+        date_label = raw[5:10].replace('-', '.')  # MM.DD
+        pivot[fid][bid].append({
+            'qty': row['quantity'],
+            'date': date_label,
+            'status': row['status'],
+        })
+
+    return render_template('form_supply_matrix.html',
+                           form_types=form_types,
+                           branches_dom=branches_dom,
+                           branches_intl=branches_intl,
+                           pivot=pivot)
+
+
 if __name__ == '__main__':
     pass
     _port = int(os.environ.get('PORT', '5000'))

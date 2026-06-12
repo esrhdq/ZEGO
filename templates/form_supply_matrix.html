@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block title %}양식 신청 현황 매트릭스{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-table-cells"></i>{% endblock %}
+{% block page_title %}양식 신청 현황 매트릭스{% endblock %}
+
+{% block content %}
+<style>
+  .matrix-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+  }
+  .matrix-table {
+    border-collapse: collapse;
+    font-size: 11px;
+    white-space: nowrap;
+    min-width: max-content;
+  }
+  /* 고정 첫 번째 열 */
+  .matrix-table th.col-form,
+  .matrix-table td.col-form {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #f8fafc;
+    min-width: 160px;
+    max-width: 180px;
+    white-space: normal;
+    border-right: 2px solid #cbd5e1;
+  }
+  .matrix-table thead th.col-form {
+    z-index: 5;
+    background: #1e293b;
+  }
+  /* 헤더 */
+  .matrix-table thead tr.row-group th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: 5px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .matrix-table thead tr.row-branch th {
+    position: sticky;
+    top: 25px;
+    z-index: 4;
+    padding: 4px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.15);
+    min-width: 52px;
+  }
+  th.hd-dom  { background: #1d4ed8; }
+  th.hd-intl { background: #6d28d9; }
+  th.hd-branch-dom  { background: #2563eb; }
+  th.hd-branch-intl { background: #7c3aed; }
+  th.hd-formname { background: #1e293b; color: #fff; text-align: left; padding: 4px 10px; }
+
+  /* 데이터 행 */
+  .matrix-table tbody td {
+    border: 1px solid #e5e7eb;
+    padding: 3px 5px;
+    text-align: center;
+    vertical-align: top;
+    min-width: 52px;
+  }
+  .matrix-table tbody tr:hover td { background: #f0f9ff !important; }
+  .matrix-table tbody tr:hover td.col-form { background: #e0f2fe !important; }
+  .matrix-table tbody td.col-form {
+    text-align: left;
+    padding: 4px 8px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 11px;
+    border-right: 2px solid #cbd5e1;
+    vertical-align: middle;
+  }
+
+  /* 셀 항목 */
+  .cell-entry {
+    display: block;
+    line-height: 1.3;
+    padding: 1px 0;
+  }
+  .cell-entry .qty   { font-weight: 700; font-size: 12px; }
+  .cell-entry .datel { font-size: 9px; color: #6b7280; }
+  .cell-pending  .qty { color: #b45309; }
+  .cell-approved .qty { color: #15803d; }
+  .cell-rejected .qty { color: #b91c1c; text-decoration: line-through; opacity:.6; }
+
+  /* 합계 열 */
+  td.col-total { background: #f8fafc; font-weight: 700; color: #1e293b; }
+  th.col-total { background: #334155 !important; }
+</style>
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('form_supply_admin_requests') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-list me-1"></i>신청 목록
+  </a>
+  <a href="{{ url_for('form_supply_settings') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-gear me-1"></i>설정
+  </a>
+  <div class="ms-auto d-flex gap-1 flex-wrap" id="statusFilter">
+    <button class="btn btn-xs btn-outline-secondary active" data-s="ALL">전체</button>
+    <button class="btn btn-xs" style="background:#fef3c7;border:1.5px solid #d97706;color:#92400e" data-s="pending">대기</button>
+    <button class="btn btn-xs" style="background:#d1fae5;border:1.5px solid #059669;color:#065f46" data-s="approved">승인</button>
+    <button class="btn btn-xs" style="background:#fee2e2;border:1.5px solid #dc2626;color:#991b1b" data-s="rejected">반려</button>
+  </div>
+  <small class="text-muted ms-2">* 색상: <span style="color:#b45309;font-weight:700">대기</span> / <span style="color:#15803d;font-weight:700">승인</span> / <span style="color:#b91c1c;font-weight:700">반려</span></small>
+</div>
+
+<div class="matrix-wrap">
+  <table class="matrix-table" id="matrixTable">
+    <thead>
+      <!-- 그룹 행 -->
+      <tr class="row-group">
+        <th class="col-form hd-formname" rowspan="2">양식명</th>
+        {% if branches_dom %}
+        <th class="hd-dom" colspan="{{ branches_dom|length + 1 }}">국내</th>
+        {% endif %}
+        {% if branches_intl %}
+        <th class="hd-intl" colspan="{{ branches_intl|length + 1 }}">국제</th>
+        {% endif %}
+      </tr>
+      <!-- 지점 행 -->
+      <tr class="row-branch">
+        {% for b in branches_dom %}
+        <th class="hd-branch-dom" title="{{ b.name }}">{{ b.code }}</th>
+        {% endfor %}
+        <th class="hd-branch-dom col-total">소계</th>
+        {% for b in branches_intl %}
+        <th class="hd-branch-intl" title="{{ b.name }}">{{ b.code }}</th>
+        {% endfor %}
+        <th class="hd-branch-intl col-total">소계</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ft in form_types %}
+      {% set ft_pivot = pivot.get(ft.id, {}) %}
+      {% set has_any = ft_pivot|length > 0 %}
+      <tr{% if not has_any %} class="row-empty"{% endif %}>
+        <td class="col-form">{{ ft.name }}</td>
+
+        {# 국내 #}
+        {% set dom_total = namespace(v=0) %}
+        {% for b in branches_dom %}
+          {% set entries = ft_pivot.get(b.id, []) %}
+          {% set has_entries = entries|length > 0 %}
+          <td>
+            {% for e in entries %}
+              {% set dom_total.v = dom_total.v + e.qty %}
+              <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
+                <span class="qty">{{ e.qty }}</span>
+                <span class="datel">({{ e.date }})</span>
+              </span>
+            {% endfor %}
+          </td>
+        {% endfor %}
+        <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
+
+        {# 국제 #}
+        {% set intl_total = namespace(v=0) %}
+        {% for b in branches_intl %}
+          {% set entries = ft_pivot.get(b.id, []) %}
+          <td>
+            {% for e in entries %}
+              {% set intl_total.v = intl_total.v + e.qty %}
+              <span class="cell-entry cell-{{ e.status }}" data-status="{{ e.status }}">
+                <span class="qty">{{ e.qty }}</span>
+                <span class="datel">({{ e.date }})</span>
+              </span>
+            {% endfor %}
+          </td>
+        {% endfor %}
+        <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 빈 행 토글
+var showEmpty = false;
+document.querySelectorAll('.row-empty').forEach(r => r.style.display = 'none');
+
+// 상태 필터
+document.querySelectorAll('#statusFilter button').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#statusFilter button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    var s = this.dataset.s;
+    document.querySelectorAll('.cell-entry').forEach(el => {
+      el.style.display = (s === 'ALL' || el.dataset.status === s) ? '' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}
