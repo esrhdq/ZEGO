@@ -20,7 +20,7 @@
   </div>
   <div class="card-body">
 
-    <form method="post">
+    <form method="post" id="fltForm">
       {% if session.role == 'admin' %}
       <div class="row g-2 align-items-end mb-3">
         <div class="col-md-4">
@@ -42,29 +42,61 @@
       {% endif %}
 
       <div class="table-responsive">
-        <table class="table table-bordered table-sm mb-3" style="max-width:520px">
-          <thead class="table-light">
-            <tr>
+        <table class="table table-bordered table-sm mb-3" style="max-width:680px">
+          <thead>
+            <tr style="background:#1a2340;color:#fff">
               <th class="text-center" style="width:140px">연월</th>
-              <th class="text-center">{{ T('flt.flights') }}</th>
+              <th class="text-center" style="width:160px">
+                <i class="fa-solid fa-plane-arrival me-1" style="color:#60a5fa"></i>
+                {{ T('flt.dom') }}
+              </th>
+              <th class="text-center" style="width:160px">
+                <i class="fa-solid fa-plane-departure me-1" style="color:#f97316"></i>
+                {{ T('flt.intl') }}
+              </th>
+              <th class="text-center" style="width:120px">
+                <i class="fa-solid fa-sigma me-1" style="color:#4ade80"></i>
+                {{ T('flt.total') }}
+              </th>
             </tr>
           </thead>
           <tbody>
             {% for mo in month_list %}
             {% set is_cur = (mo == today_str) %}
-            <tr {% if is_cur %}class="table-primary"{% endif %}>
-              <td class="text-center fw-semibold">
+            {% set ex = existing.get(mo, {}) %}
+            {% set ex_dom   = ex.get('dom',   0) %}
+            {% set ex_intl  = ex.get('intl',  0) %}
+            {% set ex_total = ex.get('total', 0) %}
+            <tr {% if is_cur %}class="table-primary"{% endif %} data-mo="{{ mo }}">
+              <td class="text-center fw-semibold align-middle">
                 {{ mo }}
-                {% if is_cur %}<span class="badge bg-primary ms-1" style="font-size:.62rem">{{ T('flt.this_month') }}</span>{% endif %}
-                {% if mo > today_str %}<span class="badge bg-warning text-dark ms-1" style="font-size:.62rem">{{ T('flt.scheduled') }}</span>{% endif %}
+                {% if is_cur %}
+                  <span class="badge bg-primary ms-1" style="font-size:.62rem">{{ T('flt.this_month') }}</span>
+                {% endif %}
+                {% if mo > today_str %}
+                  <span class="badge bg-warning text-dark ms-1" style="font-size:.62rem">{{ T('flt.scheduled') }}</span>
+                {% endif %}
               </td>
               <td class="text-center p-1">
                 <input type="hidden" name="month" value="{{ mo }}">
-                <input type="number" name="count"
-                       class="form-control form-control-sm text-center mx-auto"
-                       style="width:90px"
-                       value="{{ existing.get(mo, '') }}"
-                       min="0" placeholder="—">
+                <input type="number" name="dom_count"
+                       class="form-control form-control-sm text-center mx-auto flt-dom"
+                       style="width:100px"
+                       value="{{ ex_dom if ex_dom else '' }}"
+                       min="0" placeholder="—"
+                       data-row="{{ mo }}">
+              </td>
+              <td class="text-center p-1">
+                <input type="number" name="intl_count"
+                       class="form-control form-control-sm text-center mx-auto flt-intl"
+                       style="width:100px"
+                       value="{{ ex_intl if ex_intl else '' }}"
+                       min="0" placeholder="—"
+                       data-row="{{ mo }}">
+              </td>
+              <td class="text-center align-middle fw-bold total-cell" id="total-{{ mo }}"
+                  style="font-size:1rem;color:{% if ex_total > 0 %}#15803d{% else %}#aaa{% endif %}">
+                {{ ex_total if ex_total > 0 else '—' }}
               </td>
             </tr>
             {% endfor %}
@@ -82,4 +114,23 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function updateTotal(mo) {
+    var d = parseInt(document.querySelector('.flt-dom[data-row="' + mo + '"]').value) || 0;
+    var i = parseInt(document.querySelector('.flt-intl[data-row="' + mo + '"]').value) || 0;
+    var t = d + i;
+    var cell = document.getElementById('total-' + mo);
+    cell.textContent   = t > 0 ? t : '—';
+    cell.style.color   = t > 0 ? '#15803d' : '#aaa';
+  }
+
+  document.querySelectorAll('.flt-dom, .flt-intl').forEach(function (inp) {
+    inp.addEventListener('input', function () { updateTotal(inp.dataset.row); });
+  });
+})();
+</script>
 {% endblock %}

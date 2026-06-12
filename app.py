@@ -2725,11 +2725,26 @@ def forecast_download():
 @login_required
 def flight_schedule_view():
     from datetime import date
-    conn  = get_db()
-    role  = session.get('role')
-    bid   = session.get('branch_id')
-    today = date.today()
-    bf    = request.args.get('branch_id', '')
+    conn    = get_db()
+    role    = session.get('role')
+    bid     = session.get('branch_id')
+    today   = date.today()
+    bf      = request.args.get('branch_id', '')
+    ph      = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    # lazy migration: dom_count / intl_count 컬럼
+    if USE_SQLITE:
+        cols = [r[1] for r in conn.execute('PRAGMA table_info(flight_schedule)').fetchall()]
+        if 'dom_count' not in cols:
+            conn.execute('ALTER TABLE flight_schedule ADD COLUMN dom_count INTEGER NOT NULL DEFAULT 0')
+        if 'intl_count' not in cols:
+            conn.execute('ALTER TABLE flight_schedule ADD COLUMN intl_count INTEGER NOT NULL DEFAULT 0')
+        conn.commit()
+    else:
+        conn.execute('ALTER TABLE flight_schedule ADD COLUMN IF NOT EXISTS dom_count INTEGER NOT NULL DEFAULT 0')
+        conn.execute('ALTER TABLE flight_schedule ADD COLUMN IF NOT EXISTS intl_count INTEGER NOT NULL DEFAULT 0')
+        conn.commit()
 
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
 
@@ -2739,23 +2754,30 @@ def flight_schedule_view():
         view_bid = bid
 
     if request.method == 'POST':
-        post_bid = int(request.form.get('branch_id', view_bid or 0))
+        post_bid   = int(request.form.get('branch_id', view_bid or 0))
         if role != 'admin' and post_bid != bid:
             flash('권한이 없습니다.', 'danger')
             conn.close()
             return redirect(url_for('flight_schedule_view'))
 
-        months = request.form.getlist('month')
-        counts = request.form.getlist('count')
-        for mo, cnt in zip(months, counts):
+        months      = request.form.getlist('month')
+        dom_counts  = request.form.getlist('dom_count')
+        intl_counts = request.form.getlist('intl_count')
+        for mo, dc, ic in zip(months, dom_counts, intl_counts):
             try:
-                c = max(0, int(cnt)) if cnt.strip() else 0
-                conn.execute('''
-                    INSERT INTO flight_schedule (branch_id, year_month, flight_count, updated_at)
-                    VALUES (%s, %s, %s, NOW())
+                d     = max(0, int(dc))  if dc.strip()  else 0
+                i     = max(0, int(ic))  if ic.strip()  else 0
+                total = d + i
+                conn.execute(f'''
+                    INSERT INTO flight_schedule
+                        (branch_id, year_month, dom_count, intl_count, flight_count, updated_at)
+                    VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})
                     ON CONFLICT (branch_id, year_month)
-                    DO UPDATE SET flight_count=EXCLUDED.flight_count, updated_at=NOW()
-                ''', (post_bid, mo, c))
+                    DO UPDATE SET dom_count=EXCLUDED.dom_count,
+                                  intl_count=EXCLUDED.intl_count,
+                                  flight_count=EXCLUDED.flight_count,
+                                  updated_at={now_sql}
+                ''', (post_bid, mo, d, i, total))
             except (ValueError, Exception):
                 pass
         conn.commit()
@@ -2776,10 +2798,17 @@ def flight_schedule_view():
     existing = {}
     if view_bid:
         rows = conn.execute(
-            'SELECT year_month, flight_count FROM flight_schedule WHERE branch_id=%s',
+            f'SELECT year_month, dom_count, intl_count, flight_count FROM flight_schedule WHERE branch_id={ph}',
             (view_bid,)
         ).fetchall()
-        existing = {r['year_month']: r['flight_count'] for r in rows}
+        existing = {
+            r['year_month']: {
+                'dom':   r['dom_count'],
+                'intl':  r['intl_count'],
+                'total': r['flight_count'],
+            }
+            for r in rows
+        }
 
     conn.close()
     return render_template('flight_schedule.html',
