@@ -12,7 +12,7 @@
     <span class="badge bg-success ms-1">{{ T('common.recommended') }}</span>
     <button class="btn btn-sm btn-outline-secondary ms-auto" type="button"
             data-bs-toggle="collapse" data-bs-target="#uploadSection">
-      <i class="fa-solid fa-chevron-down"></i> 펼치기
+      <i class="fa-solid fa-chevron-down"></i> {{ T('inb.expand_btn') }}
     </button>
   </div>
   <div class="collapse" id="uploadSection">
@@ -23,16 +23,16 @@
         <div class="col-md-5">
           <h6 class="fw-semibold mb-3"><i class="fa-solid fa-circle-info text-primary me-1"></i>{{ T('inb.usage') }}</h6>
           <ol class="small text-muted ps-3 mb-3" style="line-height:2">
-            <li>아래 <strong>{{ T('inb.template_dl') }}</strong> 버튼으로 양식을 받습니다.</li>
+            <li>{{ T('inb.step1_instruction') }}</li>
             <li>
               {% if session.role == 'admin' %}
-                <strong>지점코드</strong>와 <strong>양식명</strong>을 드롭다운에서 선택하고 수량을 입력합니다.
+                {{ T('inb.step2_admin_instruction') }}
               {% else %}
-                <strong>양식명</strong>을 드롭다운에서 선택하고 수량을 입력합니다.<br>
-                <span class="text-primary">(지점코드는 본인 지점으로 자동 적용됩니다.)</span>
+                {{ T('inb.step2_user_instruction') }}<br>
+                <span class="text-primary">{{ T('inb.branch_auto_applied') }}</span>
               {% endif %}
             </li>
-            <li>저장 후 아래 <strong>파일 선택 → 업로드</strong>합니다.</li>
+            <li>{{ T('inb.step3_instruction') }}</li>
           </ol>
           <a href="{{ url_for('inbound_template') }}" class="btn btn-outline-success w-100">
             <i class="fa-solid fa-file-excel me-2"></i>{{ T('inb.template_dl') }}
@@ -149,7 +149,7 @@
             <label class="form-label fw-semibold">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="number" name="quantity" class="form-control" min="1" required placeholder="{{ T('common.qty_placeholder') }}">
-              <span class="input-group-text" id="unitLabel">단위</span>
+              <span class="input-group-text" id="unitLabel">{{ T('common.unit') }}</span>
             </div>
           </div>
 
@@ -173,6 +173,7 @@
 
 {% block scripts %}
 <script>
+var _fileSelected = '{{ T("inb.file_selected") }}';
 async function fetchStock() {
   const bidEl = document.getElementById('branchSelect');
   const bid   = bidEl.value || bidEl.getAttribute('value');
@@ -196,7 +197,7 @@ async function fetchStock() {
 // 파일 선택 시 파일명 표시 및 업로드 버튼 활성화
 function showFileName(input) {
   const name = input.files[0]?.name || '';
-  document.getElementById('fileName').textContent  = name ? '선택됨: ' + name : '';
+  document.getElementById('fileName').textContent  = name ? _fileSelected + name : '';
   document.getElementById('uploadBtn').disabled    = !name;
 }
 

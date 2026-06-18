@@ -9,14 +9,14 @@
 
   /* 카테고리 필터 탭 */
   .inv-filter-bar {
-    background:var(--card-bg); border:1px solid var(--border); border-radius:10px;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
     padding:10px 14px; margin-bottom:16px;
     display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center;
   }
-  .inv-filter-bar .filter-label { font-size:.72rem; color:var(--text-muted); margin-right:4px; }
+  .inv-filter-bar .filter-label { font-size:.72rem; color:#888; margin-right:4px; }
   .inv-ftag {
     font-size:.72rem; padding:3px 12px; border-radius:20px; cursor:pointer;
-    border:1.5px solid var(--border-md); background:var(--card-bg); color:var(--text-secondary);
+    border:1.5px solid #dee2e6; background:#fff; color:#555;
     transition:all .15s; white-space:nowrap;
   }
   .inv-ftag.active { background:var(--red); color:#fff; border-color:var(--red); }
@@ -27,16 +27,16 @@
     display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px;
   }
   .inv-summary-card {
-    flex:1; min-width:130px; background:var(--card-bg);
+    flex:1; min-width:130px; background:#fff;
     border:1px solid var(--border); border-radius:10px;
     padding:12px 16px; text-align:center;
   }
   .inv-summary-card .s-num { font-size:1.5rem; font-weight:800; color:var(--red); }
-  .inv-summary-card .s-label { font-size:.72rem; color:var(--text-muted); margin-top:2px; }
+  .inv-summary-card .s-label { font-size:.72rem; color:#888; margin-top:2px; }
 
   /* 메인 테이블 */
   .inv-table-wrap {
-    background:var(--card-bg); border:1px solid var(--border); border-radius:10px;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
     overflow:hidden; margin-bottom:20px;
   }
   .inv-table {
@@ -48,14 +48,14 @@
     padding:9px 8px; font-weight:700; white-space:nowrap;
     overflow:hidden; text-overflow:ellipsis;
   }
-  .inv-table thead tr:nth-child(2) { background:var(--bg); }
+  .inv-table thead tr:nth-child(2) { background:#f7f7f7; }
   .inv-table thead tr:nth-child(2) th {
-    padding:5px 8px; font-size:.68rem; color:var(--text-muted); font-weight:600;
-    border-bottom:2px solid var(--border-md);
+    padding:5px 8px; font-size:.68rem; color:#666; font-weight:600;
+    border-bottom:2px solid #e0e0e0;
   }
-  .inv-table tbody tr { border-bottom:1px solid var(--border); }
+  .inv-table tbody tr { border-bottom:1px solid #eee; }
   .inv-table tbody tr:last-child { border-bottom:none; }
-  .inv-table tbody tr:hover { background:var(--brand-pale); }
+  .inv-table tbody tr:hover { background:#fef9fa; }
   .inv-table td {
     padding:7px 8px; text-align:center; vertical-align:middle;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -71,12 +71,12 @@
 
   /* 보유 셀 */
   .cell-owned {
-    background:var(--success-bg); color:var(--success); font-weight:700;
+    background:#f0fdf4; color:#16a34a; font-weight:700;
     border-radius:4px; font-size:.75rem;
   }
-  .cell-none { color:var(--text-faint); font-size:.8rem; }
+  .cell-none { color:#ccc; font-size:.8rem; }
   .cell-total {
-    background:var(--warning-bg); color:var(--warning); font-weight:800;
+    background:#fff7ed; color:#c2410c; font-weight:800;
     border-radius:4px;
   }
 
@@ -103,7 +103,7 @@
 
   /* 범례 */
   .inv-legend {
-    font-size:.72rem; color:var(--text-muted);
+    font-size:.72rem; color:#888;
     display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;
   }
   .inv-legend span { display:flex; align-items:center; gap:4px; }
@@ -153,10 +153,10 @@
   <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary inv-back-btn">
     <i class="fa-solid fa-arrow-left me-1"></i>{{ T('cat.inv_back') }}
   </a>
-  <span class="text-muted small ms-2">지점별 운송아이템 보유현황</span>
-  <span class="badge bg-secondary ms-1">{{ branch_order|length }}개 지점</span>
+  <span class="text-muted small ms-2">{{ T('cat.inv_branch_status_title') }}</span>
+  <span class="badge bg-secondary ms-1">{{ branch_order|length }}{{ T('cat.inv_branch_count_suffix') }}</span>
   <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-success ms-auto">
-    <i class="fa-solid fa-pen-to-square me-1"></i>보유현황 편집하기
+    <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.inv_edit_button') }}
   </a>
 </div>
 
@@ -166,8 +166,8 @@
 {% set cats = [] %}
 {% for item in catalog_items %}{% if item.cat not in cats %}{% set _ = cats.append(item.cat) %}{% endif %}{% endfor %}
 <div class="inv-filter-bar">
-  <span class="filter-label">카테고리:</span>
-  <button class="inv-ftag active" onclick="invFilter('all', this)">전체</button>
+  <span class="filter-label">{{ T('cat.inv_filter_category_label') }}</span>
+  <button class="inv-ftag active" onclick="invFilter('all', this)">{{ T('cat.inv_filter_all') }}</button>
   {% for c in cats %}
   <button class="inv-ftag" onclick="invFilter('{{ c }}', this)">{{ c }}</button>
   {% endfor %}
@@ -179,15 +179,15 @@
     <table class="inv-table" id="invTable">
       <thead>
         <tr>
-          <th class="col-item-cat" rowspan="2" style="vertical-align:middle">구분</th>
-          <th class="col-item-name" rowspan="2" style="vertical-align:middle">아이템</th>
+          <th class="col-item-cat" rowspan="2" style="vertical-align:middle">{{ T('cat.inv_th_category') }}</th>
+          <th class="col-item-name" rowspan="2" style="vertical-align:middle">{{ T('cat.inv_th_item') }}</th>
           {% for bc in branch_order %}
           <th class="branch-th">
             <span class="b-code">{{ bc }}</span>
             <span class="b-name">{{ branch_map[bc]['name'] }}</span>
           </th>
           {% endfor %}
-          <th class="col-total" style="vertical-align:middle;text-align:center;background:var(--warning-bg);color:var(--warning)">보유<br>지점</th>
+          <th class="col-total" style="vertical-align:middle;text-align:center;background:#fff7ed;color:#c2410c">{{ T('cat.inv_th_owned_branches') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -215,34 +215,41 @@
         {% endfor %}
       </tbody>
       <tfoot>
-        <tr style="background:var(--bg);font-weight:700;border-top:2px solid var(--border-md)">
-          <td colspan="2" style="text-align:right;padding:8px;font-size:.76rem;color:var(--text-secondary)">보유 아이템 수</td>
+        <tr style="background:#f7f7f7;font-weight:700;border-top:2px solid #e0e0e0">
+          <td colspan="2" style="text-align:right;padding:8px;font-size:.76rem;color:#555">{{ T('cat.inv_tfoot_owned_items') }}</td>
           {% for bc in branch_order %}
           {% set bc_count = namespace(n=0) %}
           {% for item in catalog_items %}{% if item.code in branch_map[bc]['items'] %}{% set bc_count.n = bc_count.n + 1 %}{% endif %}{% endfor %}
           <td style="text-align:center;color:var(--red);font-size:.78rem">{{ bc_count.n }}</td>
           {% endfor %}
-          <td style="text-align:center;color:var(--warning)">—</td>
+          <td style="text-align:center;color:#c2410c">—</td>
         </tr>
       </tfoot>
     </table>
   </div>
 </div>
 
+<!-- 페이지네이션 -->
+<div id="invPagination" class="d-flex align-items-center gap-2 mt-2 mb-1" style="display:none!important">
+  <button id="invPrevBtn" class="btn btn-sm btn-outline-secondary" onclick="invPageChange(-1)">‹ {{ T('cat.inv_pagination_prev') }}</button>
+  <span id="invPageInfo" class="small text-muted px-1"></span>
+  <button id="invNextBtn" class="btn btn-sm btn-outline-secondary" onclick="invPageChange(1)">{{ T('cat.inv_pagination_next') }} ›</button>
+</div>
+
 <!-- 범례 -->
 <div class="inv-legend">
-  <span><span style="display:inline-block;width:20px;height:14px;background:var(--success-bg);border:1px solid var(--border-md);border-radius:3px"></span> 숫자 = 보유수량</span>
-  <span><span style="color:#ccc;font-size:1rem">·</span> 미보유</span>
-  <span>맨 아래 행 숫자 = 지점별 총 보유 아이템 수</span>
+  <span><span style="display:inline-block;width:20px;height:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:3px"></span> {{ T('cat.inv_legend_owned_qty') }}</span>
+  <span><span style="color:#ccc;font-size:1rem">·</span> {{ T('cat.inv_legend_not_owned') }}</span>
+  <span>{{ T('cat.inv_legend_footer_hint') }}</span>
 </div>
 
 {% else %}
 <div class="card border-0 text-center py-5">
   <div class="text-muted">
     <i class="fa-solid fa-box-open fa-2x mb-3" style="opacity:.3"></i>
-    <div>아직 보유현황이 등록된 지점이 없습니다.</div>
+    <div>{{ T('cat.inv_empty_message') }}</div>
     <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-success mt-3">
-      <i class="fa-solid fa-pen-to-square me-1"></i>카탈로그에서 보유현황 등록하기
+      <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.inv_empty_register_link') }}
     </a>
   </div>
 </div>
@@ -252,13 +259,46 @@
 
 {% block scripts %}
 <script>
+const INV_PAGE_SIZE = 30;
+let invPage = 1;
+let invCatFilter = 'all';
+var _invPaginationUnit = '{{ T("cat.inv_pagination_unit") }}';
+
+function invRender() {
+  const allRows = Array.from(document.querySelectorAll('#invTable tbody tr'));
+  const filtered = allRows.filter(tr => invCatFilter === 'all' || tr.dataset.cat === invCatFilter);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / INV_PAGE_SIZE));
+  if (invPage > totalPages) invPage = totalPages;
+
+  const start = (invPage - 1) * INV_PAGE_SIZE;
+  allRows.forEach(tr => tr.style.display = 'none');
+  filtered.slice(start, start + INV_PAGE_SIZE).forEach(tr => tr.style.display = '');
+
+  const pg = document.getElementById('invPagination');
+  if (totalPages > 1) {
+    pg.style.removeProperty('display');
+    document.getElementById('invPageInfo').textContent = invPage + ' / ' + totalPages + ' (' + filtered.length + _invPaginationUnit + ')';
+    document.getElementById('invPrevBtn').disabled = invPage <= 1;
+    document.getElementById('invNextBtn').disabled = invPage >= totalPages;
+  } else {
+    pg.style.display = 'none';
+  }
+}
+
+function invPageChange(dir) {
+  invPage += dir;
+  invRender();
+}
+
 function invFilter(cat, btn) {
   document.querySelectorAll('.inv-ftag').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('#invTable tbody tr').forEach(tr => {
-    tr.style.display = (cat === 'all' || tr.dataset.cat === cat) ? '' : 'none';
-  });
+  invCatFilter = cat;
+  invPage = 1;
+  invRender();
 }
+
+invRender();
 
 function invOpenLB(src, title) {
   document.getElementById('invLbImg').src   = src;

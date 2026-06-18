@@ -153,10 +153,9 @@
   .thumb-zoom-hint {
     position:absolute; inset:0; z-index:2; pointer-events:none;
     display:flex; align-items:center; justify-content:center;
-    font-size:1.3rem; color:rgba(0,0,0,.25); opacity:1;
+    font-size:1.3rem; color:rgba(0,0,0,.22); opacity:1;
     transition:opacity .15s, color .15s;
   }
-  .cat-thumb:not(:hover) .thumb-zoom-hint { color:rgba(0,0,0,.22); }
   .cat-thumb img { max-height:100%; max-width:100%; object-fit:contain; display:block; pointer-events:none; background:#f0f0f0; transition:opacity .3s; }
   .cat-thumb img[src=""] { opacity:0; }
 
@@ -177,6 +176,8 @@
   .ctag-orange { background:#fff3e0; color:#e65100; }
   .ctag-gray   { background:#f0f0f0; color:#555; }
 
+  .cat-master-wrap { background:#fff; border-radius:10px; border:1px solid var(--border); overflow:hidden; margin-bottom:24px; }
+  .cat-master-wrap h3 { background:var(--red); color:#fff; padding:11px 16px; font-size:.92rem; font-weight:700; margin:0; }
   .cat-table { width:100%; border-collapse:collapse; font-size:.79rem; }
   .cat-table thead tr { background:#f7f7f7; }
   .cat-table thead th { padding:8px 12px; text-align:left; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; white-space:nowrap; }
@@ -273,52 +274,52 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header adm-modal-header">
-        <h6 class="modal-title"><i class="fa-solid fa-pen me-2"></i>아이템 수정</h6>
+        <h6 class="modal-title"><i class="fa-solid fa-pen me-2"></i>{{ T('catalog.modal_edit_item_title') }}</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pb-2">
         <div class="d-flex align-items-center gap-3 mb-3">
           <div class="adm-thumb-wrap"><img id="cem-thumb" src="" alt=""></div>
           <div class="flex-grow-1">
-            <label class="adm-form-label d-block" style="font-size:.7rem;margin-bottom:2px">아이템 코드 <span class="text-muted fw-normal">(영숫자·_)</span></label>
+            <label class="adm-form-label d-block" style="font-size:.7rem;margin-bottom:2px">{{ T('catalog.label_item_code') }} <span class="text-muted fw-normal">{{ T('catalog.label_item_code_hint') }}</span></label>
             <input type="text" id="cem-newcode" class="form-control form-control-sm"
                    pattern="[a-zA-Z0-9_]{1,20}" style="font-family:monospace"
-                   placeholder="예) xb15">
+                   placeholder="{{ T('catalog.placeholder_code_example') }}">
           </div>
         </div>
         <input type="hidden" id="cem-code">
         <div class="mb-2">
-          <label class="adm-form-label d-block">아이템명 <span class="text-danger">*</span></label>
+          <label class="adm-form-label d-block">{{ T('catalog.label_item_name') }} <span class="text-danger">*</span></label>
           <input type="text" id="cem-name" class="form-control form-control-sm">
         </div>
         <div class="mb-2">
-          <label class="adm-form-label d-block">카테고리 <span class="text-danger">*</span></label>
+          <label class="adm-form-label d-block">{{ T('catalog.label_category') }} <span class="text-danger">*</span></label>
           <select id="cem-cat" class="form-select form-select-sm">
             {% for c in cat_groups %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
           </select>
         </div>
         <div class="mb-2">
-          <label class="adm-form-label d-block">설명 <span class="text-muted fw-normal">(선택)</span></label>
-          <input type="text" id="cem-subdesc" class="form-control form-control-sm" placeholder="예) 600×1800mm / 4개 언어">
+          <label class="adm-form-label d-block">{{ T('catalog.label_description') }} <span class="text-muted fw-normal">{{ T('catalog.label_optional') }}</span></label>
+          <input type="text" id="cem-subdesc" class="form-control form-control-sm" placeholder="{{ T('catalog.placeholder_spec_example') }}">
         </div>
         <div class="mb-2">
-          <label class="adm-form-label d-block">정렬순서 <span class="text-muted fw-normal">(숫자 오름차순)</span></label>
+          <label class="adm-form-label d-block">{{ T('catalog.label_sort_order') }} <span class="text-muted fw-normal">{{ T('catalog.label_sort_order_hint') }}</span></label>
           <input type="number" id="cem-sort" class="form-control form-control-sm"
                  min="0" max="9999" style="width:120px">
         </div>
         <div class="mb-1">
-          <label class="adm-form-label d-block">이미지 교체 <span class="text-muted fw-normal">(선택 — 비우면 기존 유지)</span></label>
+          <label class="adm-form-label d-block">{{ T('catalog.label_image_replace') }} <span class="text-muted fw-normal">{{ T('catalog.label_image_replace_hint') }}</span></label>
           <label class="adm-img-label" id="cem-img-label" for="cem-image">
-            <i class="fa-solid fa-image me-1"></i>파일 선택
+            <i class="fa-solid fa-image me-1"></i>{{ T('catalog.btn_file_select') }}
           </label>
           <input type="file" id="cem-image" class="d-none" accept=".png,.jpg,.jpeg,.webp" onchange="cemImgChange(this)">
           <span id="cem-img-fname" class="ms-2 text-muted" style="font-size:.75rem"></span>
         </div>
       </div>
       <div class="modal-footer pt-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-danger btn-sm" id="cem-submit-btn" onclick="catSubmitEdit()">
-          <i class="fa-solid fa-floppy-disk me-1"></i>저장
+          <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('common.save') }}
         </button>
       </div>
     </div>
@@ -330,41 +331,41 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header adm-modal-header">
-        <h6 class="modal-title"><i class="fa-solid fa-plus me-2"></i>아이템 추가</h6>
+        <h6 class="modal-title"><i class="fa-solid fa-plus me-2"></i>{{ T('catalog.modal_add_item_title') }}</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pb-2">
         <div class="mb-2">
-          <label class="adm-form-label d-block">아이템명 <span class="text-danger">*</span></label>
-          <input type="text" id="cam-name" class="form-control form-control-sm" placeholder="예) 탑승구 안내">
+          <label class="adm-form-label d-block">{{ T('catalog.label_item_name') }} <span class="text-danger">*</span></label>
+          <input type="text" id="cam-name" class="form-control form-control-sm" placeholder="{{ T('catalog.placeholder_item_name_example') }}">
         </div>
         <div class="mb-2">
-          <label class="adm-form-label d-block">카테고리 <span class="text-danger">*</span></label>
+          <label class="adm-form-label d-block">{{ T('catalog.label_category') }} <span class="text-danger">*</span></label>
           <select id="cam-cat" class="form-select form-select-sm">
             {% for c in cat_groups %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
           </select>
         </div>
         <div class="mb-2">
-          <label class="adm-form-label d-block">설명 <span class="text-muted fw-normal">(선택)</span></label>
-          <input type="text" id="cam-subdesc" class="form-control form-control-sm" placeholder="예) 600×1800mm / 4개 언어">
+          <label class="adm-form-label d-block">{{ T('catalog.label_description') }} <span class="text-muted fw-normal">{{ T('catalog.label_optional') }}</span></label>
+          <input type="text" id="cam-subdesc" class="form-control form-control-sm" placeholder="{{ T('catalog.placeholder_spec_example') }}">
         </div>
         <div class="mb-2">
-          <label class="adm-form-label d-block">아이템 코드 <span class="text-muted fw-normal">(비우면 자동 생성)</span></label>
-          <input type="text" id="cam-code" class="form-control form-control-sm" placeholder="예) xb15">
+          <label class="adm-form-label d-block">{{ T('catalog.label_item_code') }} <span class="text-muted fw-normal">{{ T('catalog.label_item_code_auto_hint') }}</span></label>
+          <input type="text" id="cam-code" class="form-control form-control-sm" placeholder="{{ T('catalog.placeholder_code_example') }}">
         </div>
         <div class="mb-1">
-          <label class="adm-form-label d-block">이미지 파일 <span class="text-danger">*</span></label>
+          <label class="adm-form-label d-block">{{ T('catalog.label_image_file') }} <span class="text-danger">*</span></label>
           <label class="adm-img-label" id="cam-img-label" for="cam-image">
-            <i class="fa-solid fa-image me-1"></i>파일 선택
+            <i class="fa-solid fa-image me-1"></i>{{ T('catalog.btn_file_select') }}
           </label>
           <input type="file" id="cam-image" class="d-none" accept=".png,.jpg,.jpeg,.webp" onchange="camImgChange(this)">
           <span id="cam-img-fname" class="ms-2 text-muted" style="font-size:.75rem"></span>
         </div>
       </div>
       <div class="modal-footer pt-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-danger btn-sm" id="cam-submit-btn" onclick="catSubmitAdd()">
-          <i class="fa-solid fa-plus me-1"></i>추가하기
+          <i class="fa-solid fa-plus me-1"></i>{{ T('catalog.btn_add') }}
         </button>
       </div>
     </div>
@@ -378,36 +379,36 @@
     <div class="modal-content">
       <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
         <h6 class="modal-title" style="font-size:.92rem;font-weight:700">
-          <i class="fa-solid fa-cart-plus me-2"></i><span id="rcm-title">아이템 담기</span>
+          <i class="fa-solid fa-cart-plus me-2"></i><span id="rcm-title">{{ T('catalog.modal_add_to_cart_title') }}</span>
         </h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pb-2">
         <input type="hidden" id="rcm-code">
         <div class="mb-2">
-          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">수량</label>
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">{{ T('catalog.label_quantity') }}</label>
           <input type="number" id="rcm-qty" class="form-control form-control-sm"
                  min="1" max="99" value="1" style="width:100px">
         </div>
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
-            커스텀 이미지 <span style="font-size:.75rem;font-weight:400;color:#888">(선택 — 원하는 디자인 파일 첨부)</span>
+            {{ T('catalog.label_custom_image') }} <span style="font-size:.75rem;font-weight:400;color:#888">{{ T('catalog.label_custom_image_hint') }}</span>
           </label>
           <div class="d-flex align-items-center flex-wrap gap-2">
             <label style="display:inline-block;padding:5px 12px;background:#f5f5f5;border:1.5px dashed #ccc;
                           border-radius:6px;cursor:pointer;font-size:.78rem;color:#555" id="rcm-img-label" for="rcm-image">
-              <i class="fa-solid fa-image me-1"></i>파일 선택
+              <i class="fa-solid fa-image me-1"></i>{{ T('catalog.btn_file_select') }}
             </label>
             <input type="file" id="rcm-image" class="d-none" accept=".png,.jpg,.jpeg,.webp,.pdf"
                    onchange="rcmImgChange(this)">
             <span id="rcm-img-name" class="text-muted" style="font-size:.75rem"></span>
-            <span style="font-size:.72rem;color:#aaa">또는</span>
+            <span style="font-size:.72rem;color:#aaa">{{ T('common.or') }}</span>
             <button type="button" id="rcm-editor-btn"
                     style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;
                            background:#f5f5f5;border:1.5px solid #ccc;border-radius:6px;
                            font-size:.78rem;color:#555;cursor:pointer;transition:all .15s"
                     onclick="rcmOpenEditor()">
-              <i class="fa-solid fa-pen-ruler"></i>편집기 열기
+              <i class="fa-solid fa-pen-ruler"></i>{{ T('catalog.btn_open_editor') }}
             </button>
           </div>
           <div id="rcm-editor-preview" style="display:none;margin-top:8px;align-items:center;gap:8px" class="d-flex">
@@ -415,27 +416,27 @@
                  style="max-height:72px;max-width:140px;object-fit:contain;border:1px solid #ddd;border-radius:4px">
             <div>
               <div style="font-size:.72rem;color:#16a34a;font-weight:600;margin-bottom:2px">
-                <i class="fa-solid fa-check me-1"></i>편집기 시안 적용됨
+                <i class="fa-solid fa-check me-1"></i>{{ T('catalog.editor_draft_applied') }}
               </div>
               <button type="button" onclick="rcmClearEditorImg()"
                       style="font-size:.72rem;color:#991b1b;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">
-                취소
+                {{ T('common.cancel') }}
               </button>
             </div>
           </div>
         </div>
         <div class="mb-1">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
-            요청사항 / 텍스트 <span style="font-size:.75rem;font-weight:400;color:#888">(선택 — 넣고 싶은 내용, 노선 등)</span>
+            {{ T('catalog.label_request_text') }} <span style="font-size:.75rem;font-weight:400;color:#888">{{ T('catalog.label_request_text_hint') }}</span>
           </label>
           <textarea id="rcm-text" class="form-control form-control-sm" rows="3"
-                    placeholder="예) 인천 ↕ 방콕 노선, 운영시간: 09:00~18:00, 로고 교체 필요"></textarea>
+                    placeholder="{{ T('catalog.placeholder_request_text_example') }}"></textarea>
         </div>
       </div>
       <div class="modal-footer pt-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="rcmSubmit()">
-          <i class="fa-solid fa-cart-plus me-1"></i>장바구니에 담기
+          <i class="fa-solid fa-cart-plus me-1"></i>{{ T('catalog.btn_add_to_cart') }}
         </button>
       </div>
     </div>
@@ -448,7 +449,7 @@
     <div class="modal-content">
       <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
         <h6 class="modal-title" style="font-size:.92rem;font-weight:700">
-          <i class="fa-solid fa-pen-ruler me-2"></i>신규 시안 제작
+          <i class="fa-solid fa-pen-ruler me-2"></i>{{ T('catalog.modal_new_draft_title') }}
           <span id="rnm-cat-badge" style="font-size:.72rem;background:rgba(255,255,255,.2);
                 border-radius:10px;padding:2px 8px;margin-left:6px;font-weight:500"></span>
         </h6>
@@ -458,32 +459,32 @@
         <input type="hidden" id="rnm-cat">
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
-            시안 이름 <span class="text-danger">*</span>
-            <span style="font-size:.72rem;font-weight:400;color:#888">(예: 인천↔방콕 X-Banner)</span>
+            {{ T('catalog.label_draft_name') }} <span class="text-danger">*</span>
+            <span style="font-size:.72rem;font-weight:400;color:#888">{{ T('catalog.label_draft_name_hint') }}</span>
           </label>
           <input type="text" id="rnm-name" class="form-control form-control-sm"
-                 placeholder="제작할 시안 이름을 입력해 주세요">
+                 placeholder="{{ T('catalog.placeholder_draft_name') }}">
         </div>
         <div class="mb-2">
-          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">수량</label>
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">{{ T('catalog.label_quantity') }}</label>
           <input type="number" id="rnm-qty" class="form-control form-control-sm"
                  min="1" max="99" value="1" style="width:100px">
         </div>
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:4px;display:block">
-            디자인 방법 선택
+            {{ T('catalog.label_design_method') }}
           </label>
           <div class="d-flex gap-2 flex-wrap">
             <button type="button" id="rnm-editor-btn"
                     class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2"
                     style="font-size:.8rem;padding:7px 14px" onclick="rnmOpenEditor()">
               <i class="fa-solid fa-pen-ruler"></i>
-              <span>편집기로 직접 제작</span>
+              <span>{{ T('catalog.btn_editor_direct') }}</span>
             </button>
             <label class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
                    style="font-size:.8rem;padding:7px 14px;cursor:pointer" for="rnm-image">
               <i class="fa-solid fa-image"></i>
-              <span id="rnm-file-label">파일 업로드</span>
+              <span id="rnm-file-label">{{ T('catalog.btn_file_upload') }}</span>
             </label>
             <input type="file" id="rnm-image" class="d-none"
                    accept=".png,.jpg,.jpeg,.webp,.pdf" onchange="rnmImgChange(this)">
@@ -495,26 +496,26 @@
                         border:1px solid #ddd;border-radius:6px">
             <div>
               <div style="font-size:.75rem;color:#16a34a;font-weight:700;margin-bottom:3px">
-                <i class="fa-solid fa-check me-1"></i>시안 적용됨
+                <i class="fa-solid fa-check me-1"></i>{{ T('catalog.draft_applied') }}
               </div>
               <button type="button" onclick="rnmClearImg()"
                       style="font-size:.72rem;color:#991b1b;background:none;border:none;
-                             cursor:pointer;padding:0;text-decoration:underline">취소</button>
+                             cursor:pointer;padding:0;text-decoration:underline">{{ T('common.cancel') }}</button>
             </div>
           </div>
         </div>
         <div class="mb-1">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
-            요청사항 <span style="font-size:.75rem;font-weight:400;color:#888">(선택)</span>
+            {{ T('catalog.label_request') }} <span style="font-size:.75rem;font-weight:400;color:#888">{{ T('catalog.label_optional') }}</span>
           </label>
           <textarea id="rnm-text" class="form-control form-control-sm" rows="2"
-                    placeholder="추가 요청사항이 있으면 입력해 주세요."></textarea>
+                    placeholder="{{ T('catalog.placeholder_request') }}"></textarea>
         </div>
       </div>
       <div class="modal-footer pt-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="rnmSubmit()">
-          <i class="fa-solid fa-cart-plus me-1"></i>장바구니에 담기
+          <i class="fa-solid fa-cart-plus me-1"></i>{{ T('catalog.btn_add_to_cart') }}
         </button>
       </div>
     </div>
@@ -546,16 +547,16 @@
 
 <!-- 헤더 바 -->
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-  <div class="text-muted small">총 {{ catalog_items|length }}종 운송아이템 &nbsp;·&nbsp; 카탈로그</div>
+  <div class="text-muted small">{{ T('inv.total_prefix') }} {{ catalog_items|length }}{{ T('common.count_type') }} {{ T('catalog.header_summary_suffix') }}</div>
   <div class="ms-auto d-flex gap-2">
     <button id="catEditBtn" class="btn btn-sm btn-outline-success" onclick="catToggleEdit()">
       <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.edit_mode') }}
     </button>
     <button id="catReqBtn" class="btn btn-sm btn-outline-warning" onclick="catToggleReq()">
-      <i class="fa-solid fa-clipboard-list me-1"></i>신청 모드
+      <i class="fa-solid fa-clipboard-list me-1"></i>{{ T('cat.req_mode') }}
     </button>
     <a href="{{ url_for('catalog_cart') }}" class="btn btn-sm btn-outline-danger position-relative" id="cartLink">
-      <i class="fa-solid fa-cart-shopping me-1"></i>장바구니
+      <i class="fa-solid fa-cart-shopping me-1"></i>{{ T('catalog.btn_cart') }}
       {% if cart_cnt > 0 %}<span class="cart-badge">{{ cart_cnt }}</span>{% endif %}
     </a>
     <a href="{{ url_for('catalog_inventory') }}" class="btn btn-sm btn-outline-primary">
@@ -579,6 +580,7 @@
   {% for cat in cat_groups %}
   <a href="#cat-sec-{{ loop.index }}">{{ toc_nums[loop.index0] if loop.index0 < toc_nums|length else loop.index }} {{ cat }}</a>
   {% endfor %}
+  <a href="#cat-master">{{ T('catalog.toc_all_items') }}</a>
 </nav>
 
 {# ── 카드 매크로 ── #}
@@ -595,22 +597,19 @@
           data-img="{{ cat_img_url(item.img) }}"
           data-sort="{{ item.sort_order }}"
           onclick="event.stopPropagation(); catOpenEdit(this)"
-          title="수정">
+          title="{{ T('common.edit') }}">
     <i class="fa-solid fa-pen"></i>
   </button>
   <button class="admin-card-del"
           data-code="{{ item.code }}"
           data-name="{{ item.name | e }}"
           onclick="event.stopPropagation(); catDeleteItem(this)"
-          title="삭제">
+          title="{{ T('common.delete') }}">
     <i class="fa-solid fa-trash"></i>
   </button>
   {% endif %}
   <div class="cat-thumb" onclick="catOpenLB(this)" data-title="{{ item.name }}">
-    <img data-img="{{ item.img }}"
-         src="/static/item_images/{{ item.img }}.{{ 'png' if item.is_custom else 'webp' }}"
-         {% if item.is_custom %}data-custom="1"{% endif %}
-         loading="lazy" alt="{{ item.name }}">
+    <img data-img="{{ item.img }}" src="" alt="{{ item.name }}">
     <span class="thumb-zoom-hint"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
   </div>
   <div class="cat-body">
@@ -621,7 +620,7 @@
   <div class="cat-edit-panel">
     <input type="checkbox" class="cat-check" data-code="{{ item.code }}"
            {% if owned %}checked{% endif %} onchange="catCheckChange(this)">
-    <span class="cat-qty-label">보유수량</span>
+    <span class="cat-qty-label">{{ T('catalog.label_owned_qty') }}</span>
     <input type="number" class="cat-qty" data-code="{{ item.code }}"
            min="0" max="999" value="{{ my_items.get(item.code, 1) }}"
            {% if not owned %}disabled{% endif %}
@@ -631,7 +630,7 @@
           data-code="{{ item.code }}" data-name="{{ item.name|e }}"
           data-cat="{{ item.cat|e }}"
           onclick="reqAddItem('{{ item.code }}','{{ item.name|e }}','{{ item.cat|e }}')">
-    <i class="fa-solid fa-cart-plus"></i> 담기
+    <i class="fa-solid fa-cart-plus"></i> {{ T('catalog.btn_add_item') }}
   </button>
 </div>
 {% endmacro %}
@@ -642,53 +641,99 @@
   <div class="cat-section-header">
     <div class="cat-section-num">{{ loop.index }}</div>
     <h2>{{ cat }}</h2>
-    <span class="cat-count">{{ items|length }}종</span>
+    <span class="cat-count">{{ items|length }}{{ T('common.count_type') }}</span>
     {% if session.role == 'admin' %}
     <button class="cat-add-btn ms-2"
             onclick="catOpenAdd('{{ cat | e }}')"
-            title="{{ cat }} 아이템 추가">+</button>
+            title="{{ cat }} {{ T('catalog.btn_add_item_title') }}">+</button>
     {% endif %}
   </div>
   <div class="cat-grid">
     {% for item in items %}{{ cat_card(item) }}{% endfor %}
     <div class="cat-new-card" onclick="reqOpenNew('{{ cat|e }}')">
       <div class="new-icon">+</div>
-      <span>신규 추가</span>
-      <span style="font-size:.68rem;font-weight:400;color:inherit;opacity:.7">직접 시안 제작</span>
+      <span>{{ T('catalog.btn_new_add') }}</span>
+      <span style="font-size:.68rem;font-weight:400;color:inherit;opacity:.7">{{ T('catalog.btn_new_add_hint') }}</span>
     </div>
   </div>
 </section>
 {% endfor %}
 
+<!-- 전체 목록 -->
+<div class="cat-master-wrap" id="cat-master">
+  <h3>{{ T('catalog.all_items_table_title') }}</h3>
+  <div class="table-responsive">
+    <table class="cat-table">
+      <thead><tr><th>#</th><th>{{ T('catalog.th_category') }}</th><th>{{ T('catalog.th_type') }}</th><th>{{ T('catalog.th_spec_detail') }}</th></tr></thead>
+      <tbody>
+        {% for item in catalog_items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="cat-td-cat">{{ item.cat }}</td>
+          <td>{{ item.name }}</td>
+          <td class="cat-td-note">{{ item.sub_desc|safe if item.sub_desc else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* ── 카탈로그 커스텀 이미지 레이지 로더 (IntersectionObserver) ── */
-/* 정적 이미지: 브라우저 네이티브 loading="lazy" + Vercel CDN 처리
-   커스텀 이미지(data-custom="1"): 뷰포트 진입 시 /ci/ 엔드포인트로 개별 요청 */
-(function() {
-  const imgs = document.querySelectorAll('img[data-custom="1"]');
-  if (!imgs.length) return;
+/* ── i18n 문자열 주입 ── */
+var _fileSelect     = '{{ T("catalog.btn_file_select") }}';
+var _fileSelected   = '{{ T("catalog.label_selected") }}';
+var _replacePending = '{{ T("catalog.label_replace_pending") }}';
+var _openEditor     = '{{ T("catalog.btn_open_editor") }}';
+var _reopenEditor   = '{{ T("catalog.btn_reopen_editor") }}';
+var _fileUpload     = '{{ T("catalog.btn_file_upload") }}';
+var _editorDirect   = '{{ T("catalog.btn_editor_direct") }}';
+var _saving         = '{{ T("catalog.btn_saving") }}';
+var _toastSaved     = '{{ T("catalog.toast_saved") }}';
+var _toastSaveFail  = '{{ T("catalog.toast_save_failed") }}';
+var _toastSaveErr   = '{{ T("catalog.toast_save_error") }}';
+var _reqMode        = '{{ T("cat.req_mode") }}';
+var _reqCancel      = '{{ T("cat.req_cancel") }}';
+var _cartAdded      = '{{ T("catalog.toast_added_to_cart") }}';
+var _errPrefix      = '{{ T("common.error_prefix") }}';
+var _editMode       = '{{ T("cat.edit_mode") }}';
+var _viewMode       = '{{ T("cat.view_mode") }}';
+var _itemNameReq    = '{{ T("catalog.toast_item_name_required") }}';
+var _imgRequired    = '{{ T("catalog.toast_image_required") }}';
+var _editComplete   = '{{ T("catalog.toast_edit_complete") }}';
+var _editFailed     = '{{ T("catalog.toast_edit_failed") }}';
+var _confirmDelete  = '{{ T("catalog.confirm_delete") }}';
+var _delComplete    = '{{ T("catalog.toast_delete_complete") }}';
+var _delFailed      = '{{ T("catalog.toast_delete_failed") }}';
+var _adding         = '{{ T("catalog.btn_adding") }}';
+var _addComplete    = '{{ T("catalog.toast_add_complete") }}';
+var _addFailed      = '{{ T("catalog.toast_add_failed") }}';
+var _btnAdd         = '{{ T("catalog.btn_add") }}';
+var _newPrefix      = '{{ T("catalog.new_prefix") }}';
+var _commonError    = '{{ T("common.error") }}';
+var _commonSave     = '{{ T("common.save") }}';
 
+/* ── 카탈로그 이미지 레이지 로더 ── */
+(function() {
   function loadImg(img) {
     img.src = '/ci/' + img.dataset.img + '.png';
   }
-
-  if (!('IntersectionObserver' in window)) {
+  const imgs = Array.from(document.querySelectorAll('img[data-img]'));
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        loadImg(e.target);
+        obs.unobserve(e.target);
+      });
+    }, { rootMargin: '400px 0px' });
+    imgs.forEach(img => io.observe(img));
+  } else {
     imgs.forEach(loadImg);
-    return;
   }
-
-  const obs = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (!e.isIntersecting) return;
-      loadImg(e.target);
-      obs.unobserve(e.target);
-    });
-  }, { rootMargin: '400px 0px' });
-
-  imgs.forEach(img => obs.observe(img));
 })();
 
 /* ── 라이트박스 ── */
@@ -696,20 +741,15 @@ const catThumbs = Array.from(document.querySelectorAll('.cat-thumb[onclick]'));
 let catIdx = 0;
 
 function catLbSrc(img) {
-  const stem = img.dataset.img;
-  if (img.dataset.custom === '1') {
-    if (img.src.includes('/static/item_images/')) img.src = '/ci/' + stem + '.png';
-    return '/ci/' + stem + '.png';
-  }
-  // 라이트박스는 원본 PNG 로드 (썸네일은 webp 유지)
-  return '/static/item_images/' + stem + '.png';
+  if (img.src && !img.src.endsWith('/')) return img.src;
+  return img.dataset.img ? '/ci/' + img.dataset.img + '.png' : '';
 }
 function catOpenLB(el) {
   const img = el.querySelector('img');
   if (!img) return;
   catIdx = catThumbs.indexOf(el);
   const src = catLbSrc(img);
-  if (src && !img.src) img.src = src;   // 썸네일도 함께 채움
+  if (src && !img.src) img.src = src;
   document.getElementById('catLbImg').src = src;
   document.getElementById('catLbTitle').textContent = el.dataset.title || '';
   document.getElementById('catLightbox').classList.add('active');
@@ -745,8 +785,8 @@ function catToggleEdit() {
   document.body.classList.toggle('edit-mode', editMode);
   const btn = document.getElementById('catEditBtn');
   btn.innerHTML = editMode
-    ? '<i class="fa-solid fa-eye me-1"></i>{{ T("cat.view_mode") }}'
-    : '<i class="fa-solid fa-pen-to-square me-1"></i>{{ T("cat.edit_mode") }}';
+    ? '<i class="fa-solid fa-eye me-1"></i>' + _viewMode
+    : '<i class="fa-solid fa-pen-to-square me-1"></i>' + _editMode;
   btn.className = editMode ? 'btn btn-sm btn-success' : 'btn btn-sm btn-outline-success';
   if (editMode) {
     updateSaveCount();
@@ -833,16 +873,16 @@ async function catSave() {
       dirty = false;
       if (editMode) catToggleEdit();
       document.getElementById('catSaveBar').classList.remove('show');
-      catToast('저장되었습니다.', 'success');
+      catToast(_toastSaved, 'success');
       document.querySelectorAll('.cat-check').forEach(cb => {
         const card = document.getElementById('card-' + cb.dataset.code);
         if (card) card.classList.toggle('is-owned', cb.checked);
       });
     } else {
-      catToast(json.msg || '저장 실패', 'danger');
+      catToast(json.msg || _toastSaveFail, 'danger');
     }
   } catch(e) {
-    catToast('저장 중 오류가 발생했습니다: ' + e.message, 'danger');
+    catToast(_toastSaveErr + e.message, 'danger');
   }
 }
 
@@ -858,8 +898,8 @@ function catToggleReq() {
   document.body.classList.toggle('req-mode', reqMode);
   const btn = document.getElementById('catReqBtn');
   btn.innerHTML = reqMode
-    ? '<i class="fa-solid fa-xmark me-1"></i>신청 취소'
-    : '<i class="fa-solid fa-clipboard-list me-1"></i>신청 모드';
+    ? '<i class="fa-solid fa-xmark me-1"></i>' + _reqCancel
+    : '<i class="fa-solid fa-clipboard-list me-1"></i>' + _reqMode;
   btn.className = reqMode ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-warning';
   if (reqMode && editMode) catToggleEdit();
 }
@@ -872,7 +912,7 @@ function reqAddItem(code, name, cat) {
     document.getElementById('rcm-text').value = '';
     document.getElementById('rcm-image').value = '';
     document.getElementById('rcm-img-name').textContent = '';
-    document.getElementById('rcm-img-label').innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    document.getElementById('rcm-img-label').innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
     document.getElementById('rcm-img-label').style.cssText = '';
     const editorBtn = document.getElementById('rcm-editor-btn');
     editorBtn.dataset.code = code;
@@ -889,11 +929,11 @@ function rcmImgChange(input) {
   const lbl = document.getElementById('rcm-img-label');
   if (input.files && input.files[0]) {
     document.getElementById('rcm-img-name').textContent = input.files[0].name;
-    lbl.innerHTML = '<i class="fa-solid fa-check me-1"></i>선택됨';
+    lbl.innerHTML = '<i class="fa-solid fa-check me-1"></i>' + _fileSelected;
     lbl.style.borderColor = 'var(--red)'; lbl.style.color = 'var(--red)';
   } else {
     document.getElementById('rcm-img-name').textContent = '';
-    lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
     lbl.style.cssText = '';
   }
 }
@@ -931,7 +971,7 @@ function rcmSetEditorImg(dataUrl) {
   document.getElementById('rcm-editor-img').src = dataUrl;
   document.getElementById('rcm-editor-preview').style.display = 'flex';
   const btn = document.getElementById('rcm-editor-btn');
-  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i>편집기 다시 열기';
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i>' + _reopenEditor;
   btn.style.borderColor = 'var(--red)';
   btn.style.color = 'var(--red)';
   btn.style.background = '#fff0f0';
@@ -942,7 +982,7 @@ function rcmClearEditorImg() {
   document.getElementById('rcm-editor-preview').style.display = 'none';
   document.getElementById('rcm-editor-img').src = '';
   const btn = document.getElementById('rcm-editor-btn');
-  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i>편집기 열기';
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i>' + _openEditor;
   btn.style.cssText = '';
 }
 
@@ -957,14 +997,14 @@ function reqOpenNew(cat) {
   document.getElementById('rnm-qty').value = 1;
   document.getElementById('rnm-text').value = '';
   document.getElementById('rnm-image').value = '';
-  document.getElementById('rnm-file-label').textContent = '파일 업로드';
+  document.getElementById('rnm-file-label').textContent = _fileUpload;
   rnmClearImg();
   bootstrap.Modal.getOrCreateInstance(document.getElementById('reqNewModal')).show();
 }
 
 function rnmOpenEditor() {
   const cat  = document.getElementById('rnm-cat').value;
-  const name = document.getElementById('rnm-name').value.trim() || ('신규 ' + cat);
+  const name = document.getElementById('rnm-name').value.trim() || (_newPrefix + cat);
   const code = '_new_' + Date.now();
   const url  = '/catalog/banner-editor?item_code=' + encodeURIComponent(code)
              + '&item_name=' + encodeURIComponent(name)
@@ -990,7 +1030,7 @@ function rnmSetEditorImg(dataUrl) {
   document.getElementById('rnm-editor-img').src = dataUrl;
   document.getElementById('rnm-editor-preview').style.display = 'flex';
   const btn = document.getElementById('rnm-editor-btn');
-  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i><span>편집기 다시 열기</span>';
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i><span>' + _reopenEditor + '</span>';
   btn.classList.remove('btn-outline-danger');
   btn.classList.add('btn-danger');
 }
@@ -1000,9 +1040,9 @@ function rnmClearImg() {
   document.getElementById('rnm-editor-preview').style.display = 'none';
   document.getElementById('rnm-editor-img').src = '';
   document.getElementById('rnm-image').value = '';
-  document.getElementById('rnm-file-label').textContent = '파일 업로드';
+  document.getElementById('rnm-file-label').textContent = _fileUpload;
   const btn = document.getElementById('rnm-editor-btn');
-  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i><span>편집기로 직접 제작</span>';
+  btn.innerHTML = '<i class="fa-solid fa-pen-ruler me-1"></i><span>' + _editorDirect + '</span>';
   btn.classList.remove('btn-danger');
   btn.classList.add('btn-outline-danger');
 }
@@ -1030,7 +1070,6 @@ window.addEventListener('storage', e => {
     const result = JSON.parse(e.newValue);
     if (!result || !result.dataUrl) return;
     localStorage.removeItem('banner_editor_result');
-    // 신규 추가 모달이 열려 있으면 rnm에 적용, 아니면 rcm에 적용
     const rnmEl = document.getElementById('reqNewModal');
     if (rnmEl.classList.contains('show')) {
       rnmSetEditorImg(result.dataUrl);
@@ -1067,11 +1106,11 @@ async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat
       updateCartBadge();
       const btn = document.getElementById('reqbtn-' + code);
       if (btn) btn.classList.add('in-cart');
-      catToast('장바구니에 담았습니다.', 'success');
+      catToast(_cartAdded, 'success');
     } else {
-      catToast(json.msg || '오류', 'danger');
+      catToast(json.msg || _commonError, 'danger');
     }
-  } catch(e) { catToast('오류: ' + e.message, 'danger'); }
+  } catch(e) { catToast(_errPrefix + e.message, 'danger'); }
 }
 
 function updateCartBadge() {
@@ -1098,7 +1137,7 @@ function catOpenEdit(btn) {
   document.getElementById('cem-img-fname').textContent = '';
   const lbl = document.getElementById('cem-img-label');
   lbl.classList.remove('has-file');
-  lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+  lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
   bootstrap.Modal.getOrCreateInstance(document.getElementById('catEditModal')).show();
 }
 
@@ -1106,14 +1145,14 @@ function cemImgChange(input) {
   const label = document.getElementById('cem-img-label');
   const fname = document.getElementById('cem-img-fname');
   if (input.files && input.files[0]) {
-    label.innerHTML = '<i class="fa-solid fa-check me-1"></i>교체 예정';
+    label.innerHTML = '<i class="fa-solid fa-check me-1"></i>' + _replacePending;
     label.classList.add('has-file');
     fname.textContent = input.files[0].name;
     const reader = new FileReader();
     reader.onload = e => { document.getElementById('cem-thumb').src = e.target.result; };
     reader.readAsDataURL(input.files[0]);
   } else {
-    label.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    label.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
     label.classList.remove('has-file');
     fname.textContent = '';
   }
@@ -1127,7 +1166,7 @@ async function catSubmitEdit() {
   const subDesc   = document.getElementById('cem-subdesc').value.trim();
   const sortOrder = parseInt(document.getElementById('cem-sort').value) || 0;
   const imgFile   = document.getElementById('cem-image').files[0];
-  if (!name) { catToast('아이템명을 입력해 주세요.', 'danger'); return; }
+  if (!name) { catToast(_itemNameReq, 'danger'); return; }
 
   const fd = new FormData();
   fd.append('code', code);        fd.append('new_code', newCode);
@@ -1137,13 +1176,13 @@ async function catSubmitEdit() {
 
   const btn = document.getElementById('cem-submit-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + _saving;
   try {
     const res  = await fetch('{{ url_for("catalog_update") }}', { method: 'POST', body: fd });
     const json = await res.json();
     if (json.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('catEditModal')).hide();
-      catToast(`"${name}" 수정 완료`, 'success');
+      catToast(`"${name}" ${_editComplete}`, 'success');
       const actualCode = json.new_code || code;
       const card = document.getElementById('card-' + code);
       if (card) {
@@ -1180,13 +1219,13 @@ async function catSubmitEdit() {
         }
       }
     } else {
-      catToast(json.msg || '수정 실패', 'danger');
+      catToast(json.msg || _editFailed, 'danger');
     }
   } catch(e) {
-    catToast('오류: ' + e.message, 'danger');
+    catToast(_errPrefix + e.message, 'danger');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>저장';
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>' + _commonSave;
   }
 }
 
@@ -1194,7 +1233,7 @@ async function catSubmitEdit() {
 async function catDeleteItem(btn) {
   const code = btn.dataset.code;
   const name = btn.dataset.name;
-  if (!confirm(`"${name}" 을(를) 삭제하시겠습니까?\n\n⚠️ 각 지점의 보유 기록도 함께 삭제됩니다.`)) return;
+  if (!confirm(`"${name}" ${_confirmDelete}`)) return;
   const card = document.getElementById('card-' + code);
   if (card) card.style.opacity = '0.3';
   try {
@@ -1206,18 +1245,17 @@ async function catDeleteItem(btn) {
     const json = await res.json();
     if (json.ok) {
       if (card) card.remove();
-      catToast(`"${name}" 삭제 완료`, 'success');
+      catToast(`"${name}" ${_delComplete}`, 'success');
     } else {
       if (card) card.style.opacity = '';
-      catToast(json.msg || '삭제 실패', 'danger');
+      catToast(json.msg || _delFailed, 'danger');
     }
   } catch(e) {
     if (card) card.style.opacity = '';
-    catToast('오류: ' + e.message, 'danger');
+    catToast(_errPrefix + e.message, 'danger');
   }
 }
 
-/* ── 관리자: 아이템 추가 ── */
 function catOpenAdd(cat) {
   document.getElementById('cam-cat').value    = cat;
   document.getElementById('cam-name').value   = '';
@@ -1227,7 +1265,7 @@ function catOpenAdd(cat) {
   document.getElementById('cam-img-fname').textContent = '';
   const lbl = document.getElementById('cam-img-label');
   lbl.classList.remove('has-file');
-  lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+  lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
   bootstrap.Modal.getOrCreateInstance(document.getElementById('catAddModal')).show();
 }
 
@@ -1235,11 +1273,11 @@ function camImgChange(input) {
   const label = document.getElementById('cam-img-label');
   const fname = document.getElementById('cam-img-fname');
   if (input.files && input.files[0]) {
-    label.innerHTML = '<i class="fa-solid fa-check me-1"></i>교체 예정';
+    label.innerHTML = '<i class="fa-solid fa-check me-1"></i>' + _replacePending;
     label.classList.add('has-file');
     fname.textContent = input.files[0].name;
   } else {
-    label.innerHTML = '<i class="fa-solid fa-image me-1"></i>파일 선택';
+    label.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
     label.classList.remove('has-file');
     fname.textContent = '';
   }
@@ -1251,8 +1289,8 @@ async function catSubmitAdd() {
   const subDesc = document.getElementById('cam-subdesc').value.trim();
   const code    = document.getElementById('cam-code').value.trim();
   const imgFile = document.getElementById('cam-image').files[0];
-  if (!name) { catToast('아이템명을 입력해 주세요.', 'danger'); return; }
-  if (!imgFile) { catToast('이미지 파일을 선택해 주세요.', 'danger'); return; }
+  if (!name)    { catToast(_itemNameReq, 'danger'); return; }
+  if (!imgFile) { catToast(_imgRequired, 'danger'); return; }
 
   const fd = new FormData();
   fd.append('name', name);   fd.append('cat', cat);
@@ -1261,22 +1299,22 @@ async function catSubmitAdd() {
 
   const btn = document.getElementById('cam-submit-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>추가 중...';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + _adding;
   try {
     const res  = await fetch('{{ url_for("catalog_add") }}', { method: 'POST', body: fd });
     const json = await res.json();
     if (json.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('catAddModal')).hide();
-      catToast('추가 완료 — 잠시 후 새로고침됩니다', 'success');
+      catToast(_addComplete, 'success');
       setTimeout(() => window.location.reload(), 1200);
     } else {
-      catToast(json.msg || '추가 실패', 'danger');
+      catToast(json.msg || _addFailed, 'danger');
     }
   } catch(e) {
-    catToast('오류: ' + e.message, 'danger');
+    catToast(_errPrefix + e.message, 'danger');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-plus me-1"></i>추가하기';
+    btn.innerHTML = '<i class="fa-solid fa-plus me-1"></i>' + _btnAdd;
   }
 }
 {% endif %}

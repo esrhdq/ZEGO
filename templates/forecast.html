@@ -11,7 +11,7 @@
   <i class="fa-solid fa-bell fs-4 text-warning"></i>
   <div>
     <strong>{{ T('fcast.qend_title') }}</strong>
-    현재 <strong>{{ today.year }}년 Q{{ cur_q }}</strong> ({{ today.month }}월) — 다음 분기 신청 시즌입니다.
+    {{ T('fcast.label_current') }} <strong>{{ today.year }}{{ T('fcast.year_suffix') }} Q{{ cur_q }}</strong> ({{ today.month }}{{ T('fcast.month_unit') }}) {{ T('fcast.qend_season_notice') }}
     {{ T('fcast.qend_desc') }}
   </div>
 </div>
@@ -40,9 +40,9 @@
         </div>
         <div>
           <div class="fw-bold text-warning" style="font-size:1.1rem">
-            {{ nq_y }}년 Q{{ next_q }}
+            {{ nq_y }}{{ T('fcast.year_suffix') }} Q{{ next_q }}
           </div>
-          <div class="stat-label">{{ T('fcast.next_quarter') }} ({{ nq_start_m }}~{{ nq_end_m }}월)</div>
+          <div class="stat-label">{{ T('fcast.next_quarter') }} ({{ nq_start_m }}~{{ nq_end_m }}{{ T('fcast.month_unit') }})</div>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@
     <form method="get" class="row g-2 align-items-end">
       {% if session.role == 'admin' %}
       <div class="col-md-4">
-        <label class="form-label small fw-semibold mb-1">지점</label>
+        <label class="form-label small fw-semibold mb-1">{{ T('common.branch') }}</label>
         <select name="branch_id" class="form-select form-select-sm">
           <option value="">{{ T('common.branch_all') }}</option>
           <optgroup label="{{ T('common.domestic') }}">
@@ -147,11 +147,11 @@
         {% if section.branch_type=='DOM' %}badge-dom
         {% elif section.branch_type=='INTL' %}badge-intl
         {% else %}badge-cargo{% endif %}">
-        {% if section.branch_type=='DOM' %}국내{% elif section.branch_type=='INTL' %}국제{% else %}화물{% endif %}
+        {% if section.branch_type=='DOM' %}{{ T('common.domestic') }}{% elif section.branch_type=='INTL' %}{{ T('common.international') }}{% else %}{{ T('common.cargo') }}{% endif %}
       </span>
       {% set need_cnt = section.form_items | selectattr('recommended','gt',0) | list | length %}
       {% if need_cnt %}
-        <span class="badge bg-danger ms-1">{{ T('fcast.items_needed') }} {{ need_cnt }}개</span>
+        <span class="badge bg-danger ms-1">{{ T('fcast.items_needed') }} {{ need_cnt }}{{ T('fcast.count_unit') }}</span>
       {% else %}
         <span class="badge bg-success ms-1">{{ T('fcast.all_sufficient') }}</span>
       {% endif %}
@@ -159,14 +159,14 @@
       {% if finfo %}
         <span class="badge ms-1" style="background:#0ea5e9;font-size:.68rem">
           <i class="fa-solid fa-plane me-1"></i>{{ T('fcast.flight_correction') }} ×{{ finfo.factor }}
-          ({{ finfo.avg_hist }}편→{{ finfo.avg_next }}편)
+          ({{ finfo.avg_hist }}{{ T('fcast.flight_count_unit') }}→{{ finfo.avg_next }}{{ T('fcast.flight_count_unit') }})
         </span>
       {% else %}
         <span class="badge bg-secondary ms-1" style="font-size:.68rem;opacity:.7">
           <i class="fa-solid fa-plane me-1"></i>{{ T('fcast.no_flight') }}
         </span>
       {% endif %}
-      <span class="ms-auto small opacity-75">총 {{ section.form_items|length }}개 품목 분석</span>
+      <span class="ms-auto small opacity-75">{{ T('inv.total_prefix') }} {{ section.form_items|length }}{{ T('fcast.total_items_analysis') }}</span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -176,7 +176,7 @@
               <th style="min-width:220px">{{ T('common.form_name') }}</th>
               <th class="text-center">{{ T('common.unit') }}</th>
               {% for mo in month_labels %}
-              <th class="text-center small text-muted" style="min-width:52px">{{ mo[5:] }}월</th>
+              <th class="text-center small text-muted" style="min-width:52px">{{ mo[5:] }}{{ T('fcast.month_unit') }}</th>
               {% endfor %}
               <th class="text-center">{{ T('fcast.avg_monthly') }}</th>
               <th class="text-center">{{ T('fcast.trend') }}</th>
