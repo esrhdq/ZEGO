@@ -120,8 +120,8 @@
                     {% for it in r['items'] %}
                     <tr>
                       <td>{{ it.form_name }}</td>
-                      <td class="text-center text-muted">{{ it.unit or '—' }}</td>
-                      <td class="text-center text-muted">{{ it.unit_detail or '—' }}</td>
+                      <td class="text-center text-muted">{{ it.unit | unit_i18n if it.unit else '—' }}</td>
+                      <td class="text-center text-muted">{{ it.unit_detail | unit_i18n if it.unit_detail else '—' }}</td>
                       <td class="text-center fw-bold">{{ it.quantity }}</td>
                       {% if r.status == 'partial' %}
                       <td class="text-center">

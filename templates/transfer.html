@@ -90,7 +90,7 @@
                 <span class="small ms-1">{{ r.to_branch_name }}</span>
               </td>
               <td class="small">{{ r.form_name }}</td>
-              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit | unit_i18n }}</td>
               <td class="text-center">
                 {% if r.status == 'PENDING' %}
                   <span class="badge badge-pending rounded-pill">{{ T('xfer.status_pending_short') }}</span>
@@ -298,7 +298,7 @@
                 <span class="small ms-1">{{ r.to_branch_name }}</span>
               </td>
               <td class="small">{{ r.form_name }}</td>
-              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit | unit_i18n }}</td>
               <td class="text-center">
                 {% if r.stock_qty == 0 %}
                   <span class="status-empty fw-bold">{{ r.stock_qty }}</span>
@@ -371,7 +371,7 @@
                 <span class="small ms-1">{{ r.from_branch_name }}</span>
               </td>
               <td class="small">{{ r.form_name }}</td>
-              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit | unit_i18n }}</td>
               <td class="text-center">
                 {% if r.status == 'PENDING' %}
                   <span class="badge" style="background:var(--warning-bg);color:var(--warning)">{{ T('xfer.pending') }}</span>

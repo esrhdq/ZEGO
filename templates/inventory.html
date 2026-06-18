@@ -119,7 +119,7 @@
                 </td>
                 <td><strong>{{ r.branch_code }}</strong> <span class="text-muted small">{{ r.branch_name }}</span></td>
                 <td class="small">{{ r.form_name }}</td>
-                <td class="small text-muted">{{ r.unit }} ({{ r.unit_detail }})</td>
+                <td class="small text-muted">{{ r.unit | unit_i18n }} ({{ r.unit_detail | unit_i18n }})</td>
                 <td class="text-center fw-bold
                   {% if r.quantity == 0 %}status-empty
                   {% elif r.quantity <= r.min_threshold %}status-low
@@ -193,7 +193,7 @@
               {% set total = r.total_qty or 0 %}
               <tr>
                 <td class="fw-semibold small">{{ r.form_name }}</td>
-                <td class="small text-muted">{{ r.unit }} ({{ r.unit_detail }})</td>
+                <td class="small text-muted">{{ r.unit | unit_i18n }} ({{ r.unit_detail | unit_i18n }})</td>
                 <td class="text-center">
                   <span class="fw-bold fs-6
                     {% if total == 0 %}status-empty
@@ -288,7 +288,7 @@
               {% for r in monthly_rows %}
               <tr>
                 <td class="small fw-semibold">{{ r.form_name }}</td>
-                <td class="small text-muted">{{ r.unit }}</td>
+                <td class="small text-muted">{{ r.unit | unit_i18n }}</td>
                 {% for v in r.vals %}
                 <td class="text-center
                   {% if v == 0 %}text-muted{% elif v >= 5 %}text-danger fw-bold{% else %}text-primary fw-semibold{% endif %}">

@@ -72,8 +72,8 @@
                 </span>
                 {% endif %}
               </td>
-              <td class="text-center small text-muted">{{ f.unit or '—' }}</td>
-              <td class="text-center small text-muted">{{ f.unit_detail or '—' }}</td>
+              <td class="text-center small text-muted">{{ f.unit | unit_i18n if f.unit else '—' }}</td>
+              <td class="text-center small text-muted">{{ f.unit_detail | unit_i18n if f.unit_detail else '—' }}</td>
               <td class="text-center">
                 <input type="number" name="qty_{{ f.id }}"
                        class="row-qty{% if preQty > 0 %} active{% endif %}"

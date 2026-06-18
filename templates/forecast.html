@@ -190,7 +190,7 @@
             {% set rec = item.recommended %}
             <tr class="{% if rec > 5 %}table-danger{% elif rec > 0 %}table-warning{% endif %}">
               <td class="small fw-semibold">{{ item.form_name }}</td>
-              <td class="text-center small text-muted">{{ item.unit }}</td>
+              <td class="text-center small text-muted">{{ item.unit | unit_i18n }}</td>
 
               {# 6개월 출고 미니 바 #}
               {% set max_val = item.vals | max %}

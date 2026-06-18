@@ -125,7 +125,7 @@
                 <span class="badge bg-secondary">{{ t.to_branch_code }}</span> {{ t.to_branch_name }}
               {% else %}—{% endif %}
             </td>
-            <td class="text-center fw-semibold tx-qty">{{ t.quantity }} <small class="text-muted">{{ t.unit }}</small></td>
+            <td class="text-center fw-semibold tx-qty">{{ t.quantity }} <small class="text-muted">{{ t.unit | unit_i18n }}</small></td>
             <td class="small text-muted tx-notes">{{ t.notes or '' }}</td>
             <td class="small text-muted">{{ t.created_by }}</td>
             <td class="text-center">

@@ -59,7 +59,7 @@
               <option value="">{{ T('common.select_form') }}</option>
               {% for f in form_types %}
                 <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
-                  {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                  {{ f.name }} ({{ f.unit | unit_i18n }} / {{ f.unit_detail | unit_i18n }})
                 </option>
               {% endfor %}
             </select>

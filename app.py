@@ -438,6 +438,28 @@ def dt_filter(value):
     return str(value)[:16]
 
 
+_UNIT_KO_EN = [
+    ('포대', 'bag'), ('묶음', 'bundle'), ('봉투', 'envelope'),
+    ('장', ' sheets'), ('개', ' pcs'), ('동', ' bundles'),
+    ('등', ' units'), ('조', ' sets'), ('봉', ' packs'),
+    ('통', ' rolls'), ('매', ' sheets'), ('부', ' copies'),
+    ('권', 'booklet'),
+]
+
+@app.template_filter('unit_i18n')
+def unit_i18n_filter(unit_str):
+    import re as _re
+    if not unit_str:
+        return unit_str
+    lang = session.get('lang', 'ko')
+    if lang == 'ko':
+        return unit_str
+    result = unit_str
+    for ko, en in _UNIT_KO_EN:
+        result = result.replace(ko, en)
+    return _re.sub(r'  +', ' ', result).strip()
+
+
 # ── 오류 핸들러 (디버그용) ────────────────────────────────────────────────────
 
 @app.errorhandler(Exception)

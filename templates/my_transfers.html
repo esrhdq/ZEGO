@@ -64,7 +64,7 @@
             <div class="small text-muted mt-1">
               <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>
               {{ r.from_branch_name }} → {{ r.to_branch_name }}
-              &nbsp;|&nbsp; {{ T('my_transfers.label_quantity') }} <strong>{{ r.quantity }}{{ r.unit }}</strong>
+              &nbsp;|&nbsp; {{ T('my_transfers.label_quantity') }} <strong>{{ r.quantity }}{{ r.unit | unit_i18n }}</strong>
             </div>
             {% if r.notes %}
             <div class="small text-muted mt-1"><i class="fa-solid fa-note-sticky me-1"></i>{{ r.notes }}</div>
