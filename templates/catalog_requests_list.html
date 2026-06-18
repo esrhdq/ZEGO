@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}카탈로그 신청 내역{% endblock %}
+{% block title %}{{ T('catreqlist.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-clock-rotate-left"></i>{% endblock %}
-{% block page_title %}카탈로그 신청 내역{% endblock %}
+{% block page_title %}{{ T('catreqlist.title') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -31,26 +31,26 @@
 
 <div class="d-flex align-items-center gap-2 mb-3">
   <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
-    <i class="fa-solid fa-arrow-left me-1"></i>카탈로그로
+    <i class="fa-solid fa-arrow-left me-1"></i>{{ T('catreqlist.back') }}
   </a>
   <a href="{{ url_for('catalog_cart') }}" class="btn btn-sm btn-outline-danger ms-auto">
-    <i class="fa-solid fa-cart-shopping me-1"></i>장바구니
+    <i class="fa-solid fa-cart-shopping me-1"></i>{{ T('catreqlist.cart_btn') }}
   </a>
 </div>
 
 <div class="filter-bar">
-  <button class="filter-btn active" onclick="filterReqs('all',this)">전체</button>
-  <button class="filter-btn" onclick="filterReqs('pending',this)">대기중</button>
-  <button class="filter-btn" onclick="filterReqs('approved',this)">승인</button>
-  <button class="filter-btn" onclick="filterReqs('rejected',this)">반려</button>
-  <button class="filter-btn" onclick="filterReqs('on_hold',this)">보류</button>
+  <button class="filter-btn active" onclick="filterReqs('all',this)">{{ T('catreqlist.filter_all') }}</button>
+  <button class="filter-btn" onclick="filterReqs('pending',this)">{{ T('catreqlist.filter_pending') }}</button>
+  <button class="filter-btn" onclick="filterReqs('approved',this)">{{ T('catreqlist.filter_approved') }}</button>
+  <button class="filter-btn" onclick="filterReqs('rejected',this)">{{ T('catreqlist.filter_rejected') }}</button>
+  <button class="filter-btn" onclick="filterReqs('on_hold',this)">{{ T('catreqlist.filter_on_hold') }}</button>
 </div>
 
 <div class="req-list-wrap">
   <div class="req-list-header">
     <i class="fa-solid fa-clock-rotate-left"></i>
-    신청 내역
-    <span class="ms-auto badge bg-light text-danger">{{ requests|length }}건</span>
+    {{ T('catreqlist.list_title') }}
+    <span class="ms-auto badge bg-light text-danger">{{ requests|length }}{{ T('common.count_suffix') }}</span>
   </div>
   {% if requests %}
   <div class="table-responsive">
@@ -58,12 +58,12 @@
       <thead>
         <tr>
           <th>#</th>
-          {% if session.role == 'admin' %}<th>지점</th>{% endif %}
-          <th>상태</th>
-          <th>신청일</th>
-          <th>처리일</th>
-          <th>요청사항</th>
-          {% if session.role == 'admin' %}<th style="width:80px;text-align:center">액션</th>{% endif %}
+          {% if session.role == 'admin' %}<th>{{ T('catreqlist.col_branch') }}</th>{% endif %}
+          <th>{{ T('catreqlist.col_status') }}</th>
+          <th>{{ T('catreqlist.col_req_date') }}</th>
+          <th>{{ T('catreqlist.col_proc_date') }}</th>
+          <th>{{ T('catreqlist.col_notes') }}</th>
+          {% if session.role == 'admin' %}<th style="width:80px;text-align:center">{{ T('catreqlist.col_action') }}</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -75,13 +75,13 @@
           {% endif %}
           <td>
             {% if r.status == 'pending' %}
-            <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i>대기중</span>
+            <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i>{{ T('catreqlist.status_pending') }}</span>
             {% elif r.status == 'approved' %}
-            <span class="status-badge status-approved"><i class="fa-solid fa-check me-1"></i>승인</span>
+            <span class="status-badge status-approved"><i class="fa-solid fa-check me-1"></i>{{ T('catreqlist.status_approved') }}</span>
             {% elif r.status == 'rejected' %}
-            <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>반려</span>
+            <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>{{ T('catreqlist.status_rejected') }}</span>
             {% elif r.status == 'on_hold' %}
-            <span class="status-badge status-on_hold"><i class="fa-solid fa-pause me-1"></i>보류</span>
+            <span class="status-badge status-on_hold"><i class="fa-solid fa-pause me-1"></i>{{ T('catreqlist.status_on_hold') }}</span>
             {% endif %}
           </td>
           <td style="font-size:.78rem;color:#666">{{ r.created_at|string|truncate(16,true,'') }}</td>
@@ -93,9 +93,9 @@
           <td style="text-align:center" onclick="event.stopPropagation()">
             {% if r.status == 'pending' %}
             <button class="btn btn-xs btn-success me-1" style="font-size:.68rem;padding:2px 7px"
-                    onclick="adminAction({{ r.id }},'approved','')">승인</button>
+                    onclick="adminAction({{ r.id }},'approved','')">{{ T('catreqlist.btn_approve') }}</button>
             <button class="btn btn-xs btn-danger" style="font-size:.68rem;padding:2px 7px"
-                    onclick="openReject({{ r.id }})">반려</button>
+                    onclick="openReject({{ r.id }})">{{ T('catreqlist.btn_reject') }}</button>
             {% else %}—{% endif %}
           </td>
           {% endif %}
@@ -107,7 +107,7 @@
   {% else %}
   <div class="text-center text-muted py-5">
     <i class="fa-solid fa-inbox fa-2x mb-3" style="opacity:.3"></i><br>
-    신청 내역이 없습니다.
+    {{ T('catreqlist.no_requests') }}
   </div>
   {% endif %}
 </div>
@@ -118,21 +118,21 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
       <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
-        <h6 class="modal-title" style="font-size:.9rem;font-weight:700"><i class="fa-solid fa-xmark me-2"></i>반려 사유 입력</h6>
+        <h6 class="modal-title" style="font-size:.9rem;font-weight:700"><i class="fa-solid fa-xmark me-2"></i>{{ T('catreqlist.reject_modal_title') }}</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="rejectReqId">
         <label style="font-size:.83rem;font-weight:600;display:block;margin-bottom:4px">
-          반려 사유 <span class="text-danger">*</span>
+          {{ T('catreqlist.reject_label') }} <span class="text-danger">*</span>
         </label>
         <textarea id="rejectReason" class="form-control form-control-sm" rows="3"
-                  placeholder="반려 사유를 입력해 주세요."></textarea>
+                  placeholder="{{ T('catreqlist.reject_placeholder') }}"></textarea>
       </div>
       <div class="modal-footer pt-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="submitReject()">
-          <i class="fa-solid fa-xmark me-1"></i>반려 처리
+          <i class="fa-solid fa-xmark me-1"></i>{{ T('catreqlist.reject_btn') }}
         </button>
       </div>
     </div>
@@ -162,7 +162,7 @@ function openReject(id) {
 async function submitReject() {
   const id     = document.getElementById('rejectReqId').value;
   const reason = document.getElementById('rejectReason').value.trim();
-  if (!reason) { alert('반려 사유를 입력해 주세요.'); return; }
+  if (!reason) { alert('{{ T("catreqlist.err_no_reason") }}'); return; }
   await adminAction(id, 'rejected', reason);
   bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).hide();
 }
@@ -175,7 +175,7 @@ async function adminAction(id, action, reason) {
   });
   const json = await res.json();
   if (json.ok) { location.reload(); }
-  else { alert(json.msg || '오류'); }
+  else { alert(json.msg || '{{ T("catreqlist.err_generic") }}'); }
 }
 {% endif %}
 </script>

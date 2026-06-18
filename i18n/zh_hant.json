@@ -646,6 +646,7 @@
   "hist.qty_auto_adjust_hint": "修改數量時庫存將自動調整。",
   "hist.alert_select_date": "請選擇出庫日期。",
   "hist.alert_invalid_qty": "請正確輸入數量。",
+  "common.date_format_chip": "%y年%m月%d日",
   "common.saving": "儲存中...",
   "common.save_error": "儲存時發生錯誤。",
   "common.error_prefix": "錯誤: ",

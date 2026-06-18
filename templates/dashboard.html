@@ -176,7 +176,7 @@
     <div class="empty-state">
       <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
       <h6>{{ T('dash.no_tx') }}</h6>
-      <p>오늘 처리된 거래가 없습니다.</p>
+      <p>{{ T('dash.no_tx_description') }}</p>
     </div>
     {% endif %}
   </div>
@@ -186,7 +186,7 @@
 <div class="card mt-4">
   <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
     <i class="fa-solid fa-chart-line me-2" style="color:var(--brand)"></i>
-    <strong>출고 트렌드 (최근 6개월)</strong>
+    <strong>{{ T('dash.outbound_trend_title') }}</strong>
   </div>
   <div class="card-body" style="height:220px;position:relative">
     <canvas id="outboundChart"></canvas>

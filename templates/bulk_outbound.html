@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}일괄 출고{% endblock %}
+{% block title %}{{ T('bulkout.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-layer-group"></i>{% endblock %}
-{% block page_title %}일괄 출고{% endblock %}
+{% block page_title %}{{ T('bulkout.title') }}{% endblock %}
 
 {% block content %}
 <div class="card mb-3">
   <div class="card-header bg-white border-bottom py-3">
-    <strong>출고 항목 선택</strong>
-    <span class="text-muted small ms-2">체크박스로 여러 품목을 선택하고 한 번에 출고합니다</span>
+    <strong>{{ T('bulkout.section_items') }}</strong>
+    <span class="text-muted small ms-2">{{ T('bulkout.hint') }}</span>
   </div>
   <div class="card-body">
     {% if session.role == 'admin' %}
     <div class="row g-2 mb-3">
       <div class="col-sm-4">
-        <label class="form-label small fw-semibold mb-1">지점 선택</label>
+        <label class="form-label small fw-semibold mb-1">{{ T('bulkout.filter_branch') }}</label>
         <select id="branchFilter" class="form-select form-select-sm" onchange="loadInventory()">
-          <option value="">지점 선택</option>
+          <option value="">{{ T('bulkout.filter_branch') }}</option>
           {% for b in branches %}
           <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
           {% endfor %}
@@ -29,12 +29,12 @@
         <thead class="table-light">
           <tr>
             <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
-            {% if session.role == 'admin' %}<th>지점</th>{% endif %}
-            <th>품목명</th>
-            <th class="text-center">현재 재고</th>
-            <th class="text-center">최소기준</th>
-            <th class="text-center" style="width:130px">출고 수량</th>
-            <th>비고</th>
+            {% if session.role == 'admin' %}<th>{{ T('bulkout.col_branch') }}</th>{% endif %}
+            <th>{{ T('bulkout.col_form') }}</th>
+            <th class="text-center">{{ T('bulkout.col_stock') }}</th>
+            <th class="text-center">{{ T('bulkout.col_min') }}</th>
+            <th class="text-center" style="width:130px">{{ T('bulkout.col_qty') }}</th>
+            <th>{{ T('bulkout.col_notes') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +48,7 @@
             <td class="small fw-semibold">{{ row.form_name }}</td>
             <td class="text-center">
               {% if row.quantity == 0 %}
-                <span class="badge badge-status-empty">소진</span>
+                <span class="badge badge-status-empty">{{ T('common.exhausted') }}</span>
               {% elif row.quantity <= row.min_threshold %}
                 <span class="badge badge-status-low">{{ row.quantity }}</span>
               {% else %}
@@ -62,7 +62,7 @@
                      style="width:90px"
                      oninput="validateQty(this, {{ row.quantity }})">
             </td>
-            <td><input type="text" class="form-control form-control-sm note-input" placeholder="비고" style="min-width:120px"></td>
+            <td><input type="text" class="form-control form-control-sm note-input" placeholder="{{ T('bulkout.col_notes') }}" style="min-width:120px"></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -72,26 +72,26 @@
     {% if not inventory_rows %}
     <div class="empty-state">
       <div class="empty-icon"><i class="fa-solid fa-layer-group"></i></div>
-      <h6>재고 데이터가 없습니다</h6>
-      <p>출고할 재고가 없습니다.</p>
+      <h6>{{ T('bulkout.no_stock') }}</h6>
+      <p>{{ T('bulkout.no_stock_desc') }}</p>
     </div>
     {% endif %}
   </div>
   <div class="card-footer bg-white d-flex align-items-center gap-2">
     <div class="me-auto">
-      <span id="selectedCount" class="text-muted small">선택된 항목: 0개</span>
+      <span id="selectedCount" class="text-muted small">{{ T('bulkout.selected_prefix') }}0{{ T('bulkout.selected_suffix') }}</span>
     </div>
     <input type="month" id="periodMonth" class="form-control form-control-sm"
-           style="width:150px" value="{{ today[:7] }}" title="출고 기간">
+           style="width:150px" value="{{ today[:7] }}" title="{{ T('bulkout.period_title') }}">
     <button type="button" class="btn btn-primary" id="bulkOutboundBtn" onclick="submitBulk()">
-      <i class="fa-solid fa-dolly me-1"></i>선택 항목 출고
+      <i class="fa-solid fa-dolly me-1"></i>{{ T('bulkout.submit_btn') }}
     </button>
   </div>
 </div>
 
 <div id="resultArea" class="d-none">
   <div class="card">
-    <div class="card-header bg-white border-bottom py-3"><strong>처리 결과</strong></div>
+    <div class="card-header bg-white border-bottom py-3"><strong>{{ T('bulkout.result_title') }}</strong></div>
     <div class="card-body" id="resultBody"></div>
   </div>
 </div>
@@ -99,13 +99,26 @@
 
 {% block scripts %}
 <script>
+var _sel_pre  = '{{ T("bulkout.selected_prefix") }}';
+var _sel_suf  = '{{ T("bulkout.selected_suffix") }}';
+var _exc_pre  = '{{ T("bulkout.exceed_pre") }}';
+var _exc_suf  = '{{ T("bulkout.exceed_suf") }}';
+var _res_ok   = '{{ T("bulkout.result_success") }}';
+var _res_fail = '{{ T("bulkout.result_fail") }}';
+var _res_br   = '{{ T("bulkout.result_branch") }}';
+var _res_it   = '{{ T("bulkout.result_item") }}';
+var _res_cnt  = '{{ T("bulkout.result_count") }}';
+var _err_qty  = '{{ T("bulkout.err_qty") }}';
+var _err_none = '{{ T("bulkout.err_none") }}';
+var _err_gen  = '{{ T("bulkout.err_generic") }}';
+
 function toggleAll(cb) {
   document.querySelectorAll('.row-check').forEach(function(c){ c.checked = cb.checked; });
   updateCount();
 }
 function updateCount() {
   var n = document.querySelectorAll('.row-check:checked').length;
-  document.getElementById('selectedCount').textContent = '선택된 항목: ' + n + '개';
+  document.getElementById('selectedCount').textContent = _sel_pre + n + _sel_suf;
 }
 document.querySelectorAll('.row-check').forEach(function(c){ c.addEventListener('change', updateCount); });
 
@@ -113,7 +126,7 @@ function validateQty(input, maxStock) {
   var v = parseInt(input.value);
   if (v > maxStock) {
     input.classList.add('is-invalid');
-    input.title = '재고(' + maxStock + ')를 초과합니다';
+    input.title = _exc_pre + maxStock + _exc_suf;
   } else {
     input.classList.remove('is-invalid');
     input.title = '';
@@ -143,8 +156,8 @@ function submitBulk() {
     });
   });
 
-  if (hasError) { alert('수량을 올바르게 입력해주세요.'); return; }
-  if (!items.length) { alert('출고할 항목을 선택하세요.'); return; }
+  if (hasError) { alert(_err_qty); return; }
+  if (!items.length) { alert(_err_none); return; }
 
   setLoading(btn, true);
   fetch('{{ url_for("bulk_outbound") }}', {
@@ -158,17 +171,17 @@ function submitBulk() {
     var area = document.getElementById('resultArea');
     var body = document.getElementById('resultBody');
     area.classList.remove('d-none');
-    var html = '<p class="text-success mb-1"><i class="fa-solid fa-circle-check me-1"></i>성공: <strong>' + d.processed + '건</strong></p>';
+    var html = '<p class="text-success mb-1"><i class="fa-solid fa-circle-check me-1"></i>' + _res_ok + ' <strong>' + d.processed + _res_cnt + '</strong></p>';
     if (d.failed && d.failed.length) {
-      html += '<p class="text-danger mb-2"><i class="fa-solid fa-circle-xmark me-1"></i>실패: <strong>' + d.failed.length + '건</strong></p>';
+      html += '<p class="text-danger mb-2"><i class="fa-solid fa-circle-xmark me-1"></i>' + _res_fail + ' <strong>' + d.failed.length + _res_cnt + '</strong></p>';
       html += '<ul class="small text-muted mb-0">';
-      d.failed.forEach(function(f){ html += '<li>지점 #' + f.branch_id + ' / 품목 #' + f.form_type_id + ' — ' + f.reason + '</li>'; });
+      d.failed.forEach(function(f){ html += '<li>' + _res_br + f.branch_id + ' ' + _res_it + f.form_type_id + ' — ' + f.reason + '</li>'; });
       html += '</ul>';
     }
     body.innerHTML = html;
     if (d.processed > 0) setTimeout(function(){ location.reload(); }, 2000);
   })
-  .catch(function() { setLoading(btn, false); alert('오류가 발생했습니다.'); });
+  .catch(function() { setLoading(btn, false); alert(_err_gen); });
 }
 </script>
 {% endblock %}

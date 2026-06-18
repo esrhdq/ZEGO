@@ -646,6 +646,7 @@
   "hist.qty_auto_adjust_hint": "Stock will be automatically adjusted when quantity is changed.",
   "hist.alert_select_date": "Please select the outbound date.",
   "hist.alert_invalid_qty": "Please enter a valid quantity.",
+  "common.date_format_chip": "%b %d, %Y",
   "common.saving": "Saving...",
   "common.save_error": "An error occurred while saving.",
   "common.error_prefix": "Error: ",

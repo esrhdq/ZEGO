@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}카탈로그 신청 장바구니{% endblock %}
+{% block title %}{{ T('catreq.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-cart-shopping"></i>{% endblock %}
-{% block page_title %}카탈로그 신청 장바구니{% endblock %}
+{% block page_title %}{{ T('catreq.title') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -27,16 +27,16 @@
 <!-- 상단 버튼 -->
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
   <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
-    <i class="fa-solid fa-arrow-left me-1"></i>카탈로그로 돌아가기
+    <i class="fa-solid fa-arrow-left me-1"></i>{{ T('catreq.back') }}
   </a>
   <a href="{{ url_for('catalog_requests_branch') }}" class="btn btn-sm btn-outline-primary ms-auto">
-    <i class="fa-solid fa-clock-rotate-left me-1"></i>신청 내역 보기
+    <i class="fa-solid fa-clock-rotate-left me-1"></i>{{ T('catreq.view_history') }}
   </a>
 </div>
 
 {% if session.role == 'admin' %}
 <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.83rem">
-  <i class="fa-solid fa-user-tie me-1"></i>관리자 모드 — 지점 선택 후 장바구니를 확인합니다.
+  <i class="fa-solid fa-user-tie me-1"></i>{{ T('catreq.admin_mode') }}
   <select id="branchSel" class="form-select form-select-sm d-inline-block ms-2" style="width:auto"
           onchange="location.href='?branch_id='+this.value">
     {% for b in branches %}
@@ -50,13 +50,13 @@
 <div class="req-section">
   <div class="req-section-header">
     <i class="fa-solid fa-cart-shopping"></i>
-    담긴 아이템 <span class="ms-1 badge bg-light text-danger">{{ cart_items|length }}종</span>
+    {{ T('catreq.cart_title') }} <span class="ms-1 badge bg-light text-danger">{{ cart_items|length }}{{ T('common.count_type') }}</span>
   </div>
   <div class="table-responsive">
     <table class="req-table">
       <thead>
         <tr>
-          <th>이미지</th><th>구분</th><th>아이템명</th><th>수량</th><th>커스텀</th><th style="width:60px;text-align:center">삭제</th>
+          <th>{{ T('catreq.col_image') }}</th><th>{{ T('catreq.col_cat') }}</th><th>{{ T('catreq.col_name') }}</th><th>{{ T('catreq.col_qty') }}</th><th>{{ T('catreq.col_custom') }}</th><th style="width:60px;text-align:center">{{ T('catreq.col_delete') }}</th>
         </tr>
       </thead>
       <tbody id="cartBody">
@@ -74,7 +74,7 @@
             </div>
             {% endif %}
             {% if it.custom_img_data %}
-            <span class="custom-flag ms-1"><i class="fa-solid fa-image me-1"></i>커스텀 이미지</span>
+            <span class="custom-flag ms-1"><i class="fa-solid fa-image me-1"></i>{{ T('catreq.custom_img_badge') }}</span>
             {% endif %}
           </td>
           <td>
@@ -83,7 +83,7 @@
           </td>
           <td>
             {% if it.custom_img_data or it.custom_text %}
-            <span class="badge bg-success" style="font-size:.65rem">커스텀</span>
+            <span class="badge bg-success" style="font-size:.65rem">{{ T('catreq.custom_badge') }}</span>
             {% else %}—{% endif %}
           </td>
           <td style="text-align:center">
@@ -101,19 +101,19 @@
 
 <!-- 요청사항 입력 -->
 <div class="req-section">
-  <div class="req-section-header"><i class="fa-solid fa-pen-to-square"></i> 전체 요청사항 (선택)</div>
+  <div class="req-section-header"><i class="fa-solid fa-pen-to-square"></i> {{ T('catreq.notes_title') }}</div>
   <div class="p-3">
     <textarea id="reqNotes" class="form-control form-control-sm" rows="3"
-              placeholder="전체적인 요청사항이나 납기 희망일 등을 입력하세요."></textarea>
+              placeholder="{{ T('catreq.notes_ph') }}"></textarea>
   </div>
 </div>
 
 <div class="d-flex gap-2 justify-content-end">
   <button class="btn btn-outline-danger btn-sm" onclick="clearCart()">
-    <i class="fa-solid fa-trash me-1"></i>장바구니 비우기
+    <i class="fa-solid fa-trash me-1"></i>{{ T('catreq.clear_cart') }}
   </button>
   <button class="btn btn-danger btn-sm px-4" onclick="submitRequest()">
-    <i class="fa-solid fa-paper-plane me-1"></i>신청하기
+    <i class="fa-solid fa-paper-plane me-1"></i>{{ T('catreq.submit') }}
   </button>
 </div>
 
@@ -121,9 +121,9 @@
 <div class="req-section">
   <div class="empty-cart">
     <i class="fa-solid fa-cart-shopping"></i>
-    장바구니가 비어있습니다.<br>
+    {{ T('catreq.empty') }}<br>
     <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-danger mt-3">
-      <i class="fa-solid fa-clipboard-list me-1"></i>카탈로그에서 신청 모드로 담기
+      <i class="fa-solid fa-clipboard-list me-1"></i>{{ T('catreq.go_catalog') }}
     </a>
   </div>
 </div>
@@ -133,27 +133,10 @@
 
 {% block scripts %}
 <script>
-// 배치 이미지 로드 (localStorage 공유 캐시)
-(function() {
-  function apply(data) {
-    document.querySelectorAll('img[data-img]').forEach(img => {
-      const s = data[img.dataset.img]; if (s) img.src = s;
-    });
-  }
-  // 최신 버전 캐시 키 탐색
-  try {
-    const ver = JSON.parse(localStorage.getItem('ci_imgs_meta') || 'null');
-    if (ver !== null) {
-      const c = localStorage.getItem('ci_imgs_v' + ver);
-      if (c) { apply(JSON.parse(c)); return; }
-    }
-  } catch(e) {}
-  fetch('{{ url_for("catalog_imgs") }}').then(r=>r.json()).then(d=>{
-    apply(d);
-  }).catch(()=>{
-    document.querySelectorAll('img[data-img]').forEach(img=>{ img.src='/ci/'+img.dataset.img+'.png'; });
-  });
-})();
+// 이미지 레이지 로드 (/ci/ 개별 요청)
+document.querySelectorAll('img[data-img]').forEach(img => {
+  img.src = '/ci/' + img.dataset.img + '.png';
+});
 
 const TARGET_BID = {{ target_bid or 'null' }};
 
@@ -179,12 +162,12 @@ async function removeItem(code) {
     if (!document.querySelector('#cartBody tr')) location.reload();
   } else {
     if (row) row.style.opacity = '';
-    alert(json.msg || '오류');
+    alert(json.msg || '{{ T("catreq.err_generic") }}');
   }
 }
 
 async function clearCart() {
-  if (!confirm('장바구니를 비우시겠습니까?')) return;
+  if (!confirm('{{ T("catreq.confirm_clear") }}')) return;
   const json = await cartApi({action: 'clear'});
   if (json.ok) location.reload();
 }
@@ -198,10 +181,10 @@ async function submitRequest() {
   });
   const json = await res.json();
   if (json.ok) {
-    alert('신청이 접수되었습니다!');
+    alert('{{ T("catreq.submitted") }}');
     location.href = '{{ url_for("catalog_requests_branch") }}';
   } else {
-    alert(json.msg || '오류가 발생했습니다.');
+    alert(json.msg || '{{ T("catreq.err_generic") }}');
   }
 }
 </script>

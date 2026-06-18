@@ -392,7 +392,7 @@
       <i class="fa-solid fa-warehouse"></i>{{ T('nav.inventory') }}
     </a>
 
-    <div class="section-label">처리</div>
+    <div class="section-label">{{ T('nav.processing_section') }}</div>
     <a href="{{ url_for('inbound') }}"
        class="nav-link {% if endpoint=='inbound' %}active{% endif %}">
       <i class="fa-solid fa-truck-ramp-box"></i>{{ T('nav.inbound') }}
@@ -403,7 +403,7 @@
     </a>
     <a href="{{ url_for('bulk_outbound_page') }}"
        class="nav-link {% if endpoint=='bulk_outbound_page' %}active{% endif %}">
-      <i class="fa-solid fa-layer-group"></i>일괄 출고
+      <i class="fa-solid fa-layer-group"></i>{{ T('nav.bulk_outbound') }}
     </a>
     <a href="{{ url_for('transfer') }}"
        class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}"
@@ -417,10 +417,10 @@
     </a>
     <a href="{{ url_for('my_transfer_requests') }}"
        class="nav-link {% if endpoint=='my_transfer_requests' %}active{% endif %}">
-      <i class="fa-solid fa-clock-rotate-left"></i>내 신청 현황
+      <i class="fa-solid fa-clock-rotate-left"></i>{{ T('nav.my_transfer_requests') }}
     </a>
 
-    <div class="section-label">분석</div>
+    <div class="section-label">{{ T('nav.analysis_section') }}</div>
     <a href="{{ url_for('transactions') }}"
        class="nav-link {% if endpoint=='transactions' %}active{% endif %}">
       <i class="fa-solid fa-receipt"></i>{{ T('nav.history') }}
@@ -445,23 +445,23 @@
     </a>
     <a href="{{ url_for('catalog_cart') }}"
        class="nav-link nav-sub {% if endpoint=='catalog_cart' %}active{% endif %}">
-      <i class="fa-solid fa-cart-shopping"></i>신청 장바구니
+      <i class="fa-solid fa-cart-shopping"></i>{{ T('nav.request_cart') }}
     </a>
     <a href="{{ url_for('catalog_requests_branch') }}"
        class="nav-link nav-sub {% if endpoint in ('catalog_requests_branch','catalog_request_detail') %}active{% endif %}">
-      <i class="fa-solid fa-clock-rotate-left"></i>신청 내역
+      <i class="fa-solid fa-clock-rotate-left"></i>{{ T('nav.request_history') }}
     </a>
 
-    <div class="section-label">운송양식 신청</div>
+    <div class="section-label">{{ T('nav.form_supply_section') }}</div>
     <a href="{{ url_for('form_supply_request') }}"
        class="nav-link {% if endpoint=='form_supply_request' %}active{% endif %}"
        {% if session.role == 'admin' %}style="opacity:0.4;pointer-events:none"{% endif %}>
-      <i class="fa-solid fa-file-circle-plus"></i>양식 신청
+      <i class="fa-solid fa-file-circle-plus"></i>{{ T('nav.form_request') }}
     </a>
     <a href="{{ url_for('form_supply_my_requests') }}"
        class="nav-link {% if endpoint=='form_supply_my_requests' %}active{% endif %}"
        {% if session.role == 'admin' %}style="opacity:0.4;pointer-events:none"{% endif %}>
-      <i class="fa-solid fa-clock-rotate-left"></i>내 신청 현황
+      <i class="fa-solid fa-clock-rotate-left"></i>{{ T('nav.my_form_requests') }}
     </a>
 
     {% if session.role == 'admin' %}
@@ -472,19 +472,19 @@
     </a>
     <a href="{{ url_for('form_supply_admin_requests') }}"
        class="nav-link {% if endpoint in ('form_supply_admin_requests','form_supply_admin_action') %}active{% endif %}">
-      <i class="fa-solid fa-file-invoice"></i>양식 신청 관리
+      <i class="fa-solid fa-file-invoice"></i>{{ T('nav.form_request_admin') }}
     </a>
     <a href="{{ url_for('form_supply_settings') }}"
        class="nav-link {% if endpoint=='form_supply_settings' %}active{% endif %}">
-      <i class="fa-solid fa-calendar-days"></i>신청 기간 설정
+      <i class="fa-solid fa-calendar-days"></i>{{ T('nav.form_period_settings') }}
     </a>
     <a href="{{ url_for('admin_branch_emails') }}"
        class="nav-link {% if endpoint=='admin_branch_emails' %}active{% endif %}">
-      <i class="fa-solid fa-envelope-open-text"></i>지점 이메일 관리
+      <i class="fa-solid fa-envelope-open-text"></i>{{ T('nav.branch_emails') }}
     </a>
     <a href="{{ url_for('access_logs_view') }}"
        class="nav-link {% if endpoint=='access_logs_view' %}active{% endif %}">
-      <i class="fa-solid fa-shield-halved"></i>접근 로그
+      <i class="fa-solid fa-shield-halved"></i>{{ T('nav.access_logs') }}
     </a>
     {% endif %}
   </nav>
@@ -549,10 +549,10 @@
           <div class="d-flex align-items-center justify-content-between px-3 py-2"
                style="border-bottom:1px solid var(--border);background:#FAF9F7">
             <span style="font-size:.82rem;font-weight:700;color:var(--text)">
-              알림 {% if notif_count > 0 %}<span class="badge" style="background:var(--warning)">{{ notif_count }}</span>{% endif %}
+              {{ T('notif.title') }} {% if notif_count > 0 %}<span class="badge" style="background:var(--warning)">{{ notif_count }}</span>{% endif %}
             </span>
             <button class="btn btn-sm" style="font-size:.72rem;color:var(--brand);padding:2px 8px"
-                    onclick="markAllRead()">모두 읽음</button>
+                    onclick="markAllRead()">{{ T('notif.mark_all_read') }}</button>
           </div>
           <div style="max-height:360px;overflow-y:auto" id="notifList">
             {% if notif_list %}
@@ -567,20 +567,20 @@
             {% else %}
             <div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem">
               <i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>
-              새 알림이 없습니다
+              {{ T('notif.empty') }}
             </div>
             {% endif %}
           </div>
           <div style="border-top:1px solid var(--border)">
             <a href="{{ url_for('transfer') }}" class="dropdown-item text-center"
-               style="font-size:.78rem;color:var(--brand);padding:8px">이전 신청 전체 보기</a>
+               style="font-size:.78rem;color:var(--brand);padding:8px">{{ T('notif.view_all_transfers') }}</a>
           </div>
         </div>
       </div>
       {% endif %}
       <div class="zego-chip">
         <i class="fa-solid fa-plane-departure"></i>
-        ZEGO &nbsp;·&nbsp; {{ now_dt.strftime('%y년 %m월 %d일') }}
+        ZEGO &nbsp;·&nbsp; {{ now_dt.strftime(T('common.date_format_chip')) }}
       </div>
       <div class="dropdown me-2">
         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" style="font-size:.75rem;padding:3px 8px">
@@ -605,8 +605,8 @@
     <div class="alert d-flex align-items-center gap-2 mb-3"
          style="background:var(--warning-bg);border:1px solid var(--warning);border-radius:10px;font-size:.88rem">
       <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i>
-      <span>{{ T('chpw.pw_expire_prefix') }}<strong>{{ pw_expire_days }}</strong>{{ T('chpw.pw_expire_suffix') }}
-        <a href="{{ url_for('change_password') }}" style="color:var(--brand);font-weight:600">{{ T('chpw.pw_change_now') }}</a>
+      <span>{{ T('pw.expiry_before') }} <strong>{{ pw_expire_days }}{{ T('pw.expiry_days_left') }}</strong>
+        <a href="{{ url_for('change_password') }}" style="color:var(--brand);font-weight:600">{{ T('pw.change_now') }}</a>
       </span>
       <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" style="font-size:.7rem"></button>
     </div>
@@ -639,8 +639,8 @@
         <p id="confirmModalMsg" class="mb-0" style="font-size:.92rem;color:var(--text);line-height:1.6"></p>
       </div>
       <div class="modal-footer border-0 justify-content-center gap-2 pb-4">
-        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">취소</button>
-        <button type="button" id="confirmModalOk" class="btn btn-primary px-4">확인</button>
+        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+        <button type="button" id="confirmModalOk" class="btn btn-primary px-4">{{ T('common.confirm') }}</button>
       </div>
     </div>
   </div>
@@ -649,12 +649,14 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
+var _processing = '{{ T("common.processing") }}';
+var _notifEmpty = '{{ T("notif.empty") }}';
 // ── 로딩 버튼 유틸 ──
 function setLoading(btn, isLoading) {
   if (!btn) return;
   if (isLoading) {
     btn.dataset.origText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>처리 중...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>' + _processing;
     btn.disabled = true;
   } else {
     btn.innerHTML = btn.dataset.origText || btn.innerHTML;
@@ -675,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function markAllRead() {
   fetch('{{ url_for("notifications_read_all") }}', {method:'POST',headers:{'Content-Type':'application/json'}})
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.ok) { document.getElementById('notifDropdown').querySelector('#notifList').innerHTML='<div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem"><i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>새 알림이 없습니다</div>'; var badge=document.querySelector('#notifDropdownBtn .badge'); if(badge) badge.remove(); } });
+    .then(function(d){ if(d.ok) { document.getElementById('notifDropdown').querySelector('#notifList').innerHTML='<div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem"><i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>'+_notifEmpty+'</div>'; var badge=document.querySelector('#notifDropdownBtn .badge'); if(badge) badge.remove(); } });
 }
 
 

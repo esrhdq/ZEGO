@@ -646,6 +646,7 @@
   "hist.qty_auto_adjust_hint": "수량 변경 시 재고가 자동으로 조정됩니다.",
   "hist.alert_select_date": "출고 일자를 선택해 주세요.",
   "hist.alert_invalid_qty": "수량을 올바르게 입력해 주세요.",
+  "common.date_format_chip": "%y년 %m월 %d일",
   "common.saving": "저장 중...",
   "common.save_error": "저장 중 오류가 발생했습니다.",
   "common.error_prefix": "오류: ",

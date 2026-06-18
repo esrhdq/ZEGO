@@ -646,6 +646,7 @@
   "hist.qty_auto_adjust_hint": "数量変更時に在庫が自動調整されます。",
   "hist.alert_select_date": "出庫日を選択してください。",
   "hist.alert_invalid_qty": "数量を正しく入力してください。",
+  "common.date_format_chip": "%y年%m月%d日",
   "common.saving": "保存中...",
   "common.save_error": "保存中にエラーが発生しました。",
   "common.error_prefix": "エラー: ",
