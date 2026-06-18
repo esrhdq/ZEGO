@@ -40,7 +40,7 @@
         <tbody>
           {% for row in inventory_rows %}
           <tr data-branch="{{ row.branch_id }}" data-form="{{ row.form_type_id }}"
-              data-stock="{{ row.quantity }}" data-unit="{{ row.unit }}">
+              data-stock="{{ row.quantity }}" data-unit="{{ row.unit | unit_i18n }}">
             <td><input type="checkbox" class="row-check"></td>
             {% if session.role == 'admin' %}
             <td><span class="badge bg-secondary">{{ row.branch_code }}</span> {{ row.branch_name }}</td>
