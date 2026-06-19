@@ -198,13 +198,13 @@ class _DB:
                 cur.execute(sql, params if params else None)
                 return cur
             except psycopg2.OperationalError:
-                if _attempt == 0 and self._pool and not self._returned:
-                    # SSL 연결 끊김 — 풀에서 새 연결로 교체
+                if _attempt == 0:
+                    # SSL 연결 끊김 — 직접 새 연결 생성
                     try:
-                        self._pool.putconn(self._conn, close=True)
+                        self._conn.close()
                     except Exception:
                         pass
-                    self._conn = self._pool.getconn()
+                    self._conn = psycopg2.connect(**_PG)
                 else:
                     raise
 
@@ -277,42 +277,10 @@ def _get_pg_pool():
     return _PG_POOL
 
 
-def _pg_conn_alive(conn):
-    """연결이 살아있는지 확인 (poll 사용)."""
-    if conn.closed:
-        return False
-    try:
-        conn.poll()
-        return True
-    except Exception:
-        return False
-
-
 def _acquire_pg_db():
-    """풀에서 유효한 커넥션을 획득. 연결이 끊어진 경우 풀 재생성 후 재시도."""
-    global _PG_POOL
-    for attempt in range(2):
-        try:
-            pool = _get_pg_pool()
-            conn = pool.getconn()
-            if not _pg_conn_alive(conn):
-                # stale 연결 — 닫고 풀 전체 재생성
-                try:
-                    pool.putconn(conn, close=True)
-                except Exception:
-                    pass
-                raise psycopg2.OperationalError('stale connection in pool')
-            return _DB(conn, pool=pool)
-        except Exception:
-            if attempt == 0:
-                if _PG_POOL:
-                    try:
-                        _PG_POOL.closeall()
-                    except Exception:
-                        pass
-                    _PG_POOL = None
-            else:
-                raise
+    """요청마다 새 직접 연결 생성 — 풀 미사용 (Vercel serverless stale 연결 방지)."""
+    conn = psycopg2.connect(**_PG)
+    return _DB(conn)  # pool=None → close() 시 직접 종료
 
 
 def get_db():
@@ -325,10 +293,10 @@ def get_db():
             g.db = _acquire_pg_db()
     else:
         db = g.db
-        # 연결이 닫혔거나 이미 풀에 반환된 경우 새 연결 획득
+        # 연결이 닫힌 경우 새 연결 획득
         if not USE_SQLITE and (
             getattr(db, '_returned', False) or
-            (hasattr(db, '_conn') and not _pg_conn_alive(db._conn))
+            (hasattr(db, '_conn') and db._conn.closed)
         ):
             g.db = _acquire_pg_db()
     return g.db
