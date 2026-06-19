@@ -272,6 +272,7 @@ def _acquire_pg_db():
     _attempts = [
         lambda: psycopg2.connect(**_PG) if _PG else (_ for _ in ()).throw(RuntimeError),
         lambda: psycopg2.connect(DATABASE_URL, connect_timeout=10,
+                                 sslmode='require',
                                  keepalives=1, keepalives_idle=10,
                                  keepalives_interval=5, keepalives_count=3),
     ]
