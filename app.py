@@ -573,6 +573,16 @@ def inject_globals():
 # ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
 
 @app.before_request
+def ensure_db_ready():
+    """init_db 실패 시 다음 요청에서 재시도 (Neon cold-start 대응)."""
+    if not _DB_INITIALIZED and not USE_SQLITE:
+        try:
+            init_db()
+        except Exception as _e:
+            print(f'[ensure_db_ready] {_e}')
+
+
+@app.before_request
 def check_ip_and_session():
     # IP 화이트리스트 (/ping은 Vercel Cron이 호출하므로 제외)
     if ALLOWED_IPS and request.path != '/ping':
