@@ -119,7 +119,7 @@
                 </td>
                 <td><strong>{{ r.branch_code }}</strong> <span class="text-muted small">{{ r.branch_name }}</span></td>
                 <td class="small">{{ r.form_name }}</td>
-                <td class="small text-muted">{{ r.unit }} ({{ r.unit_detail }})</td>
+                <td class="small text-muted">{{ r.unit | unit_i18n }} ({{ r.unit_detail | unit_i18n }})</td>
                 <td class="text-center fw-bold
                   {% if r.quantity == 0 %}status-empty
                   {% elif r.quantity <= r.min_threshold %}status-low
@@ -152,12 +152,12 @@
             </tbody>
           </table>
         </div>
-        <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}건</div>
+        <div class="px-3 py-2 text-muted small border-top">{{ T('inv.total_prefix') }} {{ rows|length }}{{ T('common.count_suffix') }}</div>
         {% else %}
         <div class="empty-state">
           <div class="empty-icon"><i class="fa-solid fa-warehouse"></i></div>
           <h6>{{ T('inv.no_data') }}</h6>
-          <p>조건에 맞는 재고 데이터가 없습니다.</p>
+          <p>{{ T('inv.no_data_description') }}</p>
         </div>
         {% endif %}
       </div>
@@ -193,7 +193,7 @@
               {% set total = r.total_qty or 0 %}
               <tr>
                 <td class="fw-semibold small">{{ r.form_name }}</td>
-                <td class="small text-muted">{{ r.unit }} ({{ r.unit_detail }})</td>
+                <td class="small text-muted">{{ r.unit | unit_i18n }} ({{ r.unit_detail | unit_i18n }})</td>
                 <td class="text-center">
                   <span class="fw-bold fs-6
                     {% if total == 0 %}status-empty
@@ -236,7 +236,7 @@
                 </td>
                 {% if session.role == 'admin' %}
                 <td class="text-end small">
-                  {% if r.total_value %}{{ '{:,.0f}'.format(r.total_value) }}원{% else %}—{% endif %}
+                  {% if r.total_value %}{{ '{:,.0f}'.format(r.total_value) }}{{ T('inv.currency_unit') }}{% else %}—{% endif %}
                 </td>
                 {% endif %}
               </tr>
@@ -248,13 +248,13 @@
                 <td class="text-center">{{ grand_total_qty }}</td>
                 <td colspan="4"></td>
                 {% if session.role == 'admin' %}
-                <td class="text-end small">{{ '{:,.0f}'.format(grand_total_value) }}원</td>
+                <td class="text-end small">{{ '{:,.0f}'.format(grand_total_value) }}{{ T('inv.currency_unit') }}</td>
                 {% endif %}
               </tr>
             </tfoot>
           </table>
         </div>
-        <div class="px-3 py-2 text-muted small border-top">총 {{ summary_rows|length }}개 양식</div>
+        <div class="px-3 py-2 text-muted small border-top">{{ T('inv.total_prefix') }} {{ summary_rows|length }}{{ T('inv.summary_form_unit') }}</div>
         {% else %}
         <div class="text-center text-muted py-5">
           <i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T('inv.no_data') }}
@@ -277,7 +277,7 @@
                 <th>{{ T('common.unit') }}</th>
                 {% for mo in month_labels %}
                 <th class="text-center" style="min-width:72px">
-                  <div class="small fw-semibold">{{ mo[5:] }}월</div>
+                  <div class="small fw-semibold">{{ mo[5:] }}{{ T('inv.month_unit') }}</div>
                   <div class="text-muted" style="font-size:.68rem">{{ mo[:4] }}</div>
                 </th>
                 {% endfor %}
@@ -288,7 +288,7 @@
               {% for r in monthly_rows %}
               <tr>
                 <td class="small fw-semibold">{{ r.form_name }}</td>
-                <td class="small text-muted">{{ r.unit }}</td>
+                <td class="small text-muted">{{ r.unit | unit_i18n }}</td>
                 {% for v in r.vals %}
                 <td class="text-center
                   {% if v == 0 %}text-muted{% elif v >= 5 %}text-danger fw-bold{% else %}text-primary fw-semibold{% endif %}">
@@ -311,7 +311,7 @@
           </table>
         </div>
         <div class="px-3 py-2 text-muted small border-top">
-          총 {{ monthly_rows|length }}개 양식 · 출고 합계 {{ monthly_totals | sum }}개
+          {{ T('inv.total_prefix') }} {{ monthly_rows|length }}{{ T('inv.monthly_summary_label') }} {{ monthly_totals | sum }}{{ T('common.count_item') }}
         </div>
         {% else %}
         <div class="text-center text-muted py-5">

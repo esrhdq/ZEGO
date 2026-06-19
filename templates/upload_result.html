@@ -52,7 +52,7 @@
 <div class="card">
   <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
     <strong>{{ T('upl.table_title') }}</strong>
-    <span class="badge bg-secondary ms-1">총 {{ results|length }}행</span>
+    <span class="badge bg-secondary ms-1">{{ T('upl.total_rows_prefix') }}{{ results|length }}{{ T('upl.total_rows_suffix') }}</span>
     <div class="ms-auto d-flex gap-2">
       <a href="{{ url_for('inbound') }}" class="btn btn-sm btn-outline-primary">
         <i class="bi bi-arrow-left me-1"></i>{{ T('upl.to_inbound') }}
@@ -102,7 +102,7 @@
             </td>
             <td class="small {% if r.status=='error' %}text-danger{% elif r.status=='skip' %}text-warning{% else %}text-success{% endif %}">
               {% if r.status == 'ok' %}
-                <i class="bi bi-check me-1"></i>재고 반영 완료
+                <i class="bi bi-check me-1"></i>{{ T('upl.stock_applied') }}
               {% else %}
                 <i class="fa-solid fa-circle-info me-1"></i>{{ r.msg }}
               {% endif %}
@@ -125,8 +125,8 @@
 <div class="alert alert-warning mt-3 small">
   <i class="bi bi-lightbulb me-1"></i>
   <strong>{{ T('upl.error_hint') }}</strong>
-  양식명은 <strong>참고 시트의 목록과 정확히 일치</strong>해야 합니다. 드롭다운을 사용하거나 복사·붙여넣기하세요.
-  지점코드도 영문 대문자로 정확히 입력해야 합니다.
+  {{ T('upl.error_hint_form_name') }}
+  {{ T('upl.error_hint_branch_code') }}
 </div>
 {% endif %}
 {% endblock %}

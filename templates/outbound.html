@@ -58,8 +58,8 @@
             <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchStock()">
               <option value="">{{ T('common.select_form') }}</option>
               {% for f in form_types %}
-                <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
-                  {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                <option value="{{ f.id }}" data-unit="{{ f.unit | unit_i18n }}" data-detail="{{ f.unit_detail | unit_i18n }}">
+                  {{ f.name }} ({{ f.unit | unit_i18n }} / {{ f.unit_detail | unit_i18n }})
                 </option>
               {% endfor %}
             </select>
@@ -83,7 +83,7 @@
             <label class="form-label fw-semibold">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="{{ T('common.qty_placeholder') }}">
-              <span class="input-group-text" id="unitLabel">단위</span>
+              <span class="input-group-text" id="unitLabel">{{ T('common.unit') }}</span>
             </div>
           </div>
 

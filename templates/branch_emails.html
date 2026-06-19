@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}지점 이메일 관리{% endblock %}
+{% block title %}{{ T('emails.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-envelope-open-text"></i>{% endblock %}
-{% block page_title %}지점 이메일 관리{% endblock %}
+{% block page_title %}{{ T('emails.title') }}{% endblock %}
 
 {% block content %}
 <form method="post">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <p class="text-muted mb-0" style="font-size:.875rem">
-      각 지점의 담당자 이메일을 등록해두면, 이전 신청·승인·반려 시 자동으로 불러옵니다.
+      {{ T('emails.desc') }}
     </p>
     <button type="submit" class="btn btn-primary px-4" data-loading="true">
-      <i class="fa-solid fa-floppy-disk me-1"></i>전체 저장
+      <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('emails.save_all') }}
     </button>
   </div>
 
-  {% set types = [('DOM', '국내'), ('INTL', '국제'), ('CARGO', '화물')] %}
+  {% set types = [('DOM', T('common.domestic')), ('INTL', T('common.international')), ('CARGO', T('common.cargo'))] %}
   {% for type_code, type_label in types %}
   {% set group = branches | selectattr('type', 'equalto', type_code) | list %}
   {% if group %}
@@ -27,17 +27,17 @@
       {% else %}
         <span class="badge badge-cargo">{{ type_label }}</span>
       {% endif %}
-      <strong>{{ type_label }} 지점</strong>
-      <span class="badge bg-secondary ms-1">{{ group | length }}개</span>
+      <strong>{{ type_label }} {{ T('emails.branch_suffix') }}</strong>
+      <span class="badge bg-secondary ms-1">{{ group | length }}{{ T('common.count_item') }}</span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th style="width:100px">코드</th>
-              <th style="width:140px">지점명</th>
-              <th>담당자 이메일</th>
+              <th style="width:100px">{{ T('emails.col_code') }}</th>
+              <th style="width:140px">{{ T('emails.col_name') }}</th>
+              <th>{{ T('emails.col_email') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -57,7 +57,7 @@
                        name="email_{{ b.id }}"
                        value="{{ b.email }}"
                        class="form-control form-control-sm"
-                       placeholder="예: {{ b.code.lower() }}-ops@eastarjet.com"
+                       placeholder="{{ T('emails.email_placeholder_prefix') }} {{ b.code.lower() }}-ops@eastarjet.com"
                        style="max-width:340px">
               </td>
             </tr>
@@ -72,7 +72,7 @@
 
   <div class="d-flex justify-content-end">
     <button type="submit" class="btn btn-primary px-4" data-loading="true">
-      <i class="fa-solid fa-floppy-disk me-1"></i>전체 저장
+      <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('emails.save_all') }}
     </button>
   </div>
 </form>

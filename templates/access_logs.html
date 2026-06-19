@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}접근 로그{% endblock %}
+{% block title %}{{ T('logs.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-shield-halved"></i>{% endblock %}
-{% block page_title %}접근 로그{% endblock %}
+{% block page_title %}{{ T('logs.title') }}{% endblock %}
 
 {% block content %}
 <!-- 필터 -->
@@ -10,21 +10,21 @@
     <form method="get">
       <div class="row g-2 align-items-end">
         <div class="col-sm-3">
-          <label class="form-label small fw-semibold mb-1">사용자명</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('logs.filter_username') }}</label>
           <input type="text" name="username" class="form-control form-control-sm"
-                 value="{{ username_f }}" placeholder="사용자명 검색">
+                 value="{{ username_f }}" placeholder="{{ T('logs.filter_username_ph') }}">
         </div>
         <div class="col-sm-3">
-          <label class="form-label small fw-semibold mb-1">액션</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('logs.filter_action') }}</label>
           <input type="text" name="action" class="form-control form-control-sm"
-                 value="{{ action_f }}" placeholder="액션 검색">
+                 value="{{ action_f }}" placeholder="{{ T('logs.filter_action_ph') }}">
         </div>
         <div class="col-sm-2">
-          <label class="form-label small fw-semibold mb-1">시작일</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('logs.filter_start') }}</label>
           <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
         </div>
         <div class="col-sm-2">
-          <label class="form-label small fw-semibold mb-1">종료일</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('logs.filter_end') }}</label>
           <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
         </div>
         <div class="col-sm-2 d-flex gap-1">
@@ -32,7 +32,7 @@
             <i class="fa-solid fa-search"></i>
           </button>
           <a href="{{ url_for('download_access_logs') }}?username={{ username_f }}&action={{ action_f }}&from={{ date_from }}&to={{ date_to }}"
-             class="btn btn-outline-secondary btn-sm" title="CSV 다운로드">
+             class="btn btn-outline-secondary btn-sm" title="{{ T('logs.download_csv') }}">
             <i class="fa-solid fa-download"></i>
           </a>
         </div>
@@ -44,8 +44,8 @@
 <!-- 결과 -->
 <div class="card">
   <div class="card-header bg-white border-bottom d-flex align-items-center py-3">
-    <strong>로그 목록</strong>
-    <span class="badge bg-secondary ms-2">{{ total }}건</span>
+    <strong>{{ T('logs.list_title') }}</strong>
+    <span class="badge bg-secondary ms-2">{{ total }}{{ T('common.count_suffix') }}</span>
   </div>
   <div class="card-body p-0">
     {% if logs %}
@@ -53,10 +53,10 @@
       <table class="table table-hover table-sm mb-0">
         <thead class="table-light">
           <tr>
-            <th>일시</th>
-            <th>사용자</th>
-            <th>액션</th>
-            <th>대상 정보</th>
+            <th>{{ T('logs.col_datetime') }}</th>
+            <th>{{ T('logs.col_user') }}</th>
+            <th>{{ T('logs.col_action') }}</th>
+            <th>{{ T('logs.col_target') }}</th>
             <th>IP</th>
           </tr>
         </thead>
@@ -84,8 +84,8 @@
     {% else %}
     <div class="empty-state">
       <div class="empty-icon"><i class="fa-solid fa-shield-halved"></i></div>
-      <h6>로그가 없습니다</h6>
-      <p>조회 조건에 맞는 접근 로그가 없습니다.</p>
+      <h6>{{ T('logs.no_data') }}</h6>
+      <p>{{ T('logs.no_data_desc') }}</p>
     </div>
     {% endif %}
   </div>

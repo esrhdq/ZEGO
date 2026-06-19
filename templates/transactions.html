@@ -125,7 +125,7 @@
                 <span class="badge bg-secondary">{{ t.to_branch_code }}</span> {{ t.to_branch_name }}
               {% else %}—{% endif %}
             </td>
-            <td class="text-center fw-semibold tx-qty">{{ t.quantity }} <small class="text-muted">{{ t.unit }}</small></td>
+            <td class="text-center fw-semibold tx-qty">{{ t.quantity }} <small class="text-muted">{{ t.unit | unit_i18n }}</small></td>
             <td class="small text-muted tx-notes">{{ t.notes or '' }}</td>
             <td class="small text-muted">{{ t.created_by }}</td>
             <td class="text-center">
@@ -142,12 +142,12 @@
         </tbody>
       </table>
     </div>
-    <div class="px-3 py-2 text-muted small border-top">총 {{ rows|length }}{{ T('hist.max_rows') }}</div>
+    <div class="px-3 py-2 text-muted small border-top">{{ T('hist.total_prefix') }} {{ rows|length }}{{ T('hist.max_rows') }}</div>
     {% else %}
     <div class="empty-state">
       <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
       <h6>{{ T('hist.no_data') }}</h6>
-      <p>조건에 맞는 거래 이력이 없습니다.</p>
+      <p>{{ T('hist.no_data_detail') }}</p>
     </div>
     {% endif %}
   </div>
@@ -179,7 +179,7 @@
         <div class="mb-2">
           <label class="form-label small fw-semibold mb-1">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
           <input type="number" id="txEditQty" class="form-control form-control-sm" min="1">
-          <div class="form-text text-muted" style="font-size:.72rem">수량 변경 시 재고가 자동으로 조정됩니다.</div>
+          <div class="form-text text-muted" style="font-size:.72rem">{{ T('hist.qty_auto_adjust_hint') }}</div>
         </div>
         <div class="mb-1">
           <label class="form-label small fw-semibold mb-1">{{ T('common.notes') }}</label>
@@ -240,12 +240,12 @@ async function submitTxEdit() {
   const date  = document.getElementById('txEditDate').value;
   const qty   = parseInt(document.getElementById('txEditQty').value);
   const notes = document.getElementById('txEditNotes').value.trim();
-  if (!date) { alert('출고 일자를 선택해 주세요.'); return; }
-  if (!qty || qty <= 0) { alert('수량을 올바르게 입력해 주세요.'); return; }
+  if (!date) { alert('{{ T("hist.alert_select_date") }}'); return; }
+  if (!qty || qty <= 0) { alert('{{ T("hist.alert_invalid_qty") }}'); return; }
 
   const btn = document.getElementById('txEditSaveBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ T("common.saving") }}';
   try {
     const res  = await fetch(`/transactions/${id}/edit`, {
       method: 'POST',
@@ -267,10 +267,10 @@ async function submitTxEdit() {
         location.reload();
       }
     } else {
-      alert(json.msg || '저장 중 오류가 발생했습니다.');
+      alert(json.msg || '{{ T("common.save_error") }}');
     }
   } catch(e) {
-    alert('오류: ' + e.message);
+    alert('{{ T("common.error_prefix") }}' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>{{ T("common.save") }}';

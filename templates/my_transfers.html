@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}내 신청 현황{% endblock %}
+{% block title %}{{ T('my_transfers.page_title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-clock-rotate-left"></i>{% endblock %}
-{% block page_title %}내 신청 현황{% endblock %}
+{% block page_title %}{{ T('my_transfers.page_title') }}{% endblock %}
 
 {% block content %}
 <!-- 필터 -->
@@ -10,26 +10,26 @@
     <form method="get">
       <div class="row g-2 align-items-end">
         <div class="col-sm-3">
-          <label class="form-label small fw-semibold mb-1">상태</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('common.status') }}</label>
           <select name="status" class="form-select form-select-sm">
-            <option value="">전체</option>
-            <option value="PENDING"   {% if status_f=='PENDING'   %}selected{% endif %}>대기 중</option>
-            <option value="APPROVED"  {% if status_f=='APPROVED'  %}selected{% endif %}>승인됨</option>
-            <option value="CONFIRMED" {% if status_f=='CONFIRMED' %}selected{% endif %}>완료</option>
-            <option value="REJECTED"  {% if status_f=='REJECTED'  %}selected{% endif %}>반려</option>
+            <option value="">{{ T('my_transfers.filter_status_all') }}</option>
+            <option value="PENDING"   {% if status_f=='PENDING'   %}selected{% endif %}>{{ T('my_transfers.status_pending') }}</option>
+            <option value="APPROVED"  {% if status_f=='APPROVED'  %}selected{% endif %}>{{ T('my_transfers.status_approved') }}</option>
+            <option value="CONFIRMED" {% if status_f=='CONFIRMED' %}selected{% endif %}>{{ T('my_transfers.status_confirmed') }}</option>
+            <option value="REJECTED"  {% if status_f=='REJECTED'  %}selected{% endif %}>{{ T('my_transfers.status_rejected') }}</option>
           </select>
         </div>
         <div class="col-sm-3">
-          <label class="form-label small fw-semibold mb-1">시작일</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('my_transfers.filter_label_date_from') }}</label>
           <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
         </div>
         <div class="col-sm-3">
-          <label class="form-label small fw-semibold mb-1">종료일</label>
+          <label class="form-label small fw-semibold mb-1">{{ T('my_transfers.filter_label_date_to') }}</label>
           <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
         </div>
         <div class="col-sm-3">
           <button type="submit" class="btn btn-primary btn-sm w-100" data-loading="true">
-            <i class="fa-solid fa-search me-1"></i>조회
+            <i class="fa-solid fa-search me-1"></i>{{ T('common.search') }}
           </button>
         </div>
       </div>
@@ -39,7 +39,7 @@
 
 <!-- 결과 요약 -->
 <div class="d-flex align-items-center gap-2 mb-3">
-  <span class="text-muted small">총 <strong>{{ total }}</strong>건</span>
+  <span class="text-muted small">{{ T('hist.total_prefix') }} <strong>{{ total }}</strong>{{ T('common.count_suffix') }}</span>
 </div>
 
 {% if rows %}
@@ -47,7 +47,7 @@
 <div class="timeline-wrapper">
   {% for r in rows %}
   {% set status_class = {'PENDING':'pending','APPROVED':'approved','CONFIRMED':'confirmed','REJECTED':'rejected'}.get(r.status, 'pending') %}
-  {% set status_label = {'PENDING':'대기 중','APPROVED':'승인됨','CONFIRMED':'완료','REJECTED':'반려'}.get(r.status, r.status) %}
+  {% set status_label = {'PENDING': T('my_transfers.status_pending'),'APPROVED': T('my_transfers.status_approved'),'CONFIRMED': T('my_transfers.status_confirmed'),'REJECTED': T('my_transfers.status_rejected')}.get(r.status, r.status) %}
   {% set status_icon  = {'PENDING':'fa-clock','APPROVED':'fa-check','CONFIRMED':'fa-circle-check','REJECTED':'fa-xmark'}.get(r.status, 'fa-clock') %}
   <div class="timeline-item mb-3">
     <div class="card" style="border-left:4px solid var(--{% if r.status=='CONFIRMED' %}status-safe{% elif r.status=='APPROVED' %}info{% elif r.status=='REJECTED' %}danger{% else %}text-muted{% endif %})">
@@ -64,7 +64,7 @@
             <div class="small text-muted mt-1">
               <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>
               {{ r.from_branch_name }} → {{ r.to_branch_name }}
-              &nbsp;|&nbsp; 수량: <strong>{{ r.quantity }}{{ r.unit }}</strong>
+              &nbsp;|&nbsp; {{ T('my_transfers.label_quantity') }} <strong>{{ r.quantity }}{{ r.unit | unit_i18n }}</strong>
             </div>
             {% if r.notes %}
             <div class="small text-muted mt-1"><i class="fa-solid fa-note-sticky me-1"></i>{{ r.notes }}</div>
@@ -72,14 +72,14 @@
             {% if r.status == 'REJECTED' and r.reject_reason %}
             <div class="mt-2 px-3 py-2 rounded small"
                  style="background:var(--danger-bg);color:var(--danger);border:1px solid rgba(220,38,38,.2)">
-              <i class="fa-solid fa-ban me-1"></i>반려 사유: {{ r.reject_reason }}
+              <i class="fa-solid fa-ban me-1"></i>{{ T('my_transfers.label_reject_reason') }} {{ r.reject_reason }}
             </div>
             {% endif %}
           </div>
           <div class="text-end">
-            <div class="small text-muted">신청 {{ r.created_at | dt }}</div>
+            <div class="small text-muted">{{ T('my_transfers.label_applied_at') }} {{ r.created_at | dt }}</div>
             {% if r.approved_by %}
-            <div class="small text-muted">처리: {{ r.approved_by }}</div>
+            <div class="small text-muted">{{ T('my_transfers.label_processed_by') }} {{ r.approved_by }}</div>
             {% endif %}
           </div>
         </div>
@@ -105,10 +105,10 @@
 {% else %}
 <div class="empty-state">
   <div class="empty-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-  <h6>신청 내역이 없습니다</h6>
-  <p>이전 신청 내역이 여기에 표시됩니다.</p>
+  <h6>{{ T('my_transfers.empty_title') }}</h6>
+  <p>{{ T('my_transfers.empty_description') }}</p>
   <a href="{{ url_for('transfer') }}" class="btn btn-primary btn-sm">
-    <i class="fa-solid fa-truck-moving me-1"></i>이전 신청하기
+    <i class="fa-solid fa-truck-moving me-1"></i>{{ T('my_transfers.btn_apply_transfer') }}
   </a>
 </div>
 {% endif %}

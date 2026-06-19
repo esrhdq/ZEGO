@@ -10,7 +10,7 @@
   <li class="nav-item">
     <button class="nav-link {% if active_tab=='history' %}active{% endif %}"
             data-tab="history" type="button">
-      <i class="fa-solid fa-clock-rotate-left me-1"></i>이동 내역
+      <i class="fa-solid fa-clock-rotate-left me-1"></i>{{ T('xfer.tab_history') }}
     </button>
   </li>
   <li class="nav-item">
@@ -50,16 +50,16 @@
   <div class="card">
     <div class="card-header bg-white py-3 d-flex align-items-center gap-2 flex-wrap">
       <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
-      <strong>전체 이동 내역</strong>
-      <span class="badge bg-secondary ms-1">{{ outbox|length }}건</span>
-      <small class="text-muted ms-1">최근 200건 · 모든 지점</small>
+      <strong>{{ T('xfer.history_title') }}</strong>
+      <span class="badge bg-secondary ms-1">{{ outbox|length }}{{ T('common.count_suffix') }}</span>
+      <small class="text-muted ms-1">{{ T('xfer.history_subtitle') }}</small>
       <!-- 상태 필터 -->
       <div class="ms-auto d-flex gap-1 flex-wrap">
-        <button class="btn btn-sm btn-outline-secondary active" data-filter="ALL" onclick="filterHistory(this)">전체</button>
-        <button class="btn btn-sm btn-outline-warning" data-filter="PENDING" onclick="filterHistory(this)">대기</button>
-        <button class="btn btn-sm btn-outline-success"  data-filter="APPROVED" onclick="filterHistory(this)">승인</button>
-        <button class="btn btn-sm btn-outline-primary"  data-filter="CONFIRMED" onclick="filterHistory(this)">완료</button>
-        <button class="btn btn-sm btn-outline-danger"   data-filter="REJECTED" onclick="filterHistory(this)">반려</button>
+        <button class="btn btn-sm btn-outline-secondary active" data-filter="ALL" onclick="filterHistory(this)">{{ T('common.filter_all') }}</button>
+        <button class="btn btn-sm btn-outline-warning" data-filter="PENDING" onclick="filterHistory(this)">{{ T('xfer.status_pending_short') }}</button>
+        <button class="btn btn-sm btn-outline-success"  data-filter="APPROVED" onclick="filterHistory(this)">{{ T('xfer.status_approved_short') }}</button>
+        <button class="btn btn-sm btn-outline-primary"  data-filter="CONFIRMED" onclick="filterHistory(this)">{{ T('xfer.status_confirmed_short') }}</button>
+        <button class="btn btn-sm btn-outline-danger"   data-filter="REJECTED" onclick="filterHistory(this)">{{ T('xfer.status_rejected_short') }}</button>
       </div>
     </div>
     <div class="card-body p-0">
@@ -68,13 +68,13 @@
         <table class="table table-hover mb-0" id="historyTable">
           <thead class="table-light">
             <tr>
-              <th>신청일시</th>
-              <th>출발 지점</th>
-              <th>도착 지점</th>
+              <th>{{ T('xfer.col_request_datetime') }}</th>
+              <th>{{ T('xfer.col_from_branch') }}</th>
+              <th>{{ T('xfer.col_to_branch') }}</th>
               <th>{{ T('common.form_name') }}</th>
               <th class="text-center">{{ T('common.quantity') }}</th>
               <th class="text-center">{{ T('common.status') }}</th>
-              <th>신청자 / 처리자</th>
+              <th>{{ T('xfer.col_requester_processor') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -90,16 +90,16 @@
                 <span class="small ms-1">{{ r.to_branch_name }}</span>
               </td>
               <td class="small">{{ r.form_name }}</td>
-              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit | unit_i18n }}</td>
               <td class="text-center">
                 {% if r.status == 'PENDING' %}
-                  <span class="badge badge-pending rounded-pill">대기</span>
+                  <span class="badge badge-pending rounded-pill">{{ T('xfer.status_pending_short') }}</span>
                 {% elif r.status == 'APPROVED' %}
-                  <span class="badge badge-approved rounded-pill">승인</span>
+                  <span class="badge badge-approved rounded-pill">{{ T('xfer.status_approved_short') }}</span>
                 {% elif r.status == 'REJECTED' %}
-                  <span class="badge badge-rejected rounded-pill">반려</span>
+                  <span class="badge badge-rejected rounded-pill">{{ T('xfer.status_rejected_short') }}</span>
                 {% elif r.status == 'CONFIRMED' %}
-                  <span class="badge badge-confirmed rounded-pill">완료</span>
+                  <span class="badge badge-confirmed rounded-pill">{{ T('xfer.status_confirmed_short') }}</span>
                 {% endif %}
               </td>
               <td class="small text-muted">
@@ -117,8 +117,8 @@
       {% else %}
       <div class="empty-state">
         <div class="empty-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-        <h6>이동 내역이 없습니다</h6>
-        <p>처리된 이전 신청 내역이 여기에 표시됩니다.</p>
+        <h6>{{ T('xfer.history_empty') }}</h6>
+        <p>{{ T('xfer.history_empty_desc') }}</p>
       </div>
       {% endif %}
     </div>
@@ -209,8 +209,8 @@
               <select name="form_type_id" id="formSelect" class="form-select" required onchange="fetchFromStock()">
                 <option value="">{{ T('common.select_form') }}</option>
                 {% for f in form_types %}
-                  <option value="{{ f.id }}" data-unit="{{ f.unit }}" data-detail="{{ f.unit_detail }}">
-                    {{ f.name }} ({{ f.unit }} / {{ f.unit_detail }})
+                  <option value="{{ f.id }}" data-unit="{{ f.unit | unit_i18n }}" data-detail="{{ f.unit_detail | unit_i18n }}">
+                    {{ f.name }} ({{ f.unit | unit_i18n }} / {{ f.unit_detail | unit_i18n }})
                   </option>
                 {% endfor %}
               </select>
@@ -228,7 +228,7 @@
               <label class="form-label fw-semibold">{{ T('common.quantity') }} <span class="text-danger">*</span></label>
               <div class="input-group">
                 <input type="number" name="quantity" id="qtyInput" class="form-control" min="1" required placeholder="{{ T('common.qty_placeholder') }}">
-                <span class="input-group-text" id="unitLabel">단위</span>
+                <span class="input-group-text" id="unitLabel">{{ T('common.unit') }}</span>
               </div>
             </div>
 
@@ -240,16 +240,16 @@
             <div class="mb-4">
               <label class="form-label fw-semibold">
                 <i class="fa-solid fa-envelope me-1 text-primary"></i>
-                요청받는 지점 이메일 <small class="text-muted fw-normal">(선택 — 담당자에게 안내 메일 발송)</small>
+                {{ T('xfer.from_branch_email_label') }} <small class="text-muted fw-normal">{{ T('xfer.from_branch_email_hint') }}</small>
               </label>
               <div class="input-group">
                 <input type="email" name="notify_email" id="notifyEmailInput" class="form-control"
-                       placeholder="지점 선택 시 자동 입력됩니다">
+                       placeholder="{{ T('xfer.email_auto_fill_placeholder') }}">
                 <span class="input-group-text" id="notifyEmailStatus" style="min-width:34px;justify-content:center">
                   <i class="fa-solid fa-envelope text-muted" style="font-size:.8rem"></i>
                 </span>
               </div>
-              <div class="form-text">지점에 등록된 이메일은 자동으로 불러옵니다. 직접 수정도 가능합니다.</div>
+              <div class="form-text">{{ T('xfer.email_auto_load_desc') }}</div>
             </div>
 
             <div class="d-flex gap-2">
@@ -298,7 +298,7 @@
                 <span class="small ms-1">{{ r.to_branch_name }}</span>
               </td>
               <td class="small">{{ r.form_name }}</td>
-              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit | unit_i18n }}</td>
               <td class="text-center">
                 {% if r.stock_qty == 0 %}
                   <span class="status-empty fw-bold">{{ r.stock_qty }}</span>
@@ -359,7 +359,7 @@
               <th class="text-center">{{ T('common.quantity') }}</th>
               <th class="text-center">{{ T('common.status') }}</th>
               <th>{{ T('common.processor') }}</th>
-              <th class="text-center">{{ T('common.notes') }}/액션</th>
+              <th class="text-center">{{ T('common.notes') }}/{{ T('common.action') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -371,7 +371,7 @@
                 <span class="small ms-1">{{ r.from_branch_name }}</span>
               </td>
               <td class="small">{{ r.form_name }}</td>
-              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit }}</td>
+              <td class="text-center fw-semibold">{{ r.quantity }} {{ r.unit | unit_i18n }}</td>
               <td class="text-center">
                 {% if r.status == 'PENDING' %}
                   <span class="badge" style="background:var(--warning-bg);color:var(--warning)">{{ T('xfer.pending') }}</span>
@@ -422,31 +422,31 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>이전 요청 반려</h6>
+        <h6 class="modal-title"><i class="fa-solid fa-xmark text-danger me-2"></i>{{ T('xfer.modal_reject_title') }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="rejectForm" method="post">
         <div class="modal-body">
           <p class="text-muted small mb-3" id="rejectDesc"></p>
           <div class="mb-3">
-            <label class="form-label fw-semibold">반려 사유 <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">{{ T('xfer.reject_reason_label') }} <span class="text-danger">*</span></label>
             <textarea name="reject_reason" class="form-control" rows="3" required
-                      placeholder="반려 사유를 입력해주세요"></textarea>
+                      placeholder="{{ T('xfer.reject_reason_placeholder') }}"></textarea>
           </div>
           <div class="mb-1">
             <label class="form-label fw-semibold">
               <i class="fa-solid fa-envelope me-1 text-primary"></i>
-              요청 지점 이메일 <small class="text-muted fw-normal">(선택)</small>
+              {{ T('xfer.reject_email_label') }} <small class="text-muted fw-normal">{{ T('common.optional') }}</small>
             </label>
             <input type="email" name="notify_email" class="form-control"
-                   placeholder="반려 내용을 메일로 발송할 주소">
-            <div class="form-text">입력 시 해당 주소로 반려 안내 메일이 발송됩니다.</div>
+                   placeholder="{{ T('xfer.reject_email_placeholder') }}">
+            <div class="form-text">{{ T('xfer.reject_email_desc') }}</div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
           <button type="submit" class="btn btn-danger">
-            <i class="fa-solid fa-xmark me-1"></i>반려
+            <i class="fa-solid fa-xmark me-1"></i>{{ T('xfer.reject_confirm_btn') }}
           </button>
         </div>
       </form>
@@ -459,7 +459,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title"><i class="fa-solid fa-check text-success me-2"></i>이전 요청 승인</h6>
+        <h6 class="modal-title"><i class="fa-solid fa-check text-success me-2"></i>{{ T('xfer.modal_approve_title') }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -467,17 +467,17 @@
         <div class="mb-1">
           <label class="form-label fw-semibold">
             <i class="fa-solid fa-envelope me-1 text-primary"></i>
-            요청 지점 이메일 <small class="text-muted fw-normal">(선택)</small>
+            {{ T('xfer.approve_email_label') }} <small class="text-muted fw-normal">{{ T('common.optional') }}</small>
           </label>
           <input type="email" id="approveEmailInput" class="form-control"
-                 placeholder="승인 내용을 메일로 발송할 주소">
-          <div class="form-text">입력 시 해당 주소로 승인 안내 메일이 발송됩니다.</div>
+                 placeholder="{{ T('xfer.approve_email_placeholder') }}">
+          <div class="form-text">{{ T('xfer.approve_email_desc') }}</div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-success" id="approveConfirmBtn">
-          <i class="fa-solid fa-check me-1"></i>승인 확인
+          <i class="fa-solid fa-check me-1"></i>{{ T('xfer.approve_confirm_btn') }}
         </button>
       </div>
     </div>
@@ -525,7 +525,7 @@ function applyBranchEmail(branchId, inputEl, statusEl) {
       inputEl.value = email;
     }
     if (statusEl) {
-      statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success" style="font-size:.8rem" title="등록된 이메일"></i>';
+      statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success" style="font-size:.8rem" title="{{ T("xfer.email_registered_tooltip") }}"></i>';
     }
   } else {
     if (!inputEl.dataset.userEdited) inputEl.value = '';
@@ -593,7 +593,7 @@ async function fetchFromStock() {
 function openRejectModal(reqId, formName, qty, toBranchId) {
   document.getElementById('rejectForm').action = `/transfer/requests/${reqId}/reject`;
   document.getElementById('rejectDesc').textContent =
-    `${formName} ${qty}개 이전 신청을 반려합니다.`;
+    `${formName} ${qty}{{ T('xfer.reject_modal_desc') }}`;
   document.querySelector('#rejectModal textarea').value = '';
   const rejectEmailEl = document.querySelector('#rejectModal input[name="notify_email"]');
   rejectEmailEl.value = (toBranchId && _branchEmails[String(toBranchId)]) || '';
@@ -607,7 +607,7 @@ let _currentApproveId = null;
 function openApproveModal(reqId, formName, qty, toBranch, toBranchId) {
   _currentApproveId = reqId;
   document.getElementById('approveDesc').textContent =
-    `${toBranch}의 ${formName} ${qty}개 이전 신청을 승인합니다.`;
+    `${toBranch}{{ T('xfer.approve_modal_particle') }}${formName} ${qty}{{ T('xfer.approve_modal_desc') }}`;
   const approveEmailEl = document.getElementById('approveEmailInput');
   approveEmailEl.value = (toBranchId && _branchEmails[String(toBranchId)]) || '';
   if (!_approveModal) _approveModal = new bootstrap.Modal(document.getElementById('approveModal'));

@@ -389,9 +389,16 @@ def verify_pw(pw, stored):
     return hashlib.sha256(pw.encode()).hexdigest() == stored
 
 
-def validate_password(pw):
+def _get_T():
+    """현재 세션 언어로 T() 함수 반환."""
+    return make_T(session.get('lang', 'ko'))
+
+
+def validate_password(pw, T=None):
+    if T is None:
+        T = make_T(session.get('lang', 'ko') if session else 'ko')
     if len(pw) < 8:
-        return '비밀번호는 8자 이상이어야 합니다.'
+        return T('pw.validate_length')
     kinds = sum([
         bool(re.search(r'[A-Z]', pw)),
         bool(re.search(r'[a-z]', pw)),
@@ -399,7 +406,7 @@ def validate_password(pw):
         bool(re.search(r'[^A-Za-z0-9]', pw)),
     ])
     if kinds < 3:
-        return '영문 대/소문자, 숫자, 특수문자 중 3종류 이상 포함해야 합니다.'
+        return T('pw.validate_complexity')
     return None
 
 
@@ -494,6 +501,28 @@ def dt_filter(value):
     if value is None:
         return '—'
     return str(value)[:16]
+
+
+_UNIT_KO_EN = [
+    ('포대', 'bag'), ('묶음', 'bundle'), ('봉투', 'envelope'),
+    ('장', ' sheets'), ('개', ' pcs'), ('동', ' bundles'),
+    ('등', ' units'), ('조', ' sets'), ('봉', ' packs'),
+    ('통', ' rolls'), ('매', ' sheets'), ('부', ' copies'),
+    ('권', 'booklet'),
+]
+
+@app.template_filter('unit_i18n')
+def unit_i18n_filter(unit_str):
+    import re as _re
+    if not unit_str:
+        return unit_str
+    lang = session.get('lang', 'ko')
+    if lang == 'ko':
+        return unit_str
+    result = unit_str
+    for ko, en in _UNIT_KO_EN:
+        result = result.replace(ko, en)
+    return _re.sub(r'  +', ' ', result).strip()
 
 
 # ── 오류 핸들러 (디버그용) ────────────────────────────────────────────────────
@@ -1430,6 +1459,7 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        T = _get_T()
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         ip = _client_ip()
@@ -1447,7 +1477,7 @@ def login():
             locked_until = _to_dt(user['locked_until'])
             if locked_until and datetime.now(timezone.utc) < locked_until:
                 remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds() / 60) + 1
-                flash(f'로그인 5회 실패로 계정이 잠겼습니다. {remaining}분 후 다시 시도하세요.', 'danger')
+                flash(T('flash.login_locked_remaining').format(remaining=remaining), 'danger')
                 conn.close()
                 return render_template('login.html')
 
@@ -1495,13 +1525,13 @@ def login():
                     "UPDATE users SET failed_attempts=%s, locked_until=NOW() + INTERVAL '10 minutes' WHERE id=%s",
                     (new_attempts, user['id'])
                 )
-                flash('로그인 5회 실패로 계정이 10분간 잠겼습니다.', 'danger')
+                flash(T('flash.login_locked_10min'), 'danger')
             else:
                 conn.execute(
                     'UPDATE users SET failed_attempts=%s WHERE id=%s',
                     (new_attempts, user['id'])
                 )
-                flash(f'아이디 또는 비밀번호가 올바르지 않습니다. ({new_attempts}/5회)', 'danger')
+                flash(T('flash.login_invalid_attempts').format(attempts=new_attempts), 'danger')
             conn.execute(
                 'INSERT INTO access_logs (user_id, username, action, ip_address, created_at) '
                 'VALUES (%s, %s, %s, %s, NOW())',
@@ -1509,7 +1539,7 @@ def login():
             )
             conn.commit()
         else:
-            flash('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger')
+            flash(T('flash.login_invalid'), 'danger')
 
         conn.close()
     return render_template('login.html')
@@ -1729,11 +1759,12 @@ def inventory():
 @app.route('/inbound', methods=['GET', 'POST'])
 @login_required
 def inbound():
+    T = _get_T()
     conn = get_db()
     if request.method == 'POST':
         if session.get('role') != 'admin':
             if not session.get('branch_id'):
-                flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
+                flash(T('flash.no_branch'), 'danger')
                 conn.close()
                 return redirect(url_for('dashboard'))
             bid = str(session['branch_id'])
@@ -1779,7 +1810,7 @@ def inbound():
                     (bid, f'[재고{status_label}] {b["name"]} — {f["name"]} 잔여 {inv_after["quantity"]}개')
                 )
                 conn.commit()
-        flash(f'입고 완료 ✔ {b["name"]} — {f["name"]} {qty}개 ({tx_date})', 'success')
+        flash(T('flash.inbound_done').format(branch=b['name'], form=f['name'], qty=qty, date=tx_date), 'success')
         conn.close()
         return redirect(url_for('inbound'))
 
@@ -1795,11 +1826,12 @@ def inbound():
 @app.route('/outbound', methods=['GET', 'POST'])
 @login_required
 def outbound():
+    T = _get_T()
     conn = get_db()
     if request.method == 'POST':
         if session.get('role') != 'admin':
             if not session.get('branch_id'):
-                flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
+                flash(T('flash.no_branch'), 'danger')
                 conn.close()
                 return redirect(url_for('dashboard'))
             bid = str(session['branch_id'])
@@ -1817,7 +1849,7 @@ def outbound():
             (bid, fid)
         ).fetchone()
         if not cur or cur['quantity'] < qty:
-            flash('재고가 부족합니다.', 'danger')
+            flash(T('flash.stock_insufficient'), 'danger')
             conn.close()
             return redirect(url_for('outbound'))
 
@@ -1854,7 +1886,7 @@ def outbound():
                         (bid, f'[재고{status_label}] {b_name["name"]} — {f_name["name"]} 잔여 {inv_after["quantity"]}개')
                     )
                     conn.commit()
-        flash(f'출고 처리 완료 ✔ ({tx_date})', 'success')
+        flash(T('flash.outbound_done').format(date=tx_date), 'success')
         conn.close()
         return redirect(url_for('outbound'))
 
@@ -1887,6 +1919,7 @@ _TR_SELECT = '''
 @app.route('/transfer', methods=['GET', 'POST'])
 @login_required
 def transfer():
+    T = _get_T()
     conn = get_db()
     role = session.get('role')
     bid  = session.get('branch_id')
@@ -1894,7 +1927,7 @@ def transfer():
     if request.method == 'POST':
         if role != 'admin':
             if not bid:
-                flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
+                flash(T('flash.no_branch'), 'danger')
                 conn.close()
                 return redirect(url_for('dashboard'))
             to_bid = str(bid)
@@ -1908,20 +1941,20 @@ def transfer():
         try:
             qty = int(request.form['quantity'])
         except (ValueError, KeyError):
-            flash('수량을 올바르게 입력해주세요.', 'danger')
+            flash(T('flash.invalid_qty'), 'danger')
             conn.close()
             return redirect(url_for('transfer'))
 
         if not from_bid or not fid or not to_bid:
-            flash('모든 필수 항목을 입력해주세요.', 'danger')
+            flash(T('flash.required_fields'), 'danger')
             conn.close()
             return redirect(url_for('transfer'))
         if from_bid == to_bid:
-            flash('출발·도착 지점이 같습니다.', 'danger')
+            flash(T('flash.same_branch'), 'danger')
             conn.close()
             return redirect(url_for('transfer'))
         if qty <= 0:
-            flash('수량은 1 이상이어야 합니다.', 'danger')
+            flash(T('flash.qty_min_1'), 'danger')
             conn.close()
             return redirect(url_for('transfer'))
 
@@ -1929,7 +1962,7 @@ def transfer():
         to_b   = conn.execute('SELECT name, email FROM branches WHERE id=%s', (to_bid,)).fetchone()
         ft     = conn.execute('SELECT name, unit FROM form_types WHERE id=%s', (fid,)).fetchone()
         if not from_b or not to_b or not ft:
-            flash('잘못된 요청입니다.', 'danger')
+            flash(T('flash.invalid_request'), 'danger')
             conn.close()
             return redirect(url_for('transfer'))
 
@@ -1940,7 +1973,7 @@ def transfer():
             (from_bid, to_bid, fid)
         ).fetchone()
         if dup:
-            flash(f'동일한 이전 신청이 이미 처리 대기 중입니다. (신청 #{dup["id"]})', 'warning')
+            flash(T('flash.duplicate_transfer').format(id=dup['id']), 'warning')
             conn.close()
             return redirect(url_for('transfer'))
 
@@ -1970,7 +2003,7 @@ def transfer():
             f"{to_b['name']} 지점에서 {ft['name']} {qty}{ft['unit']} 이전을 요청했습니다.\n\n"
             f"ZEGO에 로그인하여 받은 신청 탭에서 승인 또는 반려해 주세요."
         )
-        flash(f'{from_b["name"]}에 이전 신청 완료. 승인을 기다려 주세요.', 'success')
+        flash(T('flash.transfer_request_done').format(branch=from_b['name']), 'success')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
 
@@ -2023,23 +2056,24 @@ def transfer():
 @app.route('/transfer/requests/<int:req_id>/approve', methods=['POST'])
 @login_required
 def approve_transfer(req_id):
+    T = _get_T()
     conn = get_db()
     req = conn.execute(
         _TR_SELECT + ' WHERE tr.id=%s', (req_id,)
     ).fetchone()
     if not req:
-        flash('요청을 찾을 수 없습니다.', 'danger')
+        flash(T('flash.request_not_found'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
     role = session.get('role')
     bid  = session.get('branch_id')
     if role != 'admin' and bid != req['from_branch_id']:
-        flash('승인 권한이 없습니다.', 'danger')
+        flash(T('flash.no_approve_perm'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
     if req['status'] != 'PENDING':
-        flash('이미 처리된 요청입니다.', 'warning')
+        flash(T('flash.already_processed'), 'warning')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
@@ -2049,7 +2083,7 @@ def approve_transfer(req_id):
     ).fetchone()
     avail = stock['quantity'] if stock else 0
     if avail < req['quantity']:
-        flash(f'재고가 부족하여 승인할 수 없습니다. (현재 재고: {avail})', 'danger')
+        flash(T('flash.stock_low_approve').format(avail=avail), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
@@ -2087,7 +2121,7 @@ def approve_transfer(req_id):
         """
         send_email(notify_email, email_subject, email_body)
 
-    flash('승인 완료. 요청 지점에 알림을 보냈습니다.', 'success')
+    flash(T('flash.approved_notified'), 'success')
     conn.close()
     send_mail(
         [to_email['email'] if to_email else None],
@@ -2101,29 +2135,30 @@ def approve_transfer(req_id):
 @app.route('/transfer/requests/<int:req_id>/reject', methods=['POST'])
 @login_required
 def reject_transfer(req_id):
+    T = _get_T()
     conn = get_db()
     req = conn.execute(
         _TR_SELECT + ' WHERE tr.id=%s', (req_id,)
     ).fetchone()
     if not req:
-        flash('요청을 찾을 수 없습니다.', 'danger')
+        flash(T('flash.request_not_found'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
     role = session.get('role')
     bid  = session.get('branch_id')
     if role != 'admin' and bid != req['from_branch_id']:
-        flash('반려 권한이 없습니다.', 'danger')
+        flash(T('flash.no_reject_perm'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
     if req['status'] != 'PENDING':
-        flash('이미 처리된 요청입니다.', 'warning')
+        flash(T('flash.already_processed'), 'warning')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
     reason = request.form.get('reject_reason', '').strip()
     if not reason:
-        flash('반려 사유를 입력해주세요.', 'danger')
+        flash(T('flash.reject_reason_required'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=inbox')
 
@@ -2161,7 +2196,7 @@ def reject_transfer(req_id):
         """
         send_email(notify_email, email_subject, email_body)
 
-    flash('반려 처리 완료. 요청 지점에 알림을 보냈습니다.', 'success')
+    flash(T('flash.rejected_notified'), 'success')
     conn.close()
     send_mail(
         [to_email['email'] if to_email else None],
@@ -2175,23 +2210,24 @@ def reject_transfer(req_id):
 @app.route('/transfer/requests/<int:req_id>/confirm', methods=['POST'])
 @login_required
 def confirm_transfer(req_id):
+    T = _get_T()
     conn = get_db()
     req = conn.execute(
         _TR_SELECT + ' WHERE tr.id=%s', (req_id,)
     ).fetchone()
     if not req:
-        flash('요청을 찾을 수 없습니다.', 'danger')
+        flash(T('flash.request_not_found'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
 
     role = session.get('role')
     bid  = session.get('branch_id')
     if role != 'admin' and bid != req['to_branch_id']:
-        flash('확인 권한이 없습니다.', 'danger')
+        flash(T('flash.no_confirm_perm'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
     if req['status'] != 'APPROVED':
-        flash('승인된 요청만 확인할 수 있습니다.', 'warning')
+        flash(T('flash.confirm_approved_only'), 'warning')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
 
@@ -2205,7 +2241,7 @@ def confirm_transfer(req_id):
         (from_bid, fid)
     ).fetchone()
     if not stock or stock['quantity'] < qty:
-        flash('출발 지점 재고가 부족합니다. 관리자에게 문의하세요.', 'danger')
+        flash(T('flash.source_stock_low'), 'danger')
         conn.close()
         return redirect(url_for('transfer') + '?tab=outbox')
 
@@ -2232,7 +2268,7 @@ def confirm_transfer(req_id):
         (req_id,)
     )
     conn.commit()
-    flash(f'수령 확인 완료 ✔ {req["form_name"]} {qty}{req["unit"]} 재고가 반영되었습니다.', 'success')
+    flash(T('flash.confirm_done').format(name=req['form_name'], qty=qty, unit=req['unit']), 'success')
     conn.close()
     return redirect(url_for('transfer') + '?tab=outbox')
 
@@ -2291,6 +2327,7 @@ def transactions():
 @app.route('/transactions/<int:tx_id>/edit', methods=['POST'])
 @login_required
 def transaction_edit(tx_id):
+    T = _get_T()
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
     role = session.get('role')
@@ -2302,22 +2339,22 @@ def transaction_edit(tx_id):
     ).fetchone()
     if not tx:
         conn.close()
-        return jsonify({'ok': False, 'msg': '기록을 찾을 수 없습니다.'}), 404
+        return jsonify({'ok': False, 'msg': T('flash.record_not_found')}), 404
     if tx['type'] != 'OUT':
         conn.close()
-        return jsonify({'ok': False, 'msg': '출고 기록만 수정할 수 있습니다.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.outbound_only_editable')}), 400
     if role != 'admin' and tx['from_branch_id'] != bid:
         conn.close()
-        return jsonify({'ok': False, 'msg': '권한이 없습니다.'}), 403
+        return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
 
     try:
         new_qty = int(data.get('quantity', tx['quantity']))
     except (TypeError, ValueError):
         conn.close()
-        return jsonify({'ok': False, 'msg': '수량이 올바르지 않습니다.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.qty_invalid')}), 400
     if new_qty <= 0:
         conn.close()
-        return jsonify({'ok': False, 'msg': '수량은 1 이상이어야 합니다.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.qty_min_1')}), 400
 
     from datetime import date as _date
     new_date  = (data.get('transaction_date') or str(tx['transaction_date'] or _date.today().isoformat()))[:10]
@@ -2335,7 +2372,7 @@ def transaction_edit(tx_id):
         new_inv = cur_inv - qty_diff
         if new_inv < 0:
             conn.close()
-            return jsonify({'ok': False, 'msg': f'재고가 부족합니다. (현재 재고: {cur_inv}, 추가 차감 필요: {qty_diff})'}), 400
+            return jsonify({'ok': False, 'msg': T('flash.stock_low_edit').format(cur=cur_inv, diff=qty_diff)}), 400
         conn.execute(
             f'UPDATE inventory SET quantity={ph}, last_updated=NOW() '
             f'WHERE branch_id={ph} AND form_type_id={ph}',
@@ -2660,6 +2697,7 @@ def forecast():
 @app.route('/report/forecast/download')
 @login_required
 def forecast_download():
+    T = _get_T()
     import math
     from datetime import date
     from collections import defaultdict
@@ -2685,7 +2723,7 @@ def forecast_download():
 
     if not target_ids:
         conn.close()
-        flash('데이터 없음', 'warning')
+        flash(T('flash.no_data'), 'warning')
         return redirect(url_for('forecast'))
 
     id_str = ','.join(str(x) for x in target_ids)
@@ -2852,9 +2890,10 @@ def flight_schedule_view():
         view_bid = bid
 
     if request.method == 'POST':
+        T = _get_T()
         post_bid   = int(request.form.get('branch_id', view_bid or 0))
         if role != 'admin' and post_bid != bid:
-            flash('권한이 없습니다.', 'danger')
+            flash(T('flash.no_permission'), 'danger')
             conn.close()
             return redirect(url_for('flight_schedule_view'))
 
@@ -2879,7 +2918,7 @@ def flight_schedule_view():
             except (ValueError, Exception):
                 pass
         conn.commit()
-        flash('운항편수가 저장되었습니다.', 'success')
+        flash(T('flash.flights_saved'), 'success')
         conn.close()
         qs = f'?branch_id={post_bid}' if role == 'admin' else ''
         return redirect(url_for('flight_schedule_view') + qs)
@@ -3338,6 +3377,7 @@ def _cart_count(conn, branch_id):
 @app.route('/catalog/cart/update', methods=['POST'])
 @login_required
 def catalog_cart_update():
+    T = _get_T()
     _ensure_catalog_table()
     bid  = session.get('branch_id')
     role = session.get('role')
@@ -3345,7 +3385,7 @@ def catalog_cart_update():
 
     target_bid = int(data.get('branch_id', bid or 0)) if role == 'admin' else bid
     if not target_bid:
-        return jsonify({'ok': False, 'msg': '지점 정보 없음'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.no_branch_info')}), 400
 
     item_code   = (data.get('item_code') or '').strip()
     qty         = max(0, int(data.get('quantity', 1) or 1))
@@ -3372,7 +3412,7 @@ def catalog_cart_update():
 
     if not item_code:
         conn.close()
-        return jsonify({'ok': False, 'msg': '아이템 코드 없음'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.no_item_code')}), 400
 
     if action == 'remove' or qty == 0:
         req_row = conn.execute(
@@ -3465,6 +3505,7 @@ def catalog_cart():
 @app.route('/catalog/request/submit', methods=['POST'])
 @login_required
 def catalog_request_submit():
+    T = _get_T()
     _ensure_catalog_table()
     bid  = session.get('branch_id')
     role = session.get('role')
@@ -3473,7 +3514,7 @@ def catalog_request_submit():
     notes = (data.get('notes') or '').strip()
 
     if not target_bid:
-        return jsonify({'ok': False, 'msg': '지점 정보 없음'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.no_branch_info')}), 400
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
@@ -3483,7 +3524,7 @@ def catalog_request_submit():
     ).fetchone()
     if not req_row:
         conn.close()
-        return jsonify({'ok': False, 'msg': '장바구니가 비어있습니다.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.cart_empty')}), 400
 
     cnt = conn.execute(
         f'SELECT COUNT(*) AS cnt FROM catalog_request_items WHERE request_id={ph}',
@@ -3491,7 +3532,7 @@ def catalog_request_submit():
     ).fetchone()['cnt']
     if cnt == 0:
         conn.close()
-        return jsonify({'ok': False, 'msg': '장바구니에 아이템이 없습니다.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.cart_no_items')}), 400
 
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
     conn.execute(
@@ -3519,7 +3560,7 @@ def catalog_request_submit():
             pass
     conn.commit()
     conn.close()
-    return jsonify({'ok': True, 'msg': '신청이 접수되었습니다.'})
+    return jsonify({'ok': True, 'msg': T('flash.request_submitted')})
 
 
 # ── 카탈로그 신청: 내역 조회 (지점) ──────────────────────────────────────────
@@ -3557,6 +3598,7 @@ def catalog_requests_branch():
 @app.route('/catalog/requests/<int:req_id>')
 @login_required
 def catalog_request_detail(req_id):
+    T = _get_T()
     _ensure_catalog_table()
     bid  = session.get('branch_id')
     role = session.get('role')
@@ -3569,11 +3611,11 @@ def catalog_request_detail(req_id):
     ).fetchone()
     if not req:
         conn.close()
-        flash('신청서를 찾을 수 없습니다.', 'danger')
+        flash(T('flash.application_not_found'), 'danger')
         return redirect(url_for('catalog_requests_branch'))
     if role != 'admin' and req['branch_id'] != bid:
         conn.close()
-        flash('권한이 없습니다.', 'danger')
+        flash(T('flash.no_permission'), 'danger')
         return redirect(url_for('catalog_requests_branch'))
 
     items = conn.execute(
@@ -3593,17 +3635,18 @@ def catalog_request_detail(req_id):
 @app.route('/catalog/requests/<int:req_id>/action', methods=['POST'])
 @login_required
 def catalog_request_action(req_id):
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+        return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
     _ensure_catalog_table()
     data   = request.get_json(silent=True) or {}
     action = data.get('action', '')           # approved | rejected | on_hold | pending
     reason = (data.get('reason') or '').strip()
 
     if action not in ('approved', 'rejected', 'on_hold', 'pending'):
-        return jsonify({'ok': False, 'msg': '유효하지 않은 액션'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.invalid_action')}), 400
     if action == 'rejected' and not reason:
-        return jsonify({'ok': False, 'msg': '반려 사유를 입력해 주세요.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.reject_reason_required')}), 400
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
@@ -3612,7 +3655,7 @@ def catalog_request_action(req_id):
     ).fetchone()
     if not req:
         conn.close()
-        return jsonify({'ok': False, 'msg': '신청서 없음'}), 404
+        return jsonify({'ok': False, 'msg': T('flash.application_not_found')}), 404
 
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
     conn.execute(
@@ -3640,6 +3683,7 @@ def catalog_request_action(req_id):
 @app.route('/catalog/save', methods=['POST'])
 @login_required
 def catalog_save():
+    T = _get_T()
     _ensure_catalog_table()
     data     = request.get_json(silent=True) or {}
     bid      = session.get('branch_id')
@@ -3649,9 +3693,9 @@ def catalog_save():
     target   = int(_raw) if _raw is not None else bid
 
     if role != 'admin' and target != bid:
-        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+        return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
     if not target:
-        return jsonify({'ok': False, 'msg': '지점이 배정되지 않았습니다. 관리자에게 문의하세요.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.no_branch_assigned')}), 400
 
     items = data.get('items', {})   # {item_code: quantity}
 
@@ -3802,6 +3846,7 @@ def catalog_edit():
 @app.route('/admin/catalog/add', methods=['POST'])
 @login_required
 def catalog_add():
+    T = _get_T()
     is_ajax = request.form.get('_ajax') == '1'
     def _fail(msg):
         if is_ajax:
@@ -3810,7 +3855,7 @@ def catalog_add():
         return redirect(url_for('catalog'))
 
     if session.get('role') != 'admin':
-        return _fail('관리자 권한이 필요합니다.')
+        return _fail(T('flash.admin_required'))
     _ensure_catalog_table()
 
     name     = request.form.get('name', '').strip()
@@ -3819,16 +3864,16 @@ def catalog_add():
     custom_code = request.form.get('code', '').strip()
 
     if not name or not cat:
-        return _fail('아이템명과 카테고리는 필수입니다.')
+        return _fail(T('flash.name_cat_required'))
 
     f = request.files.get('image')
     if not f or not f.filename:
-        return _fail('이미지 파일을 선택해 주세요.')
+        return _fail(T('flash.select_image'))
 
     # 확장자는 원본 파일명에서 직접 추출 (secure_filename은 한글 등 비ASCII 제거로 확장자 오파싱 가능)
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in ('.png', '.jpg', '.jpeg', '.webp'):
-        return _fail('PNG / JPG / WEBP 형식만 허용됩니다.')
+        return _fail(T('flash.image_format_only'))
 
     import uuid
     uid       = uuid.uuid4().hex[:10]
@@ -3871,7 +3916,7 @@ def catalog_add():
     existing = conn.execute('SELECT code FROM catalog_defs WHERE code=%s', (code,)).fetchone()
     if existing:
         conn.close()
-        return _fail(f'코드 "{code}" 가 이미 사용 중입니다.')
+        return _fail(T('flash.code_in_use').format(code=code))
 
     max_sort = conn.execute(
         'SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_defs WHERE cat=%s', (cat,)
@@ -3886,16 +3931,17 @@ def catalog_add():
     conn.close()
     _invalidate_catalog_cache()
     if is_ajax:
-        return jsonify({'ok': True, 'msg': f'"{name}" 아이템이 추가되었습니다.'})
-    flash(f'"{name}" 아이템이 추가되었습니다.', 'success')
+        return jsonify({'ok': True, 'msg': T('flash.item_added').format(name=name)})
+    flash(T('flash.item_added').format(name=name), 'success')
     return redirect(url_for('catalog'))
 
 
 @app.route('/admin/catalog/update', methods=['POST'])
 @login_required
 def catalog_update():
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+        return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
     _ensure_catalog_table()
 
     code     = request.form.get('code', '').strip()
@@ -3909,7 +3955,7 @@ def catalog_update():
         sort_order = 0
 
     if not code or not new_code or not name or not cat:
-        return jsonify({'ok': False, 'msg': '필수 항목 누락'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.missing_required')}), 400
 
     conn = get_db()
     existing = conn.execute(
@@ -3917,14 +3963,14 @@ def catalog_update():
     ).fetchone()
     if not existing:
         conn.close()
-        return jsonify({'ok': False, 'msg': '아이템을 찾을 수 없습니다.'}), 404
+        return jsonify({'ok': False, 'msg': T('flash.item_not_found')}), 404
 
     # 코드 변경 시 중복 확인 + branch_items 연동
     if new_code != code:
         dup = conn.execute('SELECT code FROM catalog_defs WHERE code=%s', (new_code,)).fetchone()
         if dup:
             conn.close()
-            return jsonify({'ok': False, 'msg': f'코드 "{new_code}" 가 이미 사용 중입니다.'})
+            return jsonify({'ok': False, 'msg': T('flash.code_in_use').format(code=new_code)})
         conn.execute(
             'UPDATE catalog_branch_items SET item_code=%s WHERE item_code=%s', (new_code, code)
         )
@@ -3938,7 +3984,7 @@ def catalog_update():
         ext = os.path.splitext(f.filename)[1].lower()
         if ext not in ('.png', '.jpg', '.jpeg', '.webp'):
             conn.close()
-            return jsonify({'ok': False, 'msg': 'PNG / JPG / WEBP 형식만 허용됩니다.'}), 400
+            return jsonify({'ok': False, 'msg': T('flash.image_format_only')}), 400
 
         import uuid as _uuid
         uid       = _uuid.uuid4().hex[:10]
@@ -3992,12 +4038,13 @@ def catalog_update():
 @app.route('/admin/catalog/delete', methods=['POST'])
 @login_required
 def catalog_delete():
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'msg': '권한 없음'}), 403
+        return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
     _ensure_catalog_table()
     code = request.get_json(silent=True, force=True).get('code', '') if request.is_json else request.form.get('code', '')
     if not code:
-        return jsonify({'ok': False, 'msg': '코드 없음'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.no_code')}), 400
     conn = get_db()
     conn.execute('UPDATE catalog_defs SET user_deleted=TRUE WHERE code=%s', (code,))
     conn.execute('DELETE FROM catalog_branch_items WHERE item_code=%s', (code,))
@@ -4010,8 +4057,9 @@ def catalog_delete():
 @app.route('/admin/users')
 @login_required
 def manage_users():
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자 권한이 필요합니다.', 'danger')
+        flash(T('flash.admin_required'), 'danger')
         return redirect(url_for('dashboard'))
     conn = get_db()
     users    = conn.execute('''
@@ -4027,8 +4075,9 @@ def manage_users():
 @app.route('/admin/users/create', methods=['POST'])
 @login_required
 def create_user():
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
 
     username  = request.form.get('username', '').strip()
     password  = request.form.get('password', '').strip()
@@ -4036,9 +4085,9 @@ def create_user():
     role      = request.form.get('role', 'staff')
 
     if not username or not password:
-        flash('아이디와 비밀번호를 입력하세요.', 'danger')
+        flash(T('flash.id_pw_required'), 'danger')
         return redirect(url_for('manage_users'))
-    pw_err = validate_password(password)
+    pw_err = validate_password(password, _get_T())
     if pw_err:
         flash(pw_err, 'danger')
         return redirect(url_for('manage_users'))
@@ -4050,10 +4099,10 @@ def create_user():
             (username, hash_pw(password), branch_id, role)
         )
         conn.commit()
-        flash(f'계정 [{username}] 이(가) 생성되었습니다.', 'success')
+        flash(T('flash.account_created').format(username=username), 'success')
     except (psycopg2.errors.UniqueViolation, sqlite3.IntegrityError):
         conn.rollback()
-        flash(f'이미 존재하는 아이디입니다: {username}', 'danger')
+        flash(T('flash.username_exists').format(username=username), 'danger')
     finally:
         conn.close()
     return redirect(url_for('manage_users'))
@@ -4062,26 +4111,28 @@ def create_user():
 @app.route('/admin/users/<int:uid>/delete', methods=['POST'])
 @login_required
 def delete_user(uid):
+    T = _get_T()
     if session.get('role') != 'admin':
         return jsonify({'ok': False}), 403
     if uid == session.get('user_id'):
-        flash('본인 계정은 삭제할 수 없습니다.', 'danger')
+        flash(T('flash.cannot_delete_self'), 'danger')
         return redirect(url_for('manage_users'))
     conn = get_db()
     conn.execute('DELETE FROM users WHERE id=%s', (uid,))
     conn.commit()
     conn.close()
-    flash('계정이 삭제되었습니다.', 'success')
+    flash(T('flash.account_deleted'), 'success')
     return redirect(url_for('manage_users'))
 
 
 @app.route('/admin/users/<int:uid>/reset-password', methods=['POST'])
 @login_required
 def reset_user_password(uid):
+    T = _get_T()
     if session.get('role') != 'admin':
         return jsonify({'ok': False}), 403
     new_pw = request.form.get('new_password', '').strip()
-    pw_err = validate_password(new_pw)
+    pw_err = validate_password(new_pw, _get_T())
     if pw_err:
         flash(pw_err, 'danger')
         return redirect(url_for('manage_users'))
@@ -4089,7 +4140,7 @@ def reset_user_password(uid):
     conn.execute('UPDATE users SET password=%s, password_changed_at=NOW() WHERE id=%s', (hash_pw(new_pw), uid))
     conn.commit()
     conn.close()
-    flash('비밀번호가 초기화되었습니다.', 'success')
+    flash(T('flash.pw_reset'), 'success')
     return redirect(url_for('manage_users'))
 
 
@@ -4098,27 +4149,29 @@ def reset_user_password(uid):
 @app.route('/admin/branches/<int:bid>/update-email', methods=['POST'])
 @login_required
 def update_branch_email(bid):
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
     email = request.form.get('email', '').strip()
     conn = get_db()
     conn.execute('UPDATE branches SET email=%s WHERE id=%s', (email or None, bid))
     conn.commit()
     conn.close()
-    flash('이메일이 저장되었습니다.', 'success')
+    flash(T('flash.email_saved'), 'success')
     return redirect(url_for('manage_users') + '#branch-emails')
 
 
 @app.route('/admin/test-email')
 @login_required
 def test_email():
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
     to = request.args.get('to', '').strip()
     if not to:
-        return jsonify({'ok': False, 'error': 'to 파라미터 필요. 예: /admin/test-email?to=xxx@xxx.com'})
+        return jsonify({'ok': False, 'error': T('flash.test_email_to_required')})
     if not MAIL_HOST:
-        return jsonify({'ok': False, 'error': 'MAIL_HOST 환경변수 미설정'})
+        return jsonify({'ok': False, 'error': T('flash.mail_host_not_set')})
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = '[ZEGO] 이메일 발송 테스트'
@@ -4131,7 +4184,7 @@ def test_email():
             server.ehlo()
             server.login(MAIL_USER, MAIL_PASS)
             server.sendmail(MAIL_FROM, [to], msg.as_string())
-        return jsonify({'ok': True, 'message': f'{to} 로 발송 성공'})
+        return jsonify({'ok': True, 'message': T('flash.email_send_success').format(to=to)})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)})
 
@@ -4142,6 +4195,7 @@ def test_email():
 @login_required
 def change_password():
     if request.method == 'POST':
+        T = _get_T()
         cur_pw  = request.form.get('current_password', '').strip()
         new_pw  = request.form.get('new_password', '').strip()
         conf_pw = request.form.get('confirm_password', '').strip()
@@ -4150,16 +4204,16 @@ def change_password():
         user = conn.execute('SELECT * FROM users WHERE id=%s', (session['user_id'],)).fetchone()
 
         if not verify_pw(cur_pw, user['password']):
-            flash('현재 비밀번호가 올바르지 않습니다.', 'danger')
+            flash(T('flash.current_pw_wrong'), 'danger')
             conn.close()
             return redirect(url_for('change_password'))
-        pw_err = validate_password(new_pw)
+        pw_err = validate_password(new_pw, _get_T())
         if pw_err:
             flash(pw_err, 'danger')
             conn.close()
             return redirect(url_for('change_password'))
         if new_pw != conf_pw:
-            flash('새 비밀번호가 일치하지 않습니다.', 'danger')
+            flash(T('flash.new_pw_mismatch'), 'danger')
             conn.close()
             return redirect(url_for('change_password'))
 
@@ -4171,7 +4225,7 @@ def change_password():
         conn.close()
         session['_pwd_changed_at'] = datetime.now(timezone.utc).timestamp()
         log_action('비밀번호변경')
-        flash('비밀번호가 변경되었습니다.', 'success')
+        flash(T('flash.pw_changed'), 'success')
         return redirect(url_for('dashboard'))
 
     return render_template('change_password.html')
@@ -4299,19 +4353,20 @@ def inbound_template():
 @app.route('/inbound/upload', methods=['POST'])
 @login_required
 def inbound_upload():
+    T = _get_T()
     f = request.files.get('file')
     if not f or not f.filename:
-        flash('파일을 선택해주세요.', 'danger')
+        flash(T('flash.select_file'), 'danger')
         return redirect(url_for('inbound'))
     if not f.filename.lower().endswith(('.xlsx', '.xls')):
-        flash('xlsx 또는 xls 파일만 업로드 가능합니다.', 'danger')
+        flash(T('flash.xlsx_only'), 'danger')
         return redirect(url_for('inbound'))
 
     try:
         wb = openpyxl.load_workbook(f, data_only=True)
         ws = wb.active
     except Exception as e:
-        flash(f'파일을 읽을 수 없습니다: {e}', 'danger')
+        flash(T('flash.file_read_error').format(error=e), 'danger')
         return redirect(url_for('inbound'))
 
     conn = get_db()
@@ -4325,7 +4380,7 @@ def inbound_upload():
     forced_code = ''
     if is_staff:
         if not session.get('branch_id'):
-            flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
+            flash(T('flash.no_branch'), 'danger')
             conn.close()
             return redirect(url_for('inbound'))
         forced_bid  = session['branch_id']
@@ -4459,8 +4514,9 @@ def api_branch_emails():
 @app.route('/admin/branches/emails', methods=['GET', 'POST'])
 @login_required
 def admin_branch_emails():
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자 권한이 필요합니다.', 'danger')
+        flash(T('flash.admin_required'), 'danger')
         return redirect(url_for('dashboard'))
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
@@ -4476,7 +4532,7 @@ def admin_branch_emails():
                 )
         conn.commit()
         conn.close()
-        flash('지점 이메일이 저장되었습니다.', 'success')
+        flash(T('flash.branch_email_saved'), 'success')
         return redirect(url_for('admin_branch_emails'))
     branches = conn.execute(
         'SELECT id, code, name, type, COALESCE(email, \'\') AS email FROM branches ORDER BY type, code'
@@ -4490,11 +4546,12 @@ def admin_branch_emails():
 @app.route('/api/update_threshold', methods=['POST'])
 @login_required
 def update_threshold():
+    T = _get_T()
     data = request.get_json()
     form_type_id = data.get('form_type_id')
     threshold    = data.get('threshold')
     if form_type_id is None or threshold is None or int(threshold) < 0:
-        return jsonify({'ok': False, 'error': '잘못된 값'}), 400
+        return jsonify({'ok': False, 'error': T('flash.invalid_value')}), 400
     conn = get_db()
     conn.execute('UPDATE form_types SET min_threshold=%s WHERE id=%s', (int(threshold), form_type_id))
     conn.commit()
@@ -4810,8 +4867,9 @@ def my_transfer_requests():
 @app.route('/admin/access-logs')
 @login_required
 def access_logs_view():
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자 권한이 필요합니다.', 'danger')
+        flash(T('flash.admin_required'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -4868,10 +4926,11 @@ def notifications_read_all():
 @app.route('/api/bulk-outbound', methods=['POST'])
 @login_required
 def bulk_outbound():
+    T = _get_T()
     data  = request.get_json(silent=True) or {}
     items = data.get('items', [])
     if not items:
-        return jsonify({'ok': False, 'msg': '출고 항목이 없습니다.'}), 400
+        return jsonify({'ok': False, 'msg': T('flash.no_outbound_items')}), 400
 
     conn    = get_db()
     role    = session.get('role')
@@ -4945,8 +5004,9 @@ def bulk_outbound():
 @app.route('/admin/access-logs/download')
 @login_required
 def download_access_logs():
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자 권한이 필요합니다.', 'danger')
+        flash(T('flash.admin_required'), 'danger')
         return redirect(url_for('dashboard'))
 
     import csv
@@ -4995,8 +5055,9 @@ def download_access_logs():
 @app.route('/admin/purge-old-data', methods=['POST'])
 @login_required
 def purge_old_data():
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '관리자 권한 필요'}), 403
+        return jsonify({'ok': False, 'error': T('flash.admin_required')}), 403
 
     conn = get_db()
     results = {}
@@ -5027,8 +5088,9 @@ def purge_old_data():
 @login_required
 def form_supply_settings():
     """관리자 — 운송양식 신청 기간 설정"""
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자만 접근 가능합니다.', 'danger')
+        flash(T('flash.admin_only'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -5060,11 +5122,11 @@ def form_supply_settings():
         is_enabled   = 1 if request.form.get('is_enabled') else 0
 
         if not period_start or not period_end:
-            flash('시작일과 종료일을 모두 입력해주세요.', 'danger')
+            flash(T('flash.date_range_required'), 'danger')
             conn.close()
             return redirect(url_for('form_supply_settings'))
         if period_start > period_end:
-            flash('시작일은 종료일보다 빠르거나 같아야 합니다.', 'danger')
+            flash(T('flash.date_range_invalid'), 'danger')
             conn.close()
             return redirect(url_for('form_supply_settings'))
 
@@ -5075,7 +5137,7 @@ def form_supply_settings():
         )
         conn.commit()
         log_action('운송양식_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
-        flash('신청 기간 설정이 저장되었습니다.', 'success')
+        flash(T('flash.period_settings_saved'), 'success')
         conn.close()
         return redirect(url_for('form_supply_settings'))
 
@@ -5103,15 +5165,16 @@ def form_supply_settings():
 @app.route('/admin/form-supply/settings/<int:setting_id>/edit', methods=['POST'])
 @login_required
 def form_supply_setting_edit(setting_id):
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
     data = request.get_json(force=True)
     title        = data.get('title', '').strip()
     period_start = data.get('period_start', '').strip()
     period_end   = data.get('period_end', '').strip()
     is_enabled   = 1 if data.get('is_enabled') else 0
     if not period_start or not period_end or period_start > period_end:
-        return jsonify({'ok': False, 'error': '날짜가 올바르지 않습니다.'}), 400
+        return jsonify({'ok': False, 'error': T('flash.invalid_date')}), 400
     ph = '%s' if not USE_SQLITE else '?'
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
     try:
@@ -5132,8 +5195,9 @@ def form_supply_setting_edit(setting_id):
 @app.route('/admin/form-supply/settings/<int:setting_id>/delete', methods=['POST'])
 @login_required
 def form_supply_setting_delete(setting_id):
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
     ph = '%s' if not USE_SQLITE else '?'
     try:
         conn = get_db()
@@ -5150,8 +5214,9 @@ def form_supply_setting_delete(setting_id):
 @app.route('/admin/form-type/<int:form_id>/memo', methods=['POST'])
 @login_required
 def admin_form_type_memo(form_id):
+    T = _get_T()
     if session.get('role') != 'admin':
-        return {'ok': False, 'error': '권한 없음'}, 403
+        return {'ok': False, 'error': T('flash.no_permission')}, 403
     memo = request.get_json(force=True).get('memo', '').strip()
     ph = '%s' if not USE_SQLITE else '?'
     conn = get_db()
@@ -5193,14 +5258,15 @@ def api_form_supply_period():
 @login_required
 def form_supply_request():
     """직원 — 운송양식 신청"""
+    T = _get_T()
     role = session.get('role')
     bid  = session.get('branch_id')
 
     if role == 'admin':
-        flash('관리자는 신청 페이지를 사용할 수 없습니다. 기간 설정 화면으로 이동합니다.', 'info')
+        flash(T('flash.admin_redirect_to_settings'), 'info')
         return redirect(url_for('form_supply_settings'))
     if not bid:
-        flash('소속 지점이 없습니다. 관리자에게 문의하세요.', 'danger')
+        flash(T('flash.no_branch'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -5224,7 +5290,7 @@ def form_supply_request():
         # 서버사이드 기간 검증
         active = _get_active_supply_period()
         if not active:
-            flash('현재 신청 기간이 아닙니다.', 'danger')
+            flash(T('flash.not_in_period'), 'danger')
             conn.close()
             return redirect(url_for('form_supply_request'))
 
@@ -5245,7 +5311,7 @@ def form_supply_request():
                 items.append((fid, min(q, 9999)))
 
         if not items:
-            flash('최소 1개 이상의 양식과 수량을 선택해주세요.', 'danger')
+            flash(T('flash.min_one_form'), 'danger')
             conn.close()
             return redirect(url_for('form_supply_request'))
 
@@ -5286,7 +5352,7 @@ def form_supply_request():
         )
         conn.commit()
         log_action('운송양식_신청', f'#{req_id} {len(items)}종')
-        flash(f'신청 완료. ({len(items)}종 / 신청번호 #{req_id})', 'success')
+        flash(T('flash.form_request_done').format(count=len(items), id=req_id), 'success')
         conn.close()
         return redirect(url_for('form_supply_my_requests'))
 
@@ -5302,13 +5368,14 @@ def form_supply_request():
 @login_required
 def form_supply_my_requests():
     """직원 — 내 신청 현황"""
+    T = _get_T()
     role = session.get('role')
     bid  = session.get('branch_id')
 
     if role == 'admin':
         return redirect(url_for('form_supply_admin_requests'))
     if not bid:
-        flash('소속 지점이 없습니다.', 'danger')
+        flash(T('flash.no_branch_short'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -5338,10 +5405,11 @@ def form_supply_my_requests():
 @login_required
 def form_supply_request_edit(req_id):
     """직원 — 대기 중 신청 수정"""
+    T = _get_T()
     bid  = session.get('branch_id')
     role = session.get('role')
     if role == 'admin' or not bid:
-        flash('접근 권한이 없습니다.', 'danger')
+        flash(T('flash.no_access'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -5353,11 +5421,11 @@ def form_supply_request_edit(req_id):
         (req_id, bid)
     ).fetchone()
     if not req:
-        flash('신청을 찾을 수 없습니다.', 'danger')
+        flash(T('flash.req_not_found'), 'danger')
         conn.close()
         return redirect(url_for('form_supply_my_requests'))
     if req['status'] != 'pending':
-        flash('대기 중인 신청만 수정할 수 있습니다.', 'warning')
+        flash(T('flash.pending_only_editable'), 'warning')
         conn.close()
         return redirect(url_for('form_supply_my_requests'))
 
@@ -5377,7 +5445,7 @@ def form_supply_request_edit(req_id):
                 items.append((fid, min(q, 9999)))
 
         if not items:
-            flash('최소 1개 이상의 양식과 수량을 선택해주세요.', 'danger')
+            flash(T('flash.min_one_form'), 'danger')
             conn.close()
             return redirect(request.url)
 
@@ -5394,7 +5462,7 @@ def form_supply_request_edit(req_id):
             )
         conn.commit()
         log_action('운송양식_신청수정', f'#{req_id} {len(items)}종')
-        flash(f'신청 #{req_id}이 수정되었습니다.', 'success')
+        flash(T('flash.form_req_updated').format(id=req_id), 'success')
         conn.close()
         return redirect(url_for('form_supply_my_requests'))
 
@@ -5417,8 +5485,9 @@ def form_supply_request_edit(req_id):
 @login_required
 def form_supply_admin_requests():
     """관리자 — 전체 신청 목록"""
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자만 접근 가능합니다.', 'danger')
+        flash(T('flash.admin_only'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -5475,8 +5544,9 @@ def form_supply_admin_requests():
 @login_required
 def form_supply_admin_action(req_id):
     """관리자 — 승인/반려 처리"""
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자만 접근 가능합니다.', 'danger')
+        flash(T('flash.admin_only'), 'danger')
         return redirect(url_for('dashboard'))
 
     action = request.form.get('action', '').strip()
@@ -5484,10 +5554,10 @@ def form_supply_admin_action(req_id):
     approve_reason = request.form.get('approve_reason', '').strip()
 
     if action not in ('approved', 'rejected'):
-        flash('잘못된 요청입니다.', 'danger')
+        flash(T('flash.invalid_request'), 'danger')
         return redirect(url_for('form_supply_admin_requests'))
     if action == 'rejected' and not reject_reason:
-        flash('반려 사유를 입력해주세요.', 'danger')
+        flash(T('flash.reject_reason_required'), 'danger')
         return redirect(url_for('form_supply_admin_requests'))
 
     conn = get_db()
@@ -5500,11 +5570,11 @@ def form_supply_admin_action(req_id):
         (req_id,)
     ).fetchone()
     if not req:
-        flash('신청을 찾을 수 없습니다.', 'danger')
+        flash(T('flash.req_not_found'), 'danger')
         conn.close()
         return redirect(url_for('form_supply_admin_requests'))
     if req['status'] != 'pending':
-        flash('이미 처리된 신청입니다.', 'warning')
+        flash(T('flash.already_processed_req'), 'warning')
         conn.close()
         return redirect(url_for('form_supply_admin_requests'))
 
@@ -5571,7 +5641,7 @@ def form_supply_admin_action(req_id):
     # ─────────────────────────────────────────────────────────────────
 
     log_action(f'운송양식_{action}', f'#{req_id} {req["branch_name"]}')
-    flash(f'신청 #{req_id} 처리 완료 ({action}).', 'success')
+    flash(T('flash.process_done').format(id=req_id, action=action), 'success')
     conn.close()
     return redirect(url_for('form_supply_admin_requests'))
 
@@ -5580,17 +5650,18 @@ def form_supply_admin_action(req_id):
 @login_required
 def form_supply_partial_action(req_id):
     """관리자 — 항목별 부분 승인/반려"""
+    T = _get_T()
     if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': '권한 없음'}), 403
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
 
     data = request.get_json()
     if not data:
-        return jsonify({'ok': False, 'error': '잘못된 요청'}), 400
+        return jsonify({'ok': False, 'error': T('flash.invalid_request')}), 400
 
     items_data    = data.get('items', [])
     approve_reason = data.get('approve_reason', '').strip()
     if not items_data:
-        return jsonify({'ok': False, 'error': '항목 데이터 없음'}), 400
+        return jsonify({'ok': False, 'error': T('flash.no_item_data')}), 400
 
     conn = get_db()
     ph      = '%s' if not USE_SQLITE else '?'
@@ -5602,9 +5673,9 @@ def form_supply_partial_action(req_id):
         f'WHERE r.id={ph}', (req_id,)
     ).fetchone()
     if not req:
-        conn.close(); return jsonify({'ok': False, 'error': '신청 없음'}), 404
+        conn.close(); return jsonify({'ok': False, 'error': T('flash.req_not_found')}), 404
     if req['status'] not in ('pending', 'partial'):
-        conn.close(); return jsonify({'ok': False, 'error': '이미 처리된 신청'}), 400
+        conn.close(); return jsonify({'ok': False, 'error': T('flash.already_processed_req')}), 400
 
     for it in items_data:
         iid     = it.get('id')
@@ -5701,8 +5772,9 @@ def form_supply_partial_action(req_id):
 @login_required
 def form_supply_matrix():
     """관리자 — 전 지점 양식 신청 현황 매트릭스"""
+    T = _get_T()
     if session.get('role') != 'admin':
-        flash('관리자만 접근 가능합니다.', 'danger')
+        flash(T('flash.admin_only'), 'danger')
         return redirect(url_for('dashboard'))
 
     conn = get_db()
@@ -5794,12 +5866,13 @@ def form_supply_matrix():
 @login_required
 def form_supply_matrix_export():
     """매트릭스 엑셀 다운로드"""
+    T = _get_T()
     from openpyxl import Workbook
     from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
     if session.get('role') != 'admin':
-        flash('관리자만 접근 가능합니다.', 'danger')
+        flash(T('flash.admin_only'), 'danger')
         return redirect(url_for('dashboard'))
 
     period_param = request.args.get('period', 'ALL').strip()

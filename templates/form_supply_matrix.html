@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}양식 신청 현황 매트릭스{% endblock %}
+{% block title %}{{ T('fsmatrix.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-table-cells"></i>{% endblock %}
-{% block page_title %}양식 신청 현황 매트릭스{% endblock %}
+{% block page_title %}{{ T('fsmatrix.title') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -117,16 +117,16 @@
 
 <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
   <a href="{{ url_for('form_supply_admin_requests') }}" class="btn btn-sm btn-outline-secondary">
-    <i class="fa-solid fa-list me-1"></i>신청 목록
+    <i class="fa-solid fa-list me-1"></i>{{ T('fsmatrix.request_list') }}
   </a>
   <a href="{{ url_for('form_supply_settings') }}" class="btn btn-sm btn-outline-secondary">
-    <i class="fa-solid fa-gear me-1"></i>설정
+    <i class="fa-solid fa-gear me-1"></i>{{ T('fsmatrix.settings') }}
   </a>
 </div>
 
 {% if period_titles %}
 <div class="d-flex gap-1 flex-wrap mb-3" id="periodTabs">
-  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="switchPeriod(this)">전체 기간</button>
+  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="switchPeriod(this)">{{ T('fsmatrix.all_periods') }}</button>
   {% for t in period_titles %}
   <button class="btn btn-sm btn-outline-primary" data-period="{{ t | e }}" onclick="switchPeriod(this)">{{ t }}</button>
   {% endfor %}
@@ -136,17 +136,17 @@
 <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
   <h5 class="mb-0 fw-bold" id="matrixTitle" style="font-size:1.05rem">
     <i class="fa-solid fa-table-cells me-2" style="color:var(--brand)"></i>
-    <span id="matrixTitleText">전체 기간</span>
-    <span class="ms-2 text-muted fw-normal" style="font-size:.82rem">양식 신청 현황 매트릭스</span>
+    <span id="matrixTitleText">{{ T('fsmatrix.all_periods') }}</span>
+    <span class="ms-2 text-muted fw-normal" style="font-size:.82rem">{{ T('fsmatrix.title') }}</span>
   </h5>
   <span class="badge rounded-pill" style="background:#d1fae5;color:#065f46;font-size:.78rem;padding:5px 12px">
-    <i class="fa-solid fa-check me-1"></i>승인된 신청 건만 표시
+    <i class="fa-solid fa-check me-1"></i>{{ T('fsmatrix.approved_only') }}
   </span>
   <a id="excelDownloadBtn"
      href="{{ url_for('form_supply_matrix_export') }}"
      class="btn btn-sm ms-auto"
      style="background:#16a34a;color:#fff;border:none;font-size:.78rem;padding:5px 13px">
-    <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드
+    <i class="fa-solid fa-file-excel me-1"></i>{{ T('common.excel_download') }}
   </a>
 </div>
 
@@ -193,23 +193,23 @@
   <table class="matrix-table" id="matrixTable">
     <thead>
       <tr class="row-group">
-        <th class="col-form hd-formname" rowspan="2">양식명</th>
+        <th class="col-form hd-formname" rowspan="2">{{ T('common.form_name') }}</th>
         {% if branches_dom %}
-        <th class="hd-dom" colspan="{{ branches_dom|length + 1 }}">국내</th>
+        <th class="hd-dom" colspan="{{ branches_dom|length + 1 }}">{{ T('common.domestic') }}</th>
         {% endif %}
         {% if branches_intl %}
-        <th class="hd-intl" colspan="{{ branches_intl|length + 1 }}">국제</th>
+        <th class="hd-intl" colspan="{{ branches_intl|length + 1 }}">{{ T('common.international') }}</th>
         {% endif %}
       </tr>
       <tr class="row-branch">
         {% for b in branches_dom %}
         <th class="hd-branch-dom" title="{{ b.name }}">{{ b.code }}</th>
         {% endfor %}
-        <th class="hd-branch-dom col-total">소계</th>
+        <th class="hd-branch-dom col-total">{{ T('fsmatrix.subtotal') }}</th>
         {% for b in branches_intl %}
         <th class="hd-branch-intl" title="{{ b.name }}">{{ b.code }}</th>
         {% endfor %}
-        <th class="hd-branch-intl col-total">소계</th>
+        <th class="hd-branch-intl col-total">{{ T('fsmatrix.subtotal') }}</th>
       </tr>
     </thead>
 
@@ -250,6 +250,7 @@
 {% block scripts %}
 <script>
 var _baseExportUrl = {{ url_for('form_supply_matrix_export') | tojson }};
+var _allPeriodsLabel = {{ T('fsmatrix.all_periods') | tojson }};
 
 // 기간 탭 전환
 function switchPeriod(btn) {
@@ -259,7 +260,7 @@ function switchPeriod(btn) {
   document.querySelectorAll('.matrix-body').forEach(tb => {
     tb.classList.toggle('d-none', tb.dataset.period !== p);
   });
-  var label = p === 'ALL' ? '전체 기간' : p;
+  var label = p === 'ALL' ? _allPeriodsLabel : p;
   document.getElementById('matrixTitleText').textContent = label;
 
   // 엑셀 다운로드 URL 업데이트

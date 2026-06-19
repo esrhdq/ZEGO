@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="{{ cur_lang }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>배너 편집기 — {{ item_name or '디자인 편집' }}</title>
+<title>{{ T('catalog_banner_editor.page_title') }} — {{ item_name or T('catalog_banner_editor.page_title_default') }}</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <style>
@@ -133,44 +133,44 @@
 
 <!-- TOP TOOLBAR -->
 <div id="topbar">
-  <div class="brand"><i class="fa-solid fa-pen-ruler"></i>배너 편집기</div>
+  <div class="brand"><i class="fa-solid fa-pen-ruler"></i>{{ T('catalog_banner_editor.brand_title') }}</div>
   {% if item_name %}
   <span style="font-size:.75rem;color:rgba(255,255,255,.6);margin-right:4px">{{ item_name }}</span>
   {% endif %}
   <div class="tb-sep"></div>
 
   <!-- 템플릿 선택 -->
-  <select class="tb-sel" id="tmplSel" onchange="changeTemplate(this.value)" title="캔버스 크기">
-    <option value="xbanner">X-Banner (600×1600)</option>
-    <option value="xbanner_h">X-Banner 가로 (1600×600)</option>
-    <option value="st_a4_v">스탠션 A4 세로 (210×297)</option>
-    <option value="st_a4_h">스탠션 A4 가로 (297×210)</option>
-    <option value="st_half">스탠션 하프 (148×210)</option>
-    <option value="custom">직접 입력...</option>
+  <select class="tb-sel" id="tmplSel" onchange="changeTemplate(this.value)" title="{{ T('catalog_banner_editor.select_canvas_size_title') }}">
+    <option value="xbanner">{{ T('catalog_banner_editor.template_xbanner') }}</option>
+    <option value="xbanner_h">{{ T('catalog_banner_editor.template_xbanner_h') }}</option>
+    <option value="st_a4_v">{{ T('catalog_banner_editor.template_st_a4_v') }}</option>
+    <option value="st_a4_h">{{ T('catalog_banner_editor.template_st_a4_h') }}</option>
+    <option value="st_half">{{ T('catalog_banner_editor.template_st_half') }}</option>
+    <option value="custom">{{ T('catalog_banner_editor.template_custom') }}</option>
   </select>
 
   <div class="tb-sep"></div>
 
   <!-- Undo / Redo -->
-  <button class="tb-btn" id="undoBtn" onclick="doUndo()" title="실행 취소 (Ctrl+Z)" disabled>
+  <button class="tb-btn" id="undoBtn" onclick="doUndo()" title="{{ T('catalog_banner_editor.btn_undo_title') }}" disabled>
     <i class="fa-solid fa-rotate-left"></i>
   </button>
-  <button class="tb-btn" id="redoBtn" onclick="doRedo()" title="다시 실행 (Ctrl+Y)" disabled>
+  <button class="tb-btn" id="redoBtn" onclick="doRedo()" title="{{ T('catalog_banner_editor.btn_redo_title') }}" disabled>
     <i class="fa-solid fa-rotate-right"></i>
   </button>
 
   <div class="tb-sep"></div>
 
   <!-- Zoom -->
-  <button class="tb-btn" onclick="zoom(-0.1)" title="축소"><i class="fa-solid fa-minus"></i></button>
+  <button class="tb-btn" onclick="zoom(-0.1)" title="{{ T('catalog_banner_editor.btn_zoom_out_title') }}"><i class="fa-solid fa-minus"></i></button>
   <span id="zoomLabel">100%</span>
-  <button class="tb-btn" onclick="zoom(+0.1)" title="확대"><i class="fa-solid fa-plus"></i></button>
-  <button class="tb-btn" onclick="zoomFit()" title="화면에 맞춤" style="font-size:.7rem">맞춤</button>
+  <button class="tb-btn" onclick="zoom(+0.1)" title="{{ T('catalog_banner_editor.btn_zoom_in_title') }}"><i class="fa-solid fa-plus"></i></button>
+  <button class="tb-btn" onclick="zoomFit()" title="{{ T('catalog_banner_editor.btn_zoom_fit_title') }}" style="font-size:.7rem">{{ T('catalog_banner_editor.btn_zoom_fit_label') }}</button>
 
   <div class="tb-sep"></div>
 
   <!-- Background color -->
-  <label class="tb-btn" title="배경색" style="cursor:pointer">
+  <label class="tb-btn" title="{{ T('catalog_banner_editor.btn_bg_color_title') }}" style="cursor:pointer">
     <i class="fa-solid fa-fill-drip"></i>
     <input type="color" id="bgColor" value="#ffffff" oninput="setBg(this.value)"
            style="width:0;height:0;opacity:0;position:absolute">
@@ -179,8 +179,8 @@
   <div style="flex:1"></div>
 
   <!-- Export -->
-  <button class="tb-btn green" onclick="exportDesign()" title="디자인 완료 후 장바구니에 적용">
-    <i class="fa-solid fa-check me-1"></i>디자인 완료
+  <button class="tb-btn green" onclick="exportDesign()" title="{{ T('catalog_banner_editor.btn_export_title') }}">
+    <i class="fa-solid fa-check me-1"></i>{{ T('catalog_banner_editor.btn_export_label') }}
   </button>
 </div>
 
@@ -189,26 +189,26 @@
 
   <!-- LEFT TOOLBOX -->
   <div id="toolbox">
-    <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="선택">
-      <i class="fa-solid fa-arrow-pointer"></i><span>선택</span>
+    <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="{{ T('catalog_banner_editor.tool_select_title') }}">
+      <i class="fa-solid fa-arrow-pointer"></i><span>{{ T('catalog_banner_editor.tool_select_label') }}</span>
     </button>
     <div class="tool-sep"></div>
-    <button class="tool-btn" onclick="addText()" title="텍스트 추가">
-      <i class="fa-solid fa-t"></i><span>텍스트</span>
+    <button class="tool-btn" onclick="addText()" title="{{ T('catalog_banner_editor.tool_text_title') }}">
+      <i class="fa-solid fa-t"></i><span>{{ T('catalog_banner_editor.tool_text_label') }}</span>
     </button>
-    <button class="tool-btn" onclick="triggerImgUpload()" title="이미지 추가">
-      <i class="fa-solid fa-image"></i><span>이미지</span>
-    </button>
-    <div class="tool-sep"></div>
-    <button class="tool-btn" onclick="addRect()" title="사각형">
-      <i class="fa-regular fa-square"></i><span>박스</span>
-    </button>
-    <button class="tool-btn" onclick="addLine()" title="선">
-      <i class="fa-solid fa-minus"></i><span>선</span>
+    <button class="tool-btn" onclick="triggerImgUpload()" title="{{ T('catalog_banner_editor.tool_image_title') }}">
+      <i class="fa-solid fa-image"></i><span>{{ T('catalog_banner_editor.tool_image_label') }}</span>
     </button>
     <div class="tool-sep"></div>
-    <button class="tool-btn" onclick="deleteSelected()" title="삭제 (Del)" style="color:#e53e3e">
-      <i class="fa-solid fa-trash"></i><span>삭제</span>
+    <button class="tool-btn" onclick="addRect()" title="{{ T('catalog_banner_editor.tool_rect_title') }}">
+      <i class="fa-regular fa-square"></i><span>{{ T('catalog_banner_editor.tool_rect_label') }}</span>
+    </button>
+    <button class="tool-btn" onclick="addLine()" title="{{ T('catalog_banner_editor.tool_line_title') }}">
+      <i class="fa-solid fa-minus"></i><span>{{ T('catalog_banner_editor.tool_line_label') }}</span>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" onclick="deleteSelected()" title="{{ T('catalog_banner_editor.tool_delete_title') }}" style="color:#e53e3e">
+      <i class="fa-solid fa-trash"></i><span>{{ T('catalog_banner_editor.tool_delete_label') }}</span>
     </button>
   </div>
 
@@ -223,56 +223,56 @@
   <div id="propPanel">
     <div class="no-sel" id="noSelMsg">
       <i class="fa-solid fa-arrow-pointer fa-lg" style="display:block;margin-bottom:8px;opacity:.3"></i>
-      객체를 선택하면<br>속성이 표시됩니다
+      {{ T('catalog_banner_editor.no_selection_msg') }}
     </div>
 
     <!-- Text properties -->
     <div id="textProps" style="display:none">
       <div class="prop-section">
-        <div class="prop-title">텍스트</div>
+        <div class="prop-title">{{ T('catalog_banner_editor.prop_section_text') }}</div>
         <div class="prop-row">
-          <span class="prop-label">폰트</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_font') }}</span>
           <select class="prop-sel" id="pp-font" onchange="applyProp('fontFamily',this.value)">
             <option value="Arial">Arial</option>
             <option value="'Noto Sans KR'">Noto Sans KR</option>
-            <option value="'Malgun Gothic'">맑은 고딕</option>
-            <option value="'Nanum Gothic'">나눔고딕</option>
+            <option value="'Malgun Gothic'">{{ T('catalog_banner_editor.font_malgun_gothic') }}</option>
+            <option value="'Nanum Gothic'">{{ T('catalog_banner_editor.font_nanum_gothic') }}</option>
             <option value="Georgia">Georgia</option>
             <option value="'Times New Roman'">Times New Roman</option>
             <option value="'Courier New'">Courier New</option>
           </select>
         </div>
         <div class="prop-row">
-          <span class="prop-label">크기</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_size') }}</span>
           <input type="number" class="prop-input" id="pp-size" min="6" max="300" value="40"
                  onchange="applyProp('fontSize',+this.value)">
           <input type="color" class="prop-color" id="pp-color" value="#000000"
                  oninput="applyProp('fill',this.value)">
         </div>
         <div class="prop-row prop-btn-row">
-          <button class="prop-btn" id="pp-bold" onclick="toggleStyle('bold')" title="굵게">
+          <button class="prop-btn" id="pp-bold" onclick="toggleStyle('bold')" title="{{ T('catalog_banner_editor.prop_btn_bold_title') }}">
             <i class="fa-solid fa-bold"></i>
           </button>
-          <button class="prop-btn" id="pp-italic" onclick="toggleStyle('italic')" title="기울임">
+          <button class="prop-btn" id="pp-italic" onclick="toggleStyle('italic')" title="{{ T('catalog_banner_editor.prop_btn_italic_title') }}">
             <i class="fa-solid fa-italic"></i>
           </button>
-          <button class="prop-btn" id="pp-under" onclick="toggleStyle('underline')" title="밑줄">
+          <button class="prop-btn" id="pp-under" onclick="toggleStyle('underline')" title="{{ T('catalog_banner_editor.prop_btn_underline_title') }}">
             <i class="fa-solid fa-underline"></i>
           </button>
         </div>
         <div class="prop-row prop-btn-row">
-          <button class="prop-btn" id="pp-al-l" onclick="applyProp('textAlign','left')" title="왼쪽">
+          <button class="prop-btn" id="pp-al-l" onclick="applyProp('textAlign','left')" title="{{ T('catalog_banner_editor.prop_btn_align_left_title') }}">
             <i class="fa-solid fa-align-left"></i>
           </button>
-          <button class="prop-btn" id="pp-al-c" onclick="applyProp('textAlign','center')" title="가운데">
+          <button class="prop-btn" id="pp-al-c" onclick="applyProp('textAlign','center')" title="{{ T('catalog_banner_editor.prop_btn_align_center_title') }}">
             <i class="fa-solid fa-align-center"></i>
           </button>
-          <button class="prop-btn" id="pp-al-r" onclick="applyProp('textAlign','right')" title="오른쪽">
+          <button class="prop-btn" id="pp-al-r" onclick="applyProp('textAlign','right')" title="{{ T('catalog_banner_editor.prop_btn_align_right_title') }}">
             <i class="fa-solid fa-align-right"></i>
           </button>
         </div>
         <div class="prop-row">
-          <span class="prop-label">줄간격</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_line_height') }}</span>
           <input type="number" class="prop-input" id="pp-lh" min="0.5" max="4" step="0.1" value="1.2"
                  onchange="applyProp('lineHeight',+this.value)">
         </div>
@@ -282,17 +282,18 @@
     <!-- Shape properties -->
     <div id="shapeProps" style="display:none">
       <div class="prop-section">
-        <div class="prop-title">도형</div>
+        <div class="prop-title">{{ T('catalog_banner_editor.prop_section_shape') }}</div>
         <div class="prop-row">
-          <span class="prop-label">채우기</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_fill') }}</span>
           <input type="color" class="prop-color" id="pp-fill" value="#cccccc"
                  oninput="applyProp('fill',this.value)">
         </div>
         <div class="prop-row">
-          <span class="prop-label">테두리</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_stroke') }}</span>
           <input type="color" class="prop-color" id="pp-stroke" value="#000000"
                  oninput="applyProp('stroke',this.value)">
-          <input type="number" class="prop-input" id="pp-sw" min="0" max="20" value="0" placeholder="두께"
+          <input type="number" class="prop-input" id="pp-sw" min="0" max="20" value="0"
+                 placeholder="{{ T('catalog_banner_editor.prop_placeholder_stroke_width') }}"
                  onchange="applyProp('strokeWidth',+this.value)">
         </div>
       </div>
@@ -301,7 +302,7 @@
     <!-- Common properties (always shown when selected) -->
     <div id="commonProps" style="display:none">
       <div class="prop-section">
-        <div class="prop-title">위치 / 크기</div>
+        <div class="prop-title">{{ T('catalog_banner_editor.prop_section_position_size') }}</div>
         <div class="prop-row">
           <span class="prop-label">X</span>
           <input type="number" class="prop-input" id="pp-x" onchange="applyPos()">
@@ -315,47 +316,47 @@
           <input type="number" class="prop-input" id="pp-h" onchange="applySize()">
         </div>
         <div class="prop-row">
-          <span class="prop-label">회전</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_rotation') }}</span>
           <input type="number" class="prop-input" id="pp-angle" min="-360" max="360"
                  onchange="applyProp('angle',+this.value)">
           <span style="font-size:.7rem;color:#888">°</span>
         </div>
         <div class="prop-row">
-          <span class="prop-label">투명도</span>
+          <span class="prop-label">{{ T('catalog_banner_editor.prop_label_opacity') }}</span>
           <input type="range" style="flex:1" id="pp-opacity" min="0" max="1" step="0.05" value="1"
                  oninput="applyProp('opacity',+this.value)">
         </div>
       </div>
       <div class="prop-section">
-        <div class="prop-title">레이어</div>
+        <div class="prop-title">{{ T('catalog_banner_editor.prop_section_layer') }}</div>
         <div class="prop-btn-row" style="display:flex;gap:4px">
-          <button class="prop-btn" onclick="doLayer('front')" title="맨 앞으로">
+          <button class="prop-btn" onclick="doLayer('front')" title="{{ T('catalog_banner_editor.prop_btn_bring_front_title') }}">
             <i class="fa-solid fa-angles-up"></i>
           </button>
-          <button class="prop-btn" onclick="doLayer('fwd')" title="앞으로">
+          <button class="prop-btn" onclick="doLayer('fwd')" title="{{ T('catalog_banner_editor.prop_btn_bring_forward_title') }}">
             <i class="fa-solid fa-angle-up"></i>
           </button>
-          <button class="prop-btn" onclick="doLayer('bwd')" title="뒤로">
+          <button class="prop-btn" onclick="doLayer('bwd')" title="{{ T('catalog_banner_editor.prop_btn_send_backward_title') }}">
             <i class="fa-solid fa-angle-down"></i>
           </button>
-          <button class="prop-btn" onclick="doLayer('back')" title="맨 뒤로">
+          <button class="prop-btn" onclick="doLayer('back')" title="{{ T('catalog_banner_editor.prop_btn_send_back_title') }}">
             <i class="fa-solid fa-angles-down"></i>
           </button>
         </div>
       </div>
       <div class="prop-section">
-        <div class="prop-title">반전 / 복제</div>
+        <div class="prop-title">{{ T('catalog_banner_editor.prop_section_flip_duplicate') }}</div>
         <div class="prop-btn-row" style="display:flex;gap:4px">
-          <button class="prop-btn" onclick="flipObj('x')" title="좌우 반전">
+          <button class="prop-btn" onclick="flipObj('x')" title="{{ T('catalog_banner_editor.prop_btn_flip_x_title') }}">
             ↔
           </button>
-          <button class="prop-btn" onclick="flipObj('y')" title="상하 반전">
+          <button class="prop-btn" onclick="flipObj('y')" title="{{ T('catalog_banner_editor.prop_btn_flip_y_title') }}">
             ↕
           </button>
-          <button class="prop-btn" onclick="duplicateObj()" title="복제">
+          <button class="prop-btn" onclick="duplicateObj()" title="{{ T('catalog_banner_editor.prop_btn_duplicate_title') }}">
             <i class="fa-regular fa-copy"></i>
           </button>
-          <button class="prop-btn" onclick="deleteSelected()" title="삭제" style="color:#e53e3e">
+          <button class="prop-btn" onclick="deleteSelected()" title="{{ T('catalog_banner_editor.prop_btn_delete_title') }}" style="color:#e53e3e">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -367,26 +368,40 @@
 
 <!-- STATUS BAR -->
 <div id="statusbar">
-  <span id="sb-tmpl">X-Banner (600×1600)</span>
+  <span id="sb-tmpl">{{ T('catalog_banner_editor.template_xbanner') }}</span>
   <span id="sb-pos">x:— y:—</span>
-  <span id="sb-objs">객체 0개</span>
-  <span style="margin-left:auto">Ctrl+Z 취소 &nbsp;|&nbsp; Del 삭제 &nbsp;|&nbsp; Ctrl+D 복제</span>
+  <span id="sb-objs"></span>
+  <span style="margin-left:auto">{{ T('catalog_banner_editor.statusbar_shortcuts') }}</span>
 </div>
 
 <!-- Hidden image input -->
 <input type="file" id="imgInput" accept=".png,.jpg,.jpeg,.webp,.svg" style="display:none" onchange="loadImgFile(this)">
 
 <script>
+/* ── i18n 문자열 주입 ── */
+var _tmplXbanner  = '{{ T("catalog_banner_editor.template_xbanner") }}';
+var _tmplXbannerH = '{{ T("catalog_banner_editor.template_xbanner_h") }}';
+var _tmplStA4V    = '{{ T("catalog_banner_editor.template_st_a4_v") }}';
+var _tmplStA4H    = '{{ T("catalog_banner_editor.template_st_a4_h") }}';
+var _tmplStHalf   = '{{ T("catalog_banner_editor.template_st_half") }}';
+var _tmplCustom   = '{{ T("catalog_banner_editor.template_custom") }}';
+var _promptWidth  = '{{ T("catalog_banner_editor.js_prompt_custom_width") }}';
+var _promptHeight = '{{ T("catalog_banner_editor.js_prompt_custom_height") }}';
+var _defaultText  = '{{ T("catalog_banner_editor.js_default_text_placeholder") }}';
+var _exportDone   = '{{ T("catalog_banner_editor.js_export_done_msg") }}';
+var _objPrefix    = '{{ T("catalog_banner_editor.statusbar_obj_prefix") }}';
+var _objSuffix    = '{{ T("catalog_banner_editor.statusbar_obj_suffix") }}';
+
 /* ═══════════════════════════════════════════════
    TEMPLATES
 ═══════════════════════════════════════════════ */
 const TEMPLATES = {
-  xbanner:  { label:'X-Banner (600×1600)',       w:600,  h:1600 },
-  xbanner_h:{ label:'X-Banner 가로 (1600×600)', w:1600, h:600  },
-  st_a4_v:  { label:'스탠션 A4 세로 (210×297)',  w:630,  h:890  },
-  st_a4_h:  { label:'스탠션 A4 가로 (297×210)',  w:890,  h:630  },
-  st_half:  { label:'스탠션 하프 (148×210)',      w:444,  h:630  },
-  custom:   { label:'직접 입력',                  w:600,  h:800  },
+  xbanner:  { label: _tmplXbanner,  w:600,  h:1600 },
+  xbanner_h:{ label: _tmplXbannerH, w:1600, h:600  },
+  st_a4_v:  { label: _tmplStA4V,    w:630,  h:890  },
+  st_a4_h:  { label: _tmplStA4H,    w:890,  h:630  },
+  st_half:  { label: _tmplStHalf,   w:444,  h:630  },
+  custom:   { label: _tmplCustom,   w:600,  h:800  },
 };
 
 /* ═══════════════════════════════════════════════
@@ -453,10 +468,10 @@ function applyZoom() {
 ═══════════════════════════════════════════════ */
 function changeTemplate(key) {
   if (key === 'custom') {
-    const w = parseInt(prompt('가로 크기 (px):', '600') || '600');
-    const h = parseInt(prompt('세로 크기 (px):', '800') || '800');
+    const w = parseInt(prompt(_promptWidth, '600') || '600');
+    const h = parseInt(prompt(_promptHeight, '800') || '800');
     TEMPLATES.custom.w = w; TEMPLATES.custom.h = h;
-    TEMPLATES.custom.label = `직접 입력 (${w}×${h})`;
+    TEMPLATES.custom.label = `${_tmplCustom} (${w}×${h})`;
   }
   currentTmpl = key;
   canvas.setWidth(TEMPLATES[key].w);
@@ -477,7 +492,7 @@ function setBg(color) {
    ADD OBJECTS
 ═══════════════════════════════════════════════ */
 function addText() {
-  const t = new fabric.IText('텍스트를 입력하세요', {
+  const t = new fabric.IText(_defaultText, {
     left: canvas.width / 2, top: canvas.height / 4,
     originX: 'center', originY: 'center',
     fontSize: Math.round(canvas.width * 0.07),
@@ -708,7 +723,8 @@ canvas.on('object:added',   updateObjCount);
 canvas.on('object:removed', updateObjCount);
 
 function updateObjCount() {
-  document.getElementById('sb-objs').textContent = `객체 ${canvas.getObjects().length}개`;
+  document.getElementById('sb-objs').textContent =
+    _objPrefix + canvas.getObjects().length + _objSuffix;
 }
 
 /* ═══════════════════════════════════════════════
@@ -758,7 +774,6 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 'z') { e.preventDefault(); doUndo(); }
   if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); doRedo(); }
   if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateObj(); }
-  // Arrow keys for nudge
   const obj = canvas.getActiveObject();
   if (!obj) return;
   const step = e.shiftKey ? 10 : 1;
@@ -777,7 +792,6 @@ function exportDesign() {
   canvas.discardActiveObject();
   canvas.renderAll();
 
-  // High quality export (2x)
   const dataUrl = canvas.toDataURL({ format:'png', quality:1, multiplier:2 });
 
   const result = {
@@ -788,13 +802,12 @@ function exportDesign() {
   };
   localStorage.setItem('banner_editor_result', JSON.stringify(result));
 
-  // Notify opener if available
   if (window.opener) {
     try { window.opener.postMessage({type:'bannerEditorDone', ...result}, '*'); } catch(e){}
   }
 
   const btn = document.querySelector('.tb-btn.green');
-  btn.innerHTML = '<i class="fa-solid fa-check"></i> 완료! 탭을 닫아도 됩니다';
+  btn.innerHTML = '<i class="fa-solid fa-check"></i> ' + _exportDone;
   btn.style.background = '#059669';
   setTimeout(() => {
     if (window.opener) window.close();

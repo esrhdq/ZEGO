@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}운송양식 신청 관리{% endblock %}
+{% block title %}{{ T('fsadmin_req.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-clipboard-check"></i>{% endblock %}
-{% block page_title %}운송양식 신청 관리{% endblock %}
+{% block page_title %}{{ T('fsadmin_req.title') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -59,17 +59,17 @@
 
 <div class="d-flex align-items-center gap-2 mb-3">
   <a href="{{ url_for('form_supply_settings') }}" class="btn btn-sm btn-outline-secondary">
-    <i class="fa-solid fa-gear me-1"></i>신청 기간 설정
+    <i class="fa-solid fa-gear me-1"></i>{{ T('fsadmin_req.period_settings') }}
   </a>
   <a href="{{ url_for('form_supply_matrix') }}" class="btn btn-sm btn-outline-primary">
-    <i class="fa-solid fa-table-cells me-1"></i>전지점 현황표
+    <i class="fa-solid fa-table-cells me-1"></i>{{ T('fsadmin_req.all_branches_matrix') }}
   </a>
 </div>
 
 <!-- 기간 탭 -->
 {% if period_titles %}
 <div class="d-flex gap-1 flex-wrap mb-2" id="periodTabs">
-  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="filterPeriod(this)">전체 기간</button>
+  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="filterPeriod(this)">{{ T('fsadmin_req.all_periods') }}</button>
   {% for t in period_titles %}
   <button class="btn btn-sm btn-outline-primary" data-period="{{ t | e }}" onclick="filterPeriod(this)">{{ t }}</button>
   {% endfor %}
@@ -77,18 +77,18 @@
 {% endif %}
 
 <div class="filter-bar">
-  <button class="filter-btn active" data-filter="ALL"      onclick="filterReqs(this)">전체</button>
-  <button class="filter-btn" data-filter="pending"  onclick="filterReqs(this)">대기중</button>
-  <button class="filter-btn" data-filter="approved" onclick="filterReqs(this)">승인</button>
-  <button class="filter-btn" data-filter="partial"  onclick="filterReqs(this)">부분승인</button>
-  <button class="filter-btn" data-filter="rejected" onclick="filterReqs(this)">반려</button>
+  <button class="filter-btn active" data-filter="ALL"      onclick="filterReqs(this)">{{ T('fsadmin.filter_all') }}</button>
+  <button class="filter-btn" data-filter="pending"  onclick="filterReqs(this)">{{ T('fsadmin.filter_pending') }}</button>
+  <button class="filter-btn" data-filter="approved" onclick="filterReqs(this)">{{ T('fsadmin.filter_approved') }}</button>
+  <button class="filter-btn" data-filter="partial"  onclick="filterReqs(this)">{{ T('fsadmin_req.filter_partial') }}</button>
+  <button class="filter-btn" data-filter="rejected" onclick="filterReqs(this)">{{ T('fsadmin.filter_rejected') }}</button>
 </div>
 
 <div class="req-list-wrap">
   <div class="req-list-header">
     <i class="fa-solid fa-clipboard-list"></i>
-    신청 목록
-    <span class="ms-auto badge bg-light text-danger">{{ requests|length }}건</span>
+    {{ T('fsadmin.list_title') }}
+    <span class="ms-auto badge bg-light text-danger">{{ requests|length }}{{ T('common.count_suffix') }}</span>
   </div>
 
   {% if requests %}
@@ -97,13 +97,13 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>지점</th>
-          <th>상태</th>
-          <th>신청일</th>
-          <th class="text-center">항목수</th>
-          <th>처리자</th>
-          <th>처리일/사유</th>
-          <th style="text-align:center;width:180px">액션</th>
+          <th>{{ T('fsadmin.col_branch') }}</th>
+          <th>{{ T('fsadmin.col_status') }}</th>
+          <th>{{ T('fsadmin.col_req_date') }}</th>
+          <th class="text-center">{{ T('fsadmin_req.col_item_count') }}</th>
+          <th>{{ T('fsadmin.col_processor') }}</th>
+          <th>{{ T('fsadmin_req.col_processed_reason') }}</th>
+          <th style="text-align:center;width:180px">{{ T('common.action') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -116,19 +116,19 @@
           </td>
           <td>
             {% if r.status == 'pending' %}
-              <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i>대기중</span>
+              <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i>{{ T('fsadmin.filter_pending') }}</span>
             {% elif r.status == 'approved' %}
-              <span class="status-badge status-approved"><i class="fa-solid fa-check me-1"></i>승인</span>
+              <span class="status-badge status-approved"><i class="fa-solid fa-check me-1"></i>{{ T('fsadmin.filter_approved') }}</span>
             {% elif r.status == 'rejected' %}
-              <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>반려</span>
+              <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>{{ T('fsadmin.filter_rejected') }}</span>
             {% elif r.status == 'partial' %}
-              <span class="status-badge status-partial"><i class="fa-solid fa-sliders me-1"></i>부분승인</span>
+              <span class="status-badge status-partial"><i class="fa-solid fa-sliders me-1"></i>{{ T('fsadmin_req.filter_partial') }}</span>
             {% else %}
               <span class="status-badge status-pending">{{ r.status }}</span>
             {% endif %}
           </td>
           <td style="font-size:.78rem;color:#666;white-space:nowrap">{{ r.created_at | dt }}</td>
-          <td class="text-center fw-semibold">{{ r['items']|length }}종</td>
+          <td class="text-center fw-semibold">{{ r['items']|length }}{{ T('fsadmin_req.item_type_suffix') }}</td>
           <td style="font-size:.78rem;color:#666">{{ r.processed_by or '—' }}</td>
           <td style="font-size:.78rem;color:#555;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             {% if r.status == 'rejected' and r.reject_reason %}
@@ -143,12 +143,12 @@
             {% if r.status in ('pending', 'partial') %}
               {% if r.status == 'pending' %}
               <button class="btn btn-xs btn-success" style="font-size:.68rem;padding:2px 7px"
-                      onclick="openApprove({{ r.id }})">승인</button>
+                      onclick="openApprove({{ r.id }})">{{ T('fsadmin.btn_approve') }}</button>
               <button class="btn btn-xs btn-danger ms-1" style="font-size:.68rem;padding:2px 7px"
-                      onclick="openReject({{ r.id }})">반려</button>
+                      onclick="openReject({{ r.id }})">{{ T('fsadmin.btn_reject') }}</button>
               {% endif %}
               <button class="btn btn-xs ms-1" style="font-size:.68rem;padding:2px 7px;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd"
-                      onclick="openPartial({{ r.id }})">부분승인</button>
+                      onclick="openPartial({{ r.id }})">{{ T('fsadmin_req.filter_partial') }}</button>
             {% else %}—{% endif %}
           </td>
         </tr>
@@ -159,7 +159,7 @@
             {% if r.notes %}
             <div class="mb-3">
               <div class="small fw-semibold text-muted mb-1">
-                <i class="fa-solid fa-pen-to-square me-1"></i>비고
+                <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('fsadmin.notes_label') }}
               </div>
               <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
                 {{ r.notes }}
@@ -168,33 +168,33 @@
             {% endif %}
             {% if r['items'] %}
             <div class="small fw-semibold text-muted mb-1">
-              <i class="fa-solid fa-list me-1"></i>신청 항목
+              <i class="fa-solid fa-list me-1"></i>{{ T('fsadmin.items_label') }}
             </div>
             <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;overflow:hidden">
               <table class="item-mini-table">
                 <thead>
                   <tr>
-                    <th>양식명</th>
-                    <th class="text-center" style="width:100px">단위</th>
-                    <th class="text-center" style="width:120px">단위 상세</th>
-                    <th class="text-center" style="width:80px">수량</th>
-                    <th class="text-center" style="width:90px">항목 상태</th>
-                    <th style="width:180px">항목 반려 사유</th>
+                    <th>{{ T('fsadmin.col_form') }}</th>
+                    <th class="text-center" style="width:100px">{{ T('fsadmin.col_unit') }}</th>
+                    <th class="text-center" style="width:120px">{{ T('fsadmin.col_unit_detail') }}</th>
+                    <th class="text-center" style="width:80px">{{ T('fsadmin.col_qty') }}</th>
+                    <th class="text-center" style="width:90px">{{ T('fsadmin_req.col_item_status') }}</th>
+                    <th style="width:180px">{{ T('fsadmin_req.col_item_reject_reason') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for it in r['items'] %}
                   <tr>
                     <td>{{ it.form_name }}</td>
-                    <td class="text-center text-muted">{{ it.unit or '—' }}</td>
-                    <td class="text-center text-muted">{{ it.unit_detail or '—' }}</td>
+                    <td class="text-center text-muted">{{ it.unit | unit_i18n if it.unit else '—' }}</td>
+                    <td class="text-center text-muted">{{ it.unit_detail | unit_i18n if it.unit_detail else '—' }}</td>
                     <td class="text-center fw-bold">{{ it.quantity }}</td>
                     <td class="text-center">
                       {% set ist = it.get('item_status', 'pending') %}
                       <span class="item-status-dot {{ ist }}"></span>
-                      {% if ist == 'approved' %}<span style="color:#15803d;font-size:.75rem">승인</span>
-                      {% elif ist == 'rejected' %}<span style="color:#b91c1c;font-size:.75rem">반려</span>
-                      {% else %}<span style="color:#b45309;font-size:.75rem">대기</span>{% endif %}
+                      {% if ist == 'approved' %}<span style="color:#15803d;font-size:.75rem">{{ T('fsadmin.filter_approved') }}</span>
+                      {% elif ist == 'rejected' %}<span style="color:#b91c1c;font-size:.75rem">{{ T('fsadmin.filter_rejected') }}</span>
+                      {% else %}<span style="color:#b45309;font-size:.75rem">{{ T('fsadmin_req.status_waiting') }}</span>{% endif %}
                     </td>
                     <td style="font-size:.75rem;color:#888">{{ it.get('item_reject_reason', '') or '—' }}</td>
                   </tr>
@@ -212,7 +212,7 @@
   {% else %}
   <div class="text-center text-muted py-5">
     <i class="fa-solid fa-inbox fa-2x mb-3" style="opacity:.3"></i><br>
-    신청 내역이 없습니다.
+    {{ T('fsadmin_req.no_requests') }}
   </div>
   {% endif %}
 </div>
@@ -222,18 +222,18 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
       <div class="modal-header" style="background:var(--success);color:#fff;padding:10px 16px">
-        <h6 class="modal-title m-0"><i class="fa-solid fa-check me-1"></i>승인 처리</h6>
+        <h6 class="modal-title m-0"><i class="fa-solid fa-check me-1"></i>{{ T('fsadmin_req.approve_modal_title') }}</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" id="approveForm">
         <input type="hidden" name="action" value="approved">
         <div class="modal-body">
           <textarea name="approve_reason" class="form-control" rows="3"
-                    placeholder="승인 사유 또는 전달사항 (선택)"></textarea>
+                    placeholder="{{ T('fsadmin_req.approve_reason_placeholder') }}"></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="btn btn-sm btn-success">승인 처리</button>
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+          <button type="submit" class="btn btn-sm btn-success">{{ T('fsadmin_req.approve_modal_title') }}</button>
         </div>
       </form>
     </div>
@@ -245,18 +245,18 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
       <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
-        <h6 class="modal-title m-0">반려 사유 입력</h6>
+        <h6 class="modal-title m-0">{{ T('fsadmin.reject_modal_title') }}</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" id="rejectForm">
         <input type="hidden" name="action" value="rejected">
         <div class="modal-body">
           <textarea name="reject_reason" class="form-control" rows="3" required
-                    placeholder="반려 사유를 입력해주세요."></textarea>
+                    placeholder="{{ T('fsadmin.reject_placeholder') }}"></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="btn btn-sm btn-danger">반려 처리</button>
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+          <button type="submit" class="btn btn-sm btn-danger">{{ T('fsadmin_req.reject_process_btn') }}</button>
         </div>
       </form>
     </div>
@@ -268,29 +268,29 @@
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header" style="background:#6d28d9;color:#fff;padding:10px 16px">
-        <h6 class="modal-title m-0"><i class="fa-solid fa-sliders me-1"></i>부분 승인 처리 — 신청 <span id="partialReqIdLabel"></span></h6>
+        <h6 class="modal-title m-0"><i class="fa-solid fa-sliders me-1"></i>{{ T('fsadmin_req.partial_modal_title') }} <span id="partialReqIdLabel"></span></h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" style="max-height:65vh;overflow-y:auto">
         <div class="mb-3">
-          <label class="form-label small fw-semibold">전달사항 (선택)</label>
+          <label class="form-label small fw-semibold">{{ T('fsadmin_req.partial_message_label') }}</label>
           <textarea id="partialApproveReason" class="form-control form-control-sm" rows="2"
-                    placeholder="승인 전달사항을 입력해주세요."></textarea>
+                    placeholder="{{ T('fsadmin_req.partial_message_placeholder') }}"></textarea>
         </div>
         <div class="small fw-semibold text-muted mb-2">
-          <i class="fa-solid fa-list me-1"></i>항목별 승인/반려 설정
+          <i class="fa-solid fa-list me-1"></i>{{ T('fsadmin_req.partial_item_settings') }}
         </div>
         <div id="partialItemList"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
         <button type="button" class="btn btn-sm" id="partialSetAll"
                 style="background:#dcfce7;color:#15803d;border:1px solid #86efac"
-                onclick="setAllPartial('approved')">전체 승인</button>
+                onclick="setAllPartial('approved')">{{ T('fsadmin_req.partial_approve_all') }}</button>
         <button type="button" class="btn btn-sm ms-1" id="partialSetNone"
                 style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5"
-                onclick="setAllPartial('rejected')">전체 반려</button>
-        <button type="button" class="btn btn-sm btn-primary ms-2" onclick="submitPartial()">부분승인 저장</button>
+                onclick="setAllPartial('rejected')">{{ T('fsadmin_req.partial_reject_all') }}</button>
+        <button type="button" class="btn btn-sm btn-primary ms-2" onclick="submitPartial()">{{ T('fsadmin_req.partial_save_btn') }}</button>
       </div>
     </div>
   </div>
@@ -298,6 +298,14 @@
 
 <!-- 항목 데이터 (JS용) -->
 <script>
+var _jsStrQtySuffix      = '{{ T("fsadmin_req.js_qty_suffix") }}';
+var _jsStrApprove        = '{{ T("fsadmin_req.js_tog_approve") }}';
+var _jsStrReject         = '{{ T("fsadmin_req.js_tog_reject") }}';
+var _jsStrRejectReasonPh = '{{ T("fsadmin_req.js_reject_reason_ph") }}';
+var _jsStrErrPrefix      = '{{ T("common.error_prefix") }}';
+var _jsStrErrUnknown     = '{{ T("fsadmin_req.js_err_unknown") }}';
+var _jsStrReqFail        = '{{ T("fsadmin_req.js_req_fail") }}';
+
 var PARTIAL_ITEMS = {
   {% for r in requests %}
   {{ r.id }}: [
@@ -380,21 +388,21 @@ function openPartial(reqId) {
     div.dataset.itemId = it.id;
     div.innerHTML =
       '<div class="partial-item-name">' + escHtml(it.name) +
-        '<span class="partial-item-qty ms-2">' + it.qty + '개</span>' +
+        '<span class="partial-item-qty ms-2">' + it.qty + _jsStrQtySuffix + '</span>' +
       '</div>' +
       '<div>' +
         '<div class="partial-toggle">' +
           '<label>' +
             '<input type="radio" name="pi_' + it.id + '" value="approved" ' + (initStatus==='approved'?'checked':'') + ' onchange="onPartialChange(this)">' +
-            '<span class="tog-btn">✔ 승인</span>' +
+            '<span class="tog-btn">✔ ' + _jsStrApprove + '</span>' +
           '</label>' +
           '<label class="ms-1">' +
             '<input type="radio" name="pi_' + it.id + '" value="rejected" ' + (initStatus==='rejected'?'checked':'') + ' onchange="onPartialChange(this)">' +
-            '<span class="tog-btn">✘ 반려</span>' +
+            '<span class="tog-btn">✘ ' + _jsStrReject + '</span>' +
           '</label>' +
         '</div>' +
         '<input class="partial-reason-input ' + showReason + '" data-item-id="' + it.id + '"' +
-               ' placeholder="반려 사유 (선택)" value="' + escHtml(initReason) + '">' +
+               ' placeholder="' + _jsStrRejectReasonPh + '" value="' + escHtml(initReason) + '">' +
       '</div>';
     list.appendChild(div);
   });
@@ -445,10 +453,10 @@ function submitPartial() {
       bootstrap.Modal.getInstance(document.getElementById('partialModal')).hide();
       location.reload();
     } else {
-      alert('오류: ' + (data.error || '알 수 없는 오류'));
+      alert(_jsStrErrPrefix + (data.error || _jsStrErrUnknown));
     }
   })
-  .catch(function(e) { alert('요청 실패: ' + e); });
+  .catch(function(e) { alert(_jsStrReqFail + e); });
 }
 
 function escHtml(s) {

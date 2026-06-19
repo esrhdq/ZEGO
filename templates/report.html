@@ -157,7 +157,7 @@
 
 <!-- ── 테이블 (접기/펼치기) ── -->
 <div class="d-flex align-items-center mb-2">
-  <strong class="me-auto"><i class="fa-solid fa-table me-2"></i>상세 테이블</strong>
+  <strong class="me-auto"><i class="fa-solid fa-table me-2"></i>{{ T('rep.detail_table') }}</strong>
   <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#tableSection">
     <i class="fa-solid fa-chevron-down me-1"></i>{{ T('rep.expand_collapse') }}
   </button>
@@ -183,9 +183,9 @@
             {% for r in summary %}
             <tr>
               <td>
-                {% if r.type=='DOM' %}<span class="badge badge-dom">국내</span>
-                {% elif r.type=='INTL' %}<span class="badge badge-intl">국제</span>
-                {% else %}<span class="badge badge-cargo">화물</span>{% endif %}
+                {% if r.type=='DOM' %}<span class="badge badge-dom">{{ T('common.domestic') }}</span>
+                {% elif r.type=='INTL' %}<span class="badge badge-intl">{{ T('common.international') }}</span>
+                {% else %}<span class="badge badge-cargo">{{ T('common.cargo') }}</span>{% endif %}
               </td>
               <td><strong>{{ r.code }}</strong> <span class="text-muted small">{{ r.name }}</span></td>
               <td class="text-center"><span class="badge badge-status-safe rounded-pill">{{ r.ok_cnt or 0 }}</span></td>
@@ -199,7 +199,7 @@
               </td>
               {% if session.role == 'admin' %}
               <td class="text-end fw-semibold">
-                {% if r.total_value %}{{ '{:,.0f}'.format(r.total_value) }}원{% else %}—{% endif %}
+                {% if r.total_value %}{{ '{:,.0f}'.format(r.total_value) }}{{ T('rep.currency_won') }}{% else %}—{% endif %}
               </td>
               {% endif %}
             </tr>
@@ -228,14 +228,14 @@
               {% elif m.type=='OUT' %}<span class="badge badge-tx-out rounded-pill">{{ T('common.outbound') }}</span>
               {% else %}<span class="badge badge-tx-transfer rounded-pill">{{ T('common.transfer') }}</span>{% endif %}
             </td>
-            <td class="text-center">{{ m.tx_count }}건</td>
+            <td class="text-center">{{ m.tx_count }}{{ T('rep.unit_count') }}</td>
             <td class="text-center fw-semibold">{{ m.total_qty }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-      <div class="text-center text-muted py-4">데이터 없음</div>
+      <div class="text-center text-muted py-4">{{ T('rep.no_data') }}</div>
       {% endif %}
     </div>
   </div>
@@ -275,14 +275,14 @@ const C = {
       options: {
         plugins: {
           legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}건` } }
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}{{ T('common.count_suffix') }}` } }
         },
         cutout: '65%',
       }
     });
   } else {
     document.getElementById('chartStatus').closest('.card-body').innerHTML =
-      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>재고 데이터 없음</div>';
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_stock_data") }}</div>';
   }
 }
 
@@ -291,7 +291,7 @@ const C = {
   const d = {{ chart_monthly | tojson }};
   if (!d.labels.length) {
     document.getElementById('chartMonthly').closest('.card-body').innerHTML =
-      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>최근 6개월 거래 데이터 없음</div>';
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_monthly_data") }}</div>';
   } else
   new Chart(document.getElementById('chartMonthly'), {
     type: 'line',
@@ -328,13 +328,13 @@ const C = {
   const d = {{ chart_branch_qty | tojson }};
   if (!d.labels.length) {
     document.getElementById('chartBranchQty').closest('.card-body').innerHTML =
-      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>지점 재고 데이터 없음</div>';
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_branch_stock_data") }}</div>';
   } else
   new Chart(document.getElementById('chartBranchQty'), {
     type: 'bar',
     data: {
       labels: d.labels,
-      datasets: [{ label:'재고 수량', data: d.data,
+      datasets: [{ label:'{{ T("rep.label_stock_qty") }}', data: d.data,
         backgroundColor: 'rgba(37,99,235,.7)',
         borderColor: '#2563eb', borderWidth: 1,
         borderRadius: 4 }]
@@ -358,7 +358,7 @@ const C = {
       type: 'bar',
       data: {
         labels: d.labels,
-        datasets: [{ label:'출고 수량', data: d.data,
+        datasets: [{ label:'{{ T("rep.label_outbound_qty") }}', data: d.data,
           backgroundColor: 'rgba(220,38,38,.7)',
           borderColor: '#dc2626', borderWidth: 1,
           borderRadius: 4 }]
@@ -375,7 +375,7 @@ const C = {
     });
   } else {
     document.getElementById('chartTopOut').closest('.card-body').innerHTML =
-      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>최근 30일 출고 데이터 없음</div>';
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_outbound_data") }}</div>';
   }
 }
 
@@ -384,7 +384,7 @@ const C = {
   const d = {{ chart_branch_status | tojson }};
   if (!d.labels.length) {
     document.getElementById('chartBranchStatus').closest('.card-body').innerHTML =
-      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>지점 상태 데이터 없음</div>';
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_branch_status_data") }}</div>';
   } else
   new Chart(document.getElementById('chartBranchStatus'), {
     type: 'bar',
@@ -441,13 +441,13 @@ const C = {
   const d = {{ chart_form_qty | tojson }};
   if (!d.labels.length) {
     document.getElementById('chartFormQty').closest('.card-body').innerHTML =
-      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>양식 재고 데이터 없음</div>';
+      '<div class="text-center text-muted py-4"><i class="fa-solid fa-inbox fs-2 d-block mb-2"></i>{{ T("rep.no_form_stock_data") }}</div>';
   } else
   new Chart(document.getElementById('chartFormQty'), {
     type: 'bar',
     data: {
       labels: d.labels,
-      datasets: [{ label:'재고 수량', data: d.data,
+      datasets: [{ label:'{{ T("rep.label_stock_qty") }}', data: d.data,
         backgroundColor: 'rgba(124,58,237,.7)',
         borderColor: '#7c3aed', borderWidth: 1,
         borderRadius: 4 }]
