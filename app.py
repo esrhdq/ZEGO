@@ -628,7 +628,7 @@ def init_db():
         _raw.row_factory = sqlite3.Row
         conn = _SQLiteDB(_raw)
     else:
-        conn = _DB(psycopg2.connect(**_PG))
+        conn = _acquire_pg_db()
     try:
         if USE_SQLITE:
             conn.execute('''
