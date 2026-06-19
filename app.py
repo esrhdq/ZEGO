@@ -266,26 +266,33 @@ def _get_pg_pool():
 
 
 def _acquire_pg_db():
-    """직접 연결 + SELECT 1 검증 + 재시도 (Neon/Supabase cold-start 대응)."""
+    """직접 연결 + 재시도. 파싱 kwargs 우선, 실패 시 raw URL 폴백."""
     last_err = None
-    for attempt in range(3):
-        conn = None
-        try:
-            conn = psycopg2.connect(**_PG)
-            # 연결이 실제로 살아있는지 검증
-            with conn.cursor() as _cur:
-                _cur.execute('SELECT 1')
-            conn.rollback()
-            return _DB(conn)
-        except psycopg2.OperationalError as e:
-            last_err = e
-            if conn:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-            if attempt < 2:
-                _time.sleep(0.5 * (attempt + 1))  # 0.5s → 1.0s 백오프
+    # 시도 순서: (1) 파싱된 _PG dict (2) raw DATABASE_URL 문자열
+    _attempts = [
+        lambda: psycopg2.connect(**_PG) if _PG else (_ for _ in ()).throw(RuntimeError),
+        lambda: psycopg2.connect(DATABASE_URL, connect_timeout=10,
+                                 keepalives=1, keepalives_idle=10,
+                                 keepalives_interval=5, keepalives_count=3),
+    ]
+    for fn in _attempts:
+        for wait in (0, 1, 2):          # 0s → 1s → 2s 백오프, 총 3회
+            conn = None
+            try:
+                if wait:
+                    _time.sleep(wait)
+                conn = fn()
+                with conn.cursor() as _cur:
+                    _cur.execute('SELECT 1')
+                conn.rollback()
+                return _DB(conn)
+            except Exception as e:
+                last_err = e
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
     raise last_err
 
 
