@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}운송양식 신청{% endblock %}
+{% block title %}{{ T('fsreq.title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-file-circle-plus"></i>{% endblock %}
-{% block page_title %}운송양식 신청{% endblock %}
+{% block page_title %}{{ T('fsreq.title') }}{% endblock %}
 
 {% block content %}
 {# ── 신청 기간 상태 판단 ──────────────────────────────────────────── #}
@@ -64,7 +64,7 @@
      style="background:var(--success-bg);border:1px solid #86efac;border-radius:12px">
   <i class="fa-solid fa-circle-check" style="color:var(--success);font-size:1.1rem"></i>
   <div>
-    <strong>신청 기간이 활성화 되었습니다.</strong>
+    <strong>{{ T('fsreq.period_active') }}</strong>
     <span class="text-muted ms-2 small">
       {{ period.period_start }} ~ {{ period.period_end }}
     </span>
@@ -75,14 +75,14 @@
      style="background:var(--warning-bg);border:1px solid #fcd34d;border-radius:12px">
   <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:1.1rem"></i>
   <div>
-    <strong>현재 운송양식 신청 기간이 아닙니다.</strong>
+    <strong>{{ T('fsreq.period_inactive') }}</strong>
     {% if period and period.period_start and period.period_end %}
     <div class="small text-muted mt-1">
-      예정 기간: {{ period.period_start }} ~ {{ period.period_end }}
-      {% if not period.is_enabled %} · 관리자가 비활성 처리함{% endif %}
+      {{ T('fsreq.scheduled_period') }} {{ period.period_start }} ~ {{ period.period_end }}
+      {% if not period.is_enabled %} · {{ T('fsreq.admin_disabled') }}{% endif %}
     </div>
     {% else %}
-    <div class="small text-muted mt-1">관리자가 아직 신청 기간을 설정하지 않았습니다.</div>
+    <div class="small text-muted mt-1">{{ T('fsreq.no_period') }}</div>
     {% endif %}
   </div>
 </div>
@@ -94,15 +94,15 @@
   <div class="card mb-3">
     <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
       <i class="fa-solid fa-list-check text-primary"></i>
-      <strong>신청 양식 선택</strong>
-      <span class="badge bg-secondary ms-1">{{ form_types|length }}종</span>
-      <small class="text-muted ms-2">필요한 양식의 수량을 입력해 주세요.</small>
+      <strong>{{ T('fsreq.select_forms') }}</strong>
+      <span class="badge bg-secondary ms-1">{{ form_types|length }}{{ T('fsmyreq.item_type_suffix') }}</span>
+      <small class="text-muted ms-2">{{ T('fsreq.form_qty_hint') }}</small>
       <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-primary ms-2">
-        <i class="fa-solid fa-check-double me-1"></i>전체선택
+        <i class="fa-solid fa-check-double me-1"></i>{{ T('fsreq.select_all') }}
       </button>
       <span class="ms-auto badge"
             style="background:var(--brand-light);color:var(--brand);font-size:.78rem;padding:6px 12px">
-        선택: <strong id="selectedCount">0</strong>종
+        {{ T('fsreq.selected_prefix') }} <strong id="selectedCount">0</strong>{{ T('fsreq.selected_suffix') }}
       </span>
     </div>
     <div class="card-body p-0">
@@ -112,10 +112,10 @@
           <thead>
             <tr>
               <th style="width:50px"></th>
-              <th>양식명</th>
-              <th class="text-center" style="width:90px">단위</th>
-              <th class="text-center" style="width:120px">단위 상세</th>
-              <th class="text-center" style="width:160px;white-space:nowrap">수량</th>
+              <th>{{ T('fsreq.col_form') }}</th>
+              <th class="text-center" style="width:90px">{{ T('fsreq.col_unit') }}</th>
+              <th class="text-center" style="width:120px">{{ T('fsreq.col_unit_detail') }}</th>
+              <th class="text-center" style="width:160px;white-space:nowrap">{{ T('fsreq.col_qty') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -150,8 +150,8 @@
       {% else %}
       <div class="empty-state">
         <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
-        <h6>등록된 양식이 없습니다</h6>
-        <p>관리자에게 양식 등록을 요청하세요.</p>
+        <h6>{{ T('fsreq.no_forms') }}</h6>
+        <p>{{ T('fsreq.no_forms_desc') }}</p>
       </div>
       {% endif %}
     </div>
@@ -161,26 +161,31 @@
   <div class="card mb-3">
     <div class="card-header bg-white d-flex align-items-center gap-2">
       <i class="fa-solid fa-pen-to-square text-secondary"></i>
-      <strong>비고</strong>
-      <small class="text-muted ms-1">(선택)</small>
+      <strong>{{ T('fsreq.notes_label') }}</strong>
+      <small class="text-muted ms-1">{{ T('fsreq.notes_optional') }}</small>
     </div>
     <div class="card-body">
       <textarea name="notes" class="form-control" rows="3"
-                placeholder="요청사항이나 특이사항이 있다면 입력해 주세요."></textarea>
+                placeholder="{{ T('fsreq.notes_placeholder') }}"></textarea>
     </div>
   </div>
 
   <!-- ── 제출 버튼 ────────────────────────────────────────────────── -->
   <div class="d-flex gap-2 justify-content-end">
-    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">{{ T('common.cancel') }}</a>
     <button type="submit" class="btn btn-primary px-4" id="submitBtn" disabled data-loading>
-      <i class="fa-solid fa-paper-plane me-1"></i>신청서 제출
+      <i class="fa-solid fa-paper-plane me-1"></i>{{ T('fsreq.submit') }}
     </button>
   </div>
 </form>
 
 <script>
 (function() {
+  var _selectAll   = '{{ T("fsreq.select_all") }}';
+  var _deselectAll = '{{ T("fsreq.deselect_all") }}';
+  var _errMin      = '{{ T("fsreq.err_min") }}';
+  var _memoTitle   = '{{ T("fsreq.memo_title") }}';
+
   var counter   = document.getElementById('selectedCount');
   var submitBtn = document.getElementById('submitBtn');
 
@@ -192,8 +197,8 @@
     counter.textContent = checked;
     submitBtn.disabled  = (checked === 0);
     selectAllBtn.innerHTML = (checked === all.length)
-      ? '<i class="fa-solid fa-xmark me-1"></i>전체해제'
-      : '<i class="fa-solid fa-check-double me-1"></i>전체선택';
+      ? '<i class="fa-solid fa-xmark me-1"></i>' + _deselectAll
+      : '<i class="fa-solid fa-check-double me-1"></i>' + _selectAll;
   }
 
   function activateRow(cb, on) {
@@ -259,7 +264,7 @@
         qty.value = '';
       }
     });
-    if (!valid) { e.preventDefault(); alert('최소 1개 이상의 양식과 수량을 선택해 주세요.'); }
+    if (!valid) { e.preventDefault(); alert(_errMin); }
   });
 
   var _memoPopup = null;
@@ -277,7 +282,7 @@
     var popup = document.createElement('div');
     popup.className = 'memo-popup';
     popup.innerHTML =
-      '<div class="memo-popup-title"><i class="fa-solid fa-circle-exclamation me-1"></i>메모</div>' +
+      '<div class="memo-popup-title"><i class="fa-solid fa-circle-exclamation me-1"></i>' + _memoTitle + '</div>' +
       '<div>' + memo.replace(/\n/g, '<br>') + '</div>' +
       '<button class="memo-popup-close" onclick="closeMemoPopup()">&times;</button>';
 

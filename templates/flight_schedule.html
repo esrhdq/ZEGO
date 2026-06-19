@@ -30,7 +30,7 @@
             {% for b in branches %}
             <option value="{{ b.id }}" {% if b.id == view_bid %}selected{% endif %}>
               {{ b.code }} — {{ b.name }}
-              ({% if b.type=='DOM' %}국내{% elif b.type=='INTL' %}국제{% else %}화물{% endif %})
+              ({% if b.type=='DOM' %}{{ T('flt.branch_type_dom') }}{% elif b.type=='INTL' %}{{ T('flt.branch_type_intl') }}{% else %}{{ T('flt.branch_type_cargo') }}{% endif %})
             </option>
             {% endfor %}
           </select>
@@ -45,7 +45,7 @@
         <table class="table table-bordered table-sm mb-3" style="max-width:680px">
           <thead>
             <tr style="background:#1a2340;color:#fff">
-              <th class="text-center" style="width:140px">연월</th>
+              <th class="text-center" style="width:140px">{{ T('flt.th_year_month') }}</th>
               <th class="text-center" style="width:160px">
                 <i class="fa-solid fa-plane-departure me-1" style="color:#60a5fa"></i>
                 {{ T('flt.dom') }}

@@ -160,9 +160,9 @@
             {% for b in branches %}
             <tr>
               <td>
-                {% if b.type == 'DOM' %}<span class="badge bg-primary">국내</span>
-                {% elif b.type == 'INTL' %}<span class="badge bg-info text-dark">국제</span>
-                {% else %}<span class="badge bg-secondary">화물</span>{% endif %}
+                {% if b.type == 'DOM' %}<span class="badge bg-primary">{{ T('common.domestic') }}</span>
+                {% elif b.type == 'INTL' %}<span class="badge bg-info text-dark">{{ T('common.international') }}</span>
+                {% else %}<span class="badge bg-secondary">{{ T('common.cargo') }}</span>{% endif %}
               </td>
               <td class="fw-semibold small">{{ b.code }}</td>
               <td>{{ b.name }}</td>

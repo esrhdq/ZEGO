@@ -57,7 +57,7 @@
                        name="email_{{ b.id }}"
                        value="{{ b.email }}"
                        class="form-control form-control-sm"
-                       placeholder="예: {{ b.code.lower() }}-ops@eastarjet.com"
+                       placeholder="{{ T('emails.email_placeholder_prefix') }} {{ b.code.lower() }}-ops@eastarjet.com"
                        style="max-width:340px">
               </td>
             </tr>

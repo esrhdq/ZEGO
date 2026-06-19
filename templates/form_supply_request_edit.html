@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}신청 수정 #{{ req.id }}{% endblock %}
+{% block title %}{{ T('fsreq_edit.title') }} #{{ req.id }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-pen-to-square"></i>{% endblock %}
-{% block page_title %}신청 수정 <span class="text-muted fw-normal" style="font-size:.85em">#{{ req.id }}</span>{% endblock %}
+{% block page_title %}{{ T('fsreq_edit.title') }} <span class="text-muted fw-normal" style="font-size:.85em">#{{ req.id }}</span>{% endblock %}
 
 {% block content %}
 <style>
@@ -24,8 +24,8 @@
      style="background:#fef9c3;border:1px solid #fcd34d;border-radius:12px">
   <i class="fa-solid fa-pen-to-square" style="color:#b45309;font-size:1.1rem"></i>
   <div>
-    <strong>신청 #{{ req.id }} 수정 중</strong>
-    <span class="text-muted ms-2 small">대기 중인 신청만 수정할 수 있습니다. 수정 후 저장하면 기존 항목이 모두 교체됩니다.</span>
+    <strong>{{ T('fsreq_edit.editing_prefix') }} #{{ req.id }} {{ T('fsreq_edit.editing_suffix') }}</strong>
+    <span class="text-muted ms-2 small">{{ T('fsreq_edit.info_note') }}</span>
   </div>
 </div>
 
@@ -33,14 +33,14 @@
   <div class="card mb-3">
     <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
       <i class="fa-solid fa-list-check text-primary"></i>
-      <strong>신청 양식 선택</strong>
-      <span class="badge bg-secondary ms-1">{{ form_types|length }}종</span>
+      <strong>{{ T('fsreq.select_forms') }}</strong>
+      <span class="badge bg-secondary ms-1">{{ form_types|length }}{{ T('fsmyreq.item_type_suffix') }}</span>
       <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-primary ms-2">
-        <i class="fa-solid fa-check-double me-1"></i>전체선택
+        <i class="fa-solid fa-check-double me-1"></i>{{ T('common.select_all') }}
       </button>
       <span class="ms-auto badge"
             style="background:var(--brand-light);color:var(--brand);font-size:.78rem;padding:6px 12px">
-        선택: <strong id="selectedCount">0</strong>종
+        {{ T('fsreq.selected_prefix') }} <strong id="selectedCount">0</strong>{{ T('fsreq.selected_suffix') }}
       </span>
     </div>
     <div class="card-body p-0">
@@ -49,10 +49,10 @@
           <thead>
             <tr>
               <th style="width:50px"></th>
-              <th>양식명</th>
-              <th class="text-center" style="width:90px">단위</th>
-              <th class="text-center" style="width:120px">단위 상세</th>
-              <th class="text-center" style="width:160px">수량</th>
+              <th>{{ T('fsreq.col_form') }}</th>
+              <th class="text-center" style="width:90px">{{ T('fsreq.col_unit') }}</th>
+              <th class="text-center" style="width:120px">{{ T('fsreq.col_unit_detail') }}</th>
+              <th class="text-center" style="width:160px">{{ T('fsreq.col_qty') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -92,24 +92,26 @@
   <div class="card mb-3">
     <div class="card-header bg-white d-flex align-items-center gap-2">
       <i class="fa-solid fa-pen-to-square text-secondary"></i>
-      <strong>비고</strong>
-      <small class="text-muted ms-1">(선택)</small>
+      <strong>{{ T('fsreq.notes_label') }}</strong>
+      <small class="text-muted ms-1">{{ T('fsreq.notes_optional') }}</small>
     </div>
     <div class="card-body">
       <textarea name="notes" class="form-control" rows="3"
-                placeholder="요청사항이나 특이사항이 있다면 입력해 주세요.">{{ req.notes or '' }}</textarea>
+                placeholder="{{ T('fsreq.notes_placeholder') }}">{{ req.notes or '' }}</textarea>
     </div>
   </div>
 
   <div class="d-flex gap-2 justify-content-end">
-    <a href="{{ url_for('form_supply_my_requests') }}" class="btn btn-outline-secondary">취소</a>
+    <a href="{{ url_for('form_supply_my_requests') }}" class="btn btn-outline-secondary">{{ T('common.cancel') }}</a>
     <button type="submit" class="btn btn-warning px-4" id="submitBtn" data-loading>
-      <i class="fa-solid fa-floppy-disk me-1"></i>수정 저장
+      <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('fsreq_edit.save_btn') }}
     </button>
   </div>
 </form>
 
 <script>
+var _selectAll = '{{ T("common.select_all") }}';
+var _deselectAll = '{{ T("common.deselect_all") }}';
 (function() {
   var counter    = document.getElementById('selectedCount');
   var submitBtn  = document.getElementById('submitBtn');
@@ -121,8 +123,8 @@
     counter.textContent = checked;
     submitBtn.disabled  = (checked === 0);
     selectAllBtn.innerHTML = (checked === all.length)
-      ? '<i class="fa-solid fa-xmark me-1"></i>전체해제'
-      : '<i class="fa-solid fa-check-double me-1"></i>전체선택';
+      ? '<i class="fa-solid fa-xmark me-1"></i>' + _deselectAll
+      : '<i class="fa-solid fa-check-double me-1"></i>' + _selectAll;
   }
 
   function activateRow(cb, on) {

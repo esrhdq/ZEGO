@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}내 양식 신청 현황{% endblock %}
+{% block title %}{{ T('fsmyreq.page_title') }}{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-clock-rotate-left"></i>{% endblock %}
-{% block page_title %}내 양식 신청 현황{% endblock %}
+{% block page_title %}{{ T('fsmyreq.page_title') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -10,16 +10,16 @@
 <div class="card">
   <div class="card-header bg-white d-flex align-items-center gap-2 flex-wrap">
     <i class="fa-solid fa-clock-rotate-left text-primary"></i>
-    <strong>내 신청 내역</strong>
-    <span class="badge bg-secondary ms-1">{{ requests|length if requests else 0 }}건</span>
+    <strong>{{ T('fsmyreq.list_title') }}</strong>
+    <span class="badge bg-secondary ms-1">{{ requests|length if requests else 0 }}{{ T('fsmyreq.count_suffix') }}</span>
 
     <!-- 상태 필터 -->
     <div class="ms-auto d-flex gap-1 flex-wrap">
-      <button class="btn btn-sm btn-outline-secondary active" data-filter="ALL" onclick="filterMyReqs(this)">전체</button>
-      <button class="btn btn-sm btn-outline-warning" data-filter="pending" onclick="filterMyReqs(this)">대기</button>
-      <button class="btn btn-sm btn-outline-success" data-filter="approved" onclick="filterMyReqs(this)">승인</button>
-      <button class="btn btn-sm btn-outline-danger" data-filter="rejected" onclick="filterMyReqs(this)">반려</button>
-      <button class="btn btn-sm" style="border:1px solid #6d28d9;color:#6d28d9" data-filter="partial" onclick="filterMyReqs(this)">부분승인</button>
+      <button class="btn btn-sm btn-outline-secondary active" data-filter="ALL" onclick="filterMyReqs(this)">{{ T('fsmyreq.filter_all') }}</button>
+      <button class="btn btn-sm btn-outline-warning" data-filter="pending" onclick="filterMyReqs(this)">{{ T('fsmyreq.filter_pending') }}</button>
+      <button class="btn btn-sm btn-outline-success" data-filter="approved" onclick="filterMyReqs(this)">{{ T('fsmyreq.filter_approved') }}</button>
+      <button class="btn btn-sm btn-outline-danger" data-filter="rejected" onclick="filterMyReqs(this)">{{ T('fsmyreq.filter_rejected') }}</button>
+      <button class="btn btn-sm" style="border:1px solid #6d28d9;color:#6d28d9" data-filter="partial" onclick="filterMyReqs(this)">{{ T('fsmyreq.filter_partial') }}</button>
     </div>
   </div>
   <div class="card-body p-0">
@@ -29,12 +29,12 @@
         <thead>
           <tr>
             <th style="width:32px"></th>
-            <th>신청일시</th>
-            <th class="text-center">상태</th>
-            <th class="text-center">항목 수</th>
-            <th>처리자</th>
-            <th>처리일시 / 반려사유</th>
-            <th style="width:70px" class="text-center">관리</th>
+            <th>{{ T('fsmyreq.col_req_date') }}</th>
+            <th class="text-center">{{ T('fsmyreq.col_status') }}</th>
+            <th class="text-center">{{ T('fsmyreq.col_item_count') }}</th>
+            <th>{{ T('fsmyreq.col_processor') }}</th>
+            <th>{{ T('fsmyreq.col_processed_date') }}</th>
+            <th style="width:70px" class="text-center">{{ T('common.action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -46,18 +46,18 @@
             <td class="small text-muted" style="white-space:nowrap">{{ r.created_at | dt }}</td>
             <td class="text-center">
               {% if r.status == 'pending' %}
-                <span class="badge badge-pending rounded-pill">대기</span>
+                <span class="badge badge-pending rounded-pill">{{ T('fsmyreq.status_pending') }}</span>
               {% elif r.status == 'approved' %}
-                <span class="badge badge-confirmed rounded-pill">승인</span>
+                <span class="badge badge-confirmed rounded-pill">{{ T('fsmyreq.status_approved') }}</span>
               {% elif r.status == 'rejected' %}
-                <span class="badge badge-rejected rounded-pill">반려</span>
+                <span class="badge badge-rejected rounded-pill">{{ T('fsmyreq.status_rejected') }}</span>
               {% elif r.status == 'partial' %}
-                <span class="badge badge-partial rounded-pill"><i class="fa-solid fa-sliders me-1"></i>부분승인</span>
+                <span class="badge badge-partial rounded-pill"><i class="fa-solid fa-sliders me-1"></i>{{ T('fsmyreq.status_partial') }}</span>
               {% else %}
                 <span class="badge badge-pending rounded-pill">{{ r.status }}</span>
               {% endif %}
             </td>
-            <td class="text-center fw-semibold">{{ r['items']|length if r['items'] else 0 }}종</td>
+            <td class="text-center fw-semibold">{{ r['items']|length if r['items'] else 0 }}{{ T('fsmyreq.item_type_suffix') }}</td>
             <td class="small text-muted">{{ r.processed_by or '—' }}</td>
             <td class="small">
               {% if r.status == 'rejected' and r.reject_reason %}
@@ -77,7 +77,7 @@
               <a href="{{ url_for('form_supply_request_edit', req_id=r.id) }}"
                  class="btn btn-sm btn-outline-warning"
                  style="font-size:.7rem;padding:2px 7px">
-                <i class="fa-solid fa-pen-to-square me-1"></i>수정
+                <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('common.edit') }}
               </a>
               {% else %}
               <span class="text-muted">—</span>
@@ -91,7 +91,7 @@
               {% if r.notes %}
               <div class="mb-3">
                 <div class="small fw-semibold text-muted mb-1">
-                  <i class="fa-solid fa-pen-to-square me-1"></i>비고
+                  <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('fsmyreq.notes_label') }}
                 </div>
                 <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.85rem">
                   {{ r.notes }}
@@ -101,18 +101,18 @@
 
               {% if r['items'] %}
               <div class="small fw-semibold text-muted mb-1">
-                <i class="fa-solid fa-list me-1"></i>신청 항목
+                <i class="fa-solid fa-list me-1"></i>{{ T('fsmyreq.items_label') }}
               </div>
               <div class="table-scroll" style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px">
                 <table class="table mb-0" style="font-size:.82rem">
                   <thead>
                     <tr>
-                      <th>양식명</th>
-                      <th class="text-center" style="width:100px">단위</th>
-                      <th class="text-center" style="width:120px">단위 상세</th>
-                      <th class="text-center" style="width:100px">수량</th>
+                      <th>{{ T('fsmyreq.col_form') }}</th>
+                      <th class="text-center" style="width:100px">{{ T('fsmyreq.col_unit') }}</th>
+                      <th class="text-center" style="width:120px">{{ T('fsmyreq.col_unit_detail') }}</th>
+                      <th class="text-center" style="width:100px">{{ T('fsmyreq.col_qty') }}</th>
                       {% if r.status == 'partial' %}
-                      <th class="text-center" style="width:100px">처리</th>
+                      <th class="text-center" style="width:100px">{{ T('fsmyreq.col_item_action') }}</th>
                       {% endif %}
                     </tr>
                   </thead>
@@ -126,9 +126,9 @@
                       {% if r.status == 'partial' %}
                       <td class="text-center">
                         {% if it.item_status == 'approved' %}
-                          <span style="color:#15803d;font-size:.78rem;font-weight:600">● 승인</span>
+                          <span style="color:#15803d;font-size:.78rem;font-weight:600">{{ T('fsmyreq.item_status_approved') }}</span>
                         {% elif it.item_status == 'rejected' %}
-                          <span style="color:#b91c1c;font-size:.78rem;font-weight:600">● 반려</span>
+                          <span style="color:#b91c1c;font-size:.78rem;font-weight:600">{{ T('fsmyreq.item_status_rejected') }}</span>
                           {% if it.item_reject_reason %}
                           <div style="color:#b91c1c;font-size:.72rem">{{ it.item_reject_reason }}</div>
                           {% endif %}
@@ -152,10 +152,10 @@
     {% else %}
     <div class="empty-state">
       <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
-      <h6>신청 내역이 없습니다</h6>
-      <p>운송양식 신청 페이지에서 신청을 진행해 주세요.</p>
+      <h6>{{ T('fsmyreq.no_requests') }}</h6>
+      <p>{{ T('fsmyreq.no_requests_desc') }}</p>
       <a href="{{ url_for('form_supply_request') }}" class="btn btn-primary btn-sm">
-        <i class="fa-solid fa-file-circle-plus me-1"></i>양식 신청하러 가기
+        <i class="fa-solid fa-file-circle-plus me-1"></i>{{ T('fsmyreq.go_request') }}
       </a>
     </div>
     {% endif %}
