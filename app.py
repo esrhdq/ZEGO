@@ -192,21 +192,9 @@ class _DB:
         self._returned = False  # 이중 반환 방지
 
     def execute(self, sql, params=()):
-        for _attempt in range(2):
-            try:
-                cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-                cur.execute(sql, params if params else None)
-                return cur
-            except psycopg2.OperationalError:
-                if _attempt == 0:
-                    # SSL 연결 끊김 — 직접 새 연결 생성
-                    try:
-                        self._conn.close()
-                    except Exception:
-                        pass
-                    self._conn = psycopg2.connect(**_PG)
-                else:
-                    raise
+        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, params if params else None)
+        return cur
 
     def commit(self):
         self._conn.commit()
@@ -278,9 +266,27 @@ def _get_pg_pool():
 
 
 def _acquire_pg_db():
-    """요청마다 새 직접 연결 생성 — 풀 미사용 (Vercel serverless stale 연결 방지)."""
-    conn = psycopg2.connect(**_PG)
-    return _DB(conn)  # pool=None → close() 시 직접 종료
+    """직접 연결 + SELECT 1 검증 + 재시도 (Neon/Supabase cold-start 대응)."""
+    last_err = None
+    for attempt in range(3):
+        conn = None
+        try:
+            conn = psycopg2.connect(**_PG)
+            # 연결이 실제로 살아있는지 검증
+            with conn.cursor() as _cur:
+                _cur.execute('SELECT 1')
+            conn.rollback()
+            return _DB(conn)
+        except psycopg2.OperationalError as e:
+            last_err = e
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            if attempt < 2:
+                _time.sleep(0.5 * (attempt + 1))  # 0.5s → 1.0s 백오프
+    raise last_err
 
 
 def get_db():
