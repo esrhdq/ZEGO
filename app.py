@@ -640,6 +640,15 @@ def init_db():
         conn = _SQLiteDB(_raw)
     else:
         conn = _acquire_pg_db()
+        # Fast-path: DB가 이미 초기화되어 있으면 66개 SQL 쿼리 전부 건너뜀
+        try:
+            row = conn.execute("SELECT 1 FROM branches LIMIT 1").fetchone()
+            if row is not None:
+                _DB_INITIALIZED = True
+                conn.close()
+                return
+        except Exception:
+            pass
     try:
         if USE_SQLITE:
             conn.execute('''
