@@ -131,7 +131,7 @@ if DATABASE_URL:
             'password': unquote(_p.password) if _p.password else '',
             'dbname':  (_p.path or '/postgres').lstrip('/') or 'postgres',
             'sslmode': 'require',
-            'connect_timeout': 10,
+            'connect_timeout': 5,
             'keepalives': 1,
             'keepalives_idle': 10,
             'keepalives_interval': 5,
@@ -576,6 +576,8 @@ def inject_globals():
 @app.before_request
 def ensure_db_ready():
     """init_db 실패 시 다음 요청에서 재시도 (Neon cold-start 대응)."""
+    if request.path == '/ping':
+        return  # ping은 DB 초기화 없이 즉시 응답
     if not _DB_INITIALIZED and not USE_SQLITE:
         try:
             init_db()
