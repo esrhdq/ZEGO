@@ -1439,7 +1439,12 @@ def set_lang(code):
 
 @app.route('/ping')
 def ping():
-    """Vercel Cron이 5분마다 호출 — cold start 방지용."""
+    """외부 keep-warm 서비스(UptimeRobot 등)가 5분마다 호출 — cold start + DB 웜업."""
+    if not _DB_INITIALIZED and not USE_SQLITE:
+        try:
+            init_db()
+        except Exception as _e:
+            return f'db_err: {_e}', 500
     return 'ok', 200
 
 
