@@ -472,7 +472,6 @@ def _get_active_supply_period():
         f"SELECT * FROM form_supply_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
         (today, today)
     ).fetchone()
-    conn.close()
     return row
 
 
