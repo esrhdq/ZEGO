@@ -684,37 +684,37 @@
 {% block scripts %}
 <script>
 /* ── i18n 문자열 주입 ── */
-var _fileSelect     = '{{ T("catalog.btn_file_select") }}';
-var _fileSelected   = '{{ T("catalog.label_selected") }}';
-var _replacePending = '{{ T("catalog.label_replace_pending") }}';
-var _openEditor     = '{{ T("catalog.btn_open_editor") }}';
-var _reopenEditor   = '{{ T("catalog.btn_reopen_editor") }}';
-var _fileUpload     = '{{ T("catalog.btn_file_upload") }}';
-var _editorDirect   = '{{ T("catalog.btn_editor_direct") }}';
-var _saving         = '{{ T("catalog.btn_saving") }}';
-var _toastSaved     = '{{ T("catalog.toast_saved") }}';
-var _toastSaveFail  = '{{ T("catalog.toast_save_failed") }}';
-var _toastSaveErr   = '{{ T("catalog.toast_save_error") }}';
-var _reqMode        = '{{ T("cat.req_mode") }}';
-var _reqCancel      = '{{ T("cat.req_cancel") }}';
-var _cartAdded      = '{{ T("catalog.toast_added_to_cart") }}';
-var _errPrefix      = '{{ T("common.error_prefix") }}';
-var _editMode       = '{{ T("cat.edit_mode") }}';
-var _viewMode       = '{{ T("cat.view_mode") }}';
-var _itemNameReq    = '{{ T("catalog.toast_item_name_required") }}';
-var _imgRequired    = '{{ T("catalog.toast_image_required") }}';
-var _editComplete   = '{{ T("catalog.toast_edit_complete") }}';
-var _editFailed     = '{{ T("catalog.toast_edit_failed") }}';
-var _confirmDelete  = '{{ T("catalog.confirm_delete") }}';
-var _delComplete    = '{{ T("catalog.toast_delete_complete") }}';
-var _delFailed      = '{{ T("catalog.toast_delete_failed") }}';
-var _adding         = '{{ T("catalog.btn_adding") }}';
-var _addComplete    = '{{ T("catalog.toast_add_complete") }}';
-var _addFailed      = '{{ T("catalog.toast_add_failed") }}';
-var _btnAdd         = '{{ T("catalog.btn_add") }}';
-var _newPrefix      = '{{ T("catalog.new_prefix") }}';
-var _commonError    = '{{ T("common.error") }}';
-var _commonSave     = '{{ T("common.save") }}';
+var _fileSelect     = {{ T("catalog.btn_file_select") | tojson }};
+var _fileSelected   = {{ T("catalog.label_selected") | tojson }};
+var _replacePending = {{ T("catalog.label_replace_pending") | tojson }};
+var _openEditor     = {{ T("catalog.btn_open_editor") | tojson }};
+var _reopenEditor   = {{ T("catalog.btn_reopen_editor") | tojson }};
+var _fileUpload     = {{ T("catalog.btn_file_upload") | tojson }};
+var _editorDirect   = {{ T("catalog.btn_editor_direct") | tojson }};
+var _saving         = {{ T("catalog.btn_saving") | tojson }};
+var _toastSaved     = {{ T("catalog.toast_saved") | tojson }};
+var _toastSaveFail  = {{ T("catalog.toast_save_failed") | tojson }};
+var _toastSaveErr   = {{ T("catalog.toast_save_error") | tojson }};
+var _reqMode        = {{ T("cat.req_mode") | tojson }};
+var _reqCancel      = {{ T("cat.req_cancel") | tojson }};
+var _cartAdded      = {{ T("catalog.toast_added_to_cart") | tojson }};
+var _errPrefix      = {{ T("common.error_prefix") | tojson }};
+var _editMode       = {{ T("cat.edit_mode") | tojson }};
+var _viewMode       = {{ T("cat.view_mode") | tojson }};
+var _itemNameReq    = {{ T("catalog.toast_item_name_required") | tojson }};
+var _imgRequired    = {{ T("catalog.toast_image_required") | tojson }};
+var _editComplete   = {{ T("catalog.toast_edit_complete") | tojson }};
+var _editFailed     = {{ T("catalog.toast_edit_failed") | tojson }};
+var _confirmDelete  = {{ T("catalog.confirm_delete") | tojson }};
+var _delComplete    = {{ T("catalog.toast_delete_complete") | tojson }};
+var _delFailed      = {{ T("catalog.toast_delete_failed") | tojson }};
+var _adding         = {{ T("catalog.btn_adding") | tojson }};
+var _addComplete    = {{ T("catalog.toast_add_complete") | tojson }};
+var _addFailed      = {{ T("catalog.toast_add_failed") | tojson }};
+var _btnAdd         = {{ T("catalog.btn_add") | tojson }};
+var _newPrefix      = {{ T("catalog.new_prefix") | tojson }};
+var _commonError    = {{ T("common.error") | tojson }};
+var _commonSave     = {{ T("common.save") | tojson }};
 
 /* ── 카탈로그 이미지 레이지 로더 ── */
 (function() {
