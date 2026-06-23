@@ -340,12 +340,12 @@ _MAIL_FOOTER_HTML = (
 )
 
 def send_mail(to_list, subject, body):
-    """to_list: 이메일 주소 리스트. MAIL_HOST 미설정 시 무시."""
+    """to_list: 이메일 주소 리스트. MAIL_HOST 미설정 시 무시. 성공 여부(bool) 반환."""
     if not MAIL_HOST or not MAIL_USER or not to_list:
-        return
+        return False
     recipients = [addr for addr in to_list if addr and addr.strip()]
     if not recipients:
-        return
+        return False
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
@@ -354,14 +354,21 @@ def send_mail(to_list, subject, body):
         msg.attach(MIMEText(_MAIL_FOOTER_TXT.strip() + '\n\n' + body, 'plain', 'utf-8'))
         body_html = _MAIL_FOOTER_HTML + '<div style="font-family:sans-serif;font-size:14px;white-space:pre-wrap">' + body.replace('\n', '<br>') + '</div>'
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
-        with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(MAIL_USER, MAIL_PASS)
-            server.sendmail(MAIL_FROM, recipients, msg.as_string())
+        if MAIL_PORT == 465:
+            with smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, timeout=10) as server:
+                server.login(MAIL_USER, MAIL_PASS)
+                server.sendmail(MAIL_FROM, recipients, msg.as_string())
+        else:
+            with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(MAIL_USER, MAIL_PASS)
+                server.sendmail(MAIL_FROM, recipients, msg.as_string())
+        return True
     except Exception as e:
         app.logger.warning(f'[send_mail] 발송 실패: {e}')
+        return False
 
 
 def verify_pw(pw, stored):
@@ -5619,7 +5626,9 @@ def form_supply_admin_action(req_id):
 
     # ── 이메일 발송 ──────────────────────────────────────────────────
     branch_email = (req.get('branch_email') or '').strip()
-    if branch_email:
+    if not branch_email:
+        flash(f'처리 완료. 지점 이메일 미등록으로 안내 메일이 발송되지 않았습니다. (지점 이메일 관리에서 등록해 주세요)', 'warning')
+    else:
         items = conn.execute(
             'SELECT i.quantity, ft.name AS form_name, ft.unit, ft.unit_detail '
             'FROM form_supply_request_items i '
@@ -5651,7 +5660,9 @@ def form_supply_admin_action(req_id):
                 f"[신청 항목]\n{item_lines}\n\n"
                 f"ZEGO에 로그인하여 내 신청 내역에서 확인해 주세요."
             )
-        send_mail([branch_email], mail_subject, mail_body)
+        mail_ok = send_mail([branch_email], mail_subject, mail_body)
+        if not mail_ok:
+            flash(f'처리는 완료되었으나 안내 메일 발송에 실패했습니다. (수신: {branch_email})', 'warning')
     # ─────────────────────────────────────────────────────────────────
 
     log_action(f'운송양식_{action}', f'#{req_id} {req["branch_name"]}')
@@ -5775,7 +5786,9 @@ def form_supply_partial_action(req_id):
                 lines.append(f"  {it['form_name']} / {it['quantity']}개{rsn}")
             lines.append("")
         lines.append("ZEGO에 로그인하여 내 신청 내역에서 확인해 주세요.")
-        send_mail([branch_email], mail_subject, '\n'.join(lines))
+        mail_ok = send_mail([branch_email], mail_subject, '\n'.join(lines))
+        if not mail_ok:
+            app.logger.warning(f'[부분승인] 메일 발송 실패: req_id={req_id}, to={branch_email}')
 
     log_action('운송양식_부분승인', f'#{req_id} → {new_status}')
     conn.close()
