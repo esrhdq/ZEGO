@@ -176,8 +176,6 @@
   .ctag-orange { background:#fff3e0; color:#e65100; }
   .ctag-gray   { background:#f0f0f0; color:#555; }
 
-  .cat-master-wrap { background:#fff; border-radius:10px; border:1px solid var(--border); overflow:hidden; margin-bottom:24px; }
-  .cat-master-wrap h3 { background:var(--red); color:#fff; padding:11px 16px; font-size:.92rem; font-weight:700; margin:0; }
   .cat-table { width:100%; border-collapse:collapse; font-size:.79rem; }
   .cat-table thead tr { background:#f7f7f7; }
   .cat-table thead th { padding:8px 12px; text-align:left; font-weight:700; border-bottom:2px solid #e0e0e0; color:#555; white-space:nowrap; }
@@ -580,7 +578,6 @@
   {% for cat in cat_groups %}
   <a href="#cat-sec-{{ loop.index }}">{{ toc_nums[loop.index0] if loop.index0 < toc_nums|length else loop.index }} {{ cat }}</a>
   {% endfor %}
-  <a href="#cat-master">{{ T('catalog.toc_all_items') }}</a>
 </nav>
 
 {# ── 카드 매크로 ── #}
@@ -659,24 +656,6 @@
 </section>
 {% endfor %}
 
-<!-- 전체 목록 -->
-<div class="cat-master-wrap" id="cat-master">
-  <h3>{{ T('catalog.all_items_table_title') }}</h3>
-  <div class="table-responsive">
-    <table class="cat-table">
-      <thead><tr><th>#</th><th>{{ T('catalog.th_category') }}</th><th>{{ T('catalog.th_type') }}</th><th>{{ T('catalog.th_spec_detail') }}</th></tr></thead>
-      <tbody>
-        {% for item in catalog_items %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td class="cat-td-cat">{{ item.cat }}</td>
-          <td>{{ item.name }}</td>
-          <td class="cat-td-note">{{ item.sub_desc|safe if item.sub_desc else '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </div>
 
 {% endblock %}
