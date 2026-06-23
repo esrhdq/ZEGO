@@ -3812,8 +3812,9 @@ def catalog_img(filename):
     try:
         stem = os.path.splitext(filename)[0]
         conn = get_db()
+        _ph  = '?' if USE_SQLITE else '%s'
         row  = conn.execute(
-            'SELECT img_data FROM catalog_defs WHERE img=%s', (stem,)
+            f'SELECT img_data FROM catalog_defs WHERE img={_ph}', (stem,)
         ).fetchone()
         conn.close()
         if row and row['img_data']:
@@ -3830,7 +3831,11 @@ def catalog_img(filename):
             return resp
     except Exception:
         pass
-    return '', 404
+    # 4) Vercel CDN static 리다이렉트 (Lambda 파일시스템 접근 불가 환경)
+    from flask import redirect as _redirect
+    resp = _redirect('/static/item_images/' + filename, 301)
+    resp.headers['Cache-Control'] = _CC
+    return resp
 
 
 @app.template_global()
