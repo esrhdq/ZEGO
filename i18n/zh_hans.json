@@ -350,6 +350,7 @@
   "notif.mark_all_read": "全部已读",
   "notif.empty": "暂无新通知",
   "notif.view_all_transfers": "查看全部调拨申请",
+  "notif.pending_transfer_label": "调拨待审批",
   "pw.expiry_before": "密码将在",
   "pw.expiry_days_left": "天后过期。",
   "pw.change_now": "立即修改",

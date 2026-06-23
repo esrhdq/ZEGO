@@ -350,6 +350,7 @@
   "notif.mark_all_read": "모두 읽음",
   "notif.empty": "새 알림이 없습니다",
   "notif.view_all_transfers": "이전 신청 전체 보기",
+  "notif.pending_transfer_label": "이관 승인 대기",
   "pw.expiry_before": "비밀번호 만료까지",
   "pw.expiry_days_left": "일 남았습니다.",
   "pw.change_now": "지금 변경하기",

@@ -554,6 +554,15 @@
             <button class="btn btn-sm" style="font-size:.72rem;color:var(--brand);padding:2px 8px"
                     onclick="markAllRead()">{{ T('notif.mark_all_read') }}</button>
           </div>
+          {% if notif_pending_tr > 0 %}
+          <a href="{{ url_for('transfer') }}?tab=inbox" class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
+             style="border-bottom:1px solid var(--border);background:#FFF8F0;">
+            <span class="badge rounded-pill flex-shrink-0"
+                  style="background:var(--warning);font-size:.7rem;min-width:22px;padding:3px 7px">{{ notif_pending_tr }}</span>
+            <span style="font-size:.8rem;font-weight:600;color:var(--text)">{{ T('notif.pending_transfer_label') }}</span>
+            <i class="fa-solid fa-chevron-right ms-auto" style="color:var(--text-muted);font-size:.68rem"></i>
+          </a>
+          {% endif %}
           <div style="max-height:360px;overflow-y:auto" id="notifList">
             {% if notif_list %}
               {% for n in notif_list %}
@@ -651,6 +660,7 @@
 <script>
 var _processing = '{{ T("common.processing") }}';
 var _notifEmpty = '{{ T("notif.empty") }}';
+var _pendingTrCount = {{ notif_pending_tr }};
 // ── 로딩 버튼 유틸 ──
 function setLoading(btn, isLoading) {
   if (!btn) return;
@@ -677,7 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function markAllRead() {
   fetch('{{ url_for("notifications_read_all") }}', {method:'POST',headers:{'Content-Type':'application/json'}})
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.ok) { document.getElementById('notifDropdown').querySelector('#notifList').innerHTML='<div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem"><i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>'+_notifEmpty+'</div>'; var badge=document.querySelector('#notifDropdownBtn .badge'); if(badge) badge.remove(); } });
+    .then(function(d){ if(d.ok) { document.getElementById('notifDropdown').querySelector('#notifList').innerHTML='<div class="text-center py-4" style="color:var(--text-muted);font-size:.82rem"><i class="fa-regular fa-bell" style="font-size:1.4rem;display:block;margin-bottom:8px;opacity:.4"></i>'+_notifEmpty+'</div>'; var badge=document.querySelector('#notifDropdownBtn .badge'); if(badge){ if(_pendingTrCount>0){badge.textContent=_pendingTrCount;}else{badge.remove();} } } });
 }
 
 

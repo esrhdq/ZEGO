@@ -521,9 +521,10 @@ def handle_exception(e):
 
 @app.context_processor
 def inject_globals():
-    notif_count   = 0
-    notif_list    = []
-    pw_expire_days = None
+    notif_count      = 0
+    notif_list       = []
+    notif_pending_tr = 0   # 이관 승인 대기 건수 (팝업에 별도 표시용)
+    pw_expire_days   = None
     bid  = session.get('branch_id')
     role = session.get('role')
 
@@ -537,7 +538,8 @@ def inject_globals():
         now_ts = datetime.now(timezone.utc).timestamp()
         # 30초 캐시: 매 페이지 요청마다 DB 조회하지 않음
         if now_ts - session.get('_notif_ts', 0) < _NOTIF_TTL:
-            notif_count = session.get('_notif_count', 0)
+            notif_count      = session.get('_notif_count', 0)
+            notif_pending_tr = session.get('_notif_pending_tr', 0)
             # notif_list는 캐시 미적용(빈 목록) — 카운트 배지만 캐시
         else:
             try:
@@ -547,7 +549,8 @@ def inject_globals():
                         'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
                         ('PENDING',)
                     ).fetchone()
-                    notif_count = int(r['cnt']) if r else 0
+                    notif_pending_tr = int(r['cnt']) if r else 0
+                    notif_count      = notif_pending_tr
                 elif bid:
                     r = conn.execute(
                         'SELECT '
@@ -555,8 +558,9 @@ def inject_globals():
                         '  (SELECT COUNT(*) FROM notifications WHERE branch_id=%s AND is_read=0) AS unread',
                         (bid, 'PENDING', bid)
                     ).fetchone()
-                    notif_count = (int(r['pending']) + int(r['unread'])) if r else 0
-                    notif_list  = conn.execute(
+                    notif_pending_tr = int(r['pending']) if r else 0
+                    notif_count      = (notif_pending_tr + int(r['unread'])) if r else 0
+                    notif_list       = conn.execute(
                         'SELECT id, message, created_at FROM notifications '
                         'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
                         (bid,)
@@ -564,10 +568,13 @@ def inject_globals():
                 conn.close()
             except Exception:
                 pass
-            session['_notif_count'] = notif_count
-            session['_notif_ts']    = now_ts
+            session['_notif_count']      = notif_count
+            session['_notif_pending_tr'] = notif_pending_tr
+            session['_notif_ts']         = now_ts
 
-    return {'notif_count': notif_count, 'notif_list': notif_list, 'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days,
+    return {'notif_count': notif_count, 'notif_list': notif_list,
+            'notif_pending_tr': notif_pending_tr,
+            'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days,
             'now_dt': datetime.now(timezone.utc).astimezone()}
 
 

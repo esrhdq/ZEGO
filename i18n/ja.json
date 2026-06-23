@@ -350,6 +350,7 @@
   "notif.mark_all_read": "全て既読",
   "notif.empty": "新しい通知はありません",
   "notif.view_all_transfers": "移転申請一覧",
+  "notif.pending_transfer_label": "移管承認待ち",
   "pw.expiry_before": "パスワードの有効期限まで",
   "pw.expiry_days_left": "日です。",
   "pw.change_now": "今すぐ変更",

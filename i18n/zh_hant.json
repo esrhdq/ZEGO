@@ -350,6 +350,7 @@
   "notif.mark_all_read": "全部已讀",
   "notif.empty": "暫無新通知",
   "notif.view_all_transfers": "查看全部調撥申請",
+  "notif.pending_transfer_label": "調撥待審批",
   "pw.expiry_before": "密碼將在",
   "pw.expiry_days_left": "天後過期。",
   "pw.change_now": "立即修改",

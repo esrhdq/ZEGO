@@ -350,6 +350,7 @@
   "notif.mark_all_read": "Mark All Read",
   "notif.empty": "No new notifications",
   "notif.view_all_transfers": "View All Transfer Requests",
+  "notif.pending_transfer_label": "Pending Transfer Approvals",
   "pw.expiry_before": "Your password expires in",
   "pw.expiry_days_left": "days.",
   "pw.change_now": "Change Now",
