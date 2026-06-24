@@ -675,7 +675,27 @@ def init_db():
         conn = _SQLiteDB(_raw)
     else:
         conn = _acquire_pg_db()
-        # Fast-path: DB가 이미 초기화되어 있으면 66개 SQL 쿼리 전부 건너뜀
+        # 1회성 데이터 마이그레이션 — fast-path 이전에 실행해야 PG에서도 적용됨
+        try:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS _migrations (
+                    name TEXT PRIMARY KEY,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+            _mig_pg = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('null_initial_passwords',)
+            ).fetchone()
+            if not _mig_pg:
+                conn.execute('UPDATE users SET password_changed_at=NULL')
+                conn.execute(
+                    "INSERT INTO _migrations (name) VALUES (%s)", ('null_initial_passwords',)
+                )
+                conn.commit()
+        except Exception as _e:
+            print(f'[data_migration] {_e}')
+        # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
         try:
             row = conn.execute("SELECT 1 FROM branches LIMIT 1").fetchone()
             if row is not None:
