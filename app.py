@@ -620,8 +620,9 @@ def check_ip_and_session():
         if client_ip not in ALLOWED_IPS:
             return render_template('403.html'), 403
 
-    # 초기 비밀번호 강제 변경 (password_changed_at IS NULL → _pwd_changed_at=0)
-    if 'user_id' in session and request.endpoint not in ('change_password', 'logout', 'set_lang', None):
+    # 초기 비밀번호 강제 변경 — admin 제외 (password_changed_at IS NULL → _pwd_changed_at=0)
+    if 'user_id' in session and session.get('role') != 'admin' and \
+            request.endpoint not in ('change_password', 'logout', 'set_lang', None):
         if not session.get('_pwd_changed_at'):
             flash('초기 비밀번호를 변경해 주세요.', 'warning')
             return redirect(url_for('change_password'))
@@ -4162,23 +4163,18 @@ def create_user():
         return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
 
     username  = request.form.get('username', '').strip()
-    password  = request.form.get('password', '').strip()
     branch_id = request.form.get('branch_id') or None
     role      = request.form.get('role', 'staff')
 
-    if not username or not password:
+    if not username:
         flash(T('flash.id_pw_required'), 'danger')
-        return redirect(url_for('manage_users'))
-    pw_err = validate_password(password, _get_T())
-    if pw_err:
-        flash(pw_err, 'danger')
         return redirect(url_for('manage_users'))
 
     conn = get_db()
     try:
         conn.execute(
             'INSERT INTO users (username, password, branch_id, role, password_changed_at) VALUES (%s,%s,%s,%s,NULL)',
-            (username, hash_pw(password), branch_id, role)
+            (username, hash_pw('$eastar12'), branch_id, role)
         )
         conn.commit()
         flash(T('flash.account_created').format(username=username), 'success')
@@ -4213,13 +4209,8 @@ def reset_user_password(uid):
     T = _get_T()
     if session.get('role') != 'admin':
         return jsonify({'ok': False}), 403
-    new_pw = request.form.get('new_password', '').strip()
-    pw_err = validate_password(new_pw, _get_T())
-    if pw_err:
-        flash(pw_err, 'danger')
-        return redirect(url_for('manage_users'))
     conn = get_db()
-    conn.execute('UPDATE users SET password=%s, password_changed_at=NULL WHERE id=%s', (hash_pw(new_pw), uid))
+    conn.execute('UPDATE users SET password=%s, password_changed_at=NULL WHERE id=%s', (hash_pw('$eastar12'), uid))
     conn.commit()
     conn.close()
     flash(T('flash.pw_reset'), 'success')
