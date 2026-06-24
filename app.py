@@ -694,6 +694,22 @@ def init_db():
                     "INSERT INTO _migrations (name) VALUES (%s)", ('null_initial_passwords',)
                 )
                 conn.commit()
+            _mig_clear = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('clear_test_data',)
+            ).fetchone()
+            if not _mig_clear:
+                for _tbl in [
+                    'form_supply_request_items', 'form_supply_requests',
+                    'catalog_request_items', 'catalog_requests',
+                    'transfer_requests', 'transactions',
+                    'inventory', 'notifications', 'access_logs', 'flight_schedule',
+                ]:
+                    try:
+                        conn.execute(f'DELETE FROM {_tbl}')
+                    except Exception:
+                        pass
+                conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('clear_test_data',))
+                conn.commit()
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1093,6 +1109,23 @@ def init_db():
                 conn.execute(
                     "INSERT INTO _migrations (name) VALUES (%s)", ('null_initial_passwords',)
                 )
+                conn.commit()
+
+            _mig_clear = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('clear_test_data',)
+            ).fetchone()
+            if not _mig_clear:
+                for _tbl in [
+                    'form_supply_request_items', 'form_supply_requests',
+                    'catalog_request_items', 'catalog_requests',
+                    'transfer_requests', 'transactions',
+                    'inventory', 'notifications', 'access_logs', 'flight_schedule',
+                ]:
+                    try:
+                        conn.execute(f'DELETE FROM {_tbl}')
+                    except Exception:
+                        pass
+                conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('clear_test_data',))
                 conn.commit()
 
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
