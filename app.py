@@ -4650,6 +4650,9 @@ def inventory_download():
 
     is_admin = session.get('role') == 'admin'
 
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = '재고현황'
@@ -4758,6 +4761,9 @@ def transactions_download():
     ''', params).fetchall()
     conn.close()
 
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = '입출고이력'
