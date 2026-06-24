@@ -554,11 +554,8 @@ def inject_globals():
             try:
                 conn = get_db()
                 if role == 'admin':
-                    r = conn.execute(
-                        'SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status=%s',
-                        ('PENDING',)
-                    ).fetchone()
-                    notif_pending_tr = int(r['cnt']) if r else 0
+                    # 이관 승인 대기는 관리자 알림에 미표시
+                    notif_pending_tr = 0
                     # 운송양식 신청 대기 목록 → notif_list로 표시
                     fs_rows = conn.execute(
                         'SELECT fsr.id, b.name AS branch_name, fsr.created_at '
@@ -573,7 +570,7 @@ def inject_globals():
                          'created_at': r['created_at']}
                         for r in fs_rows
                     ]
-                    notif_count = notif_pending_tr + len(fs_rows)
+                    notif_count = len(fs_rows)
                 elif bid:
                     r = conn.execute(
                         'SELECT '
