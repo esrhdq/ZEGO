@@ -4597,16 +4597,19 @@ def update_threshold():
 # ── Excel 헬퍼 ────────────────────────────────────────────────────────────────
 
 def _make_header_style():
+    from openpyxl.styles import Font, PatternFill, Alignment
     fill   = PatternFill('solid', fgColor='1A2340')
     font   = Font(color='FFFFFF', bold=True, size=10)
     align  = Alignment(horizontal='center', vertical='center')
     return fill, font, align
 
 def _border():
+    from openpyxl.styles import Border, Side
     s = Side(style='thin', color='D0D7E3')
     return Border(left=s, right=s, top=s, bottom=s)
 
 def _apply_header(ws, headers, col_widths):
+    from openpyxl.utils import get_column_letter
     fill, font, align = _make_header_style()
     for col, (h, w) in enumerate(zip(headers, col_widths), 1):
         cell = ws.cell(row=1, column=col, value=h)
