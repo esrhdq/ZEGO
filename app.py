@@ -620,6 +620,12 @@ def check_ip_and_session():
         if client_ip not in ALLOWED_IPS:
             return render_template('403.html'), 403
 
+    # 초기 비밀번호 강제 변경 (password_changed_at IS NULL → _pwd_changed_at=0)
+    if 'user_id' in session and request.endpoint not in ('change_password', 'logout', 'set_lang', None):
+        if not session.get('_pwd_changed_at'):
+            flash('초기 비밀번호를 변경해 주세요.', 'warning')
+            return redirect(url_for('change_password'))
+
     # 비밀번호 만료: 당일(<=0)만 강제 리디렉트, 7일 이하는 배너 경고만
     if 'user_id' in session and request.endpoint not in ('change_password', 'logout', 'set_lang', None):
         changed_ts = session.get('_pwd_changed_at', 0)
@@ -1534,7 +1540,8 @@ def login():
             # 세션 고정 방어: 기존 세션 데이터 완전 초기화 후 재발급
             now_ts = datetime.now(timezone.utc).timestamp()
             pwd_changed_at = _to_dt(user.get('password_changed_at'))
-            pwd_changed_ts = pwd_changed_at.timestamp() if pwd_changed_at else now_ts
+            # NULL = 초기 비밀번호 미변경 → 0으로 저장해 강제 변경 트리거
+            pwd_changed_ts = pwd_changed_at.timestamp() if pwd_changed_at else 0
 
             session.clear()
             session.permanent = True
@@ -4130,7 +4137,7 @@ def create_user():
     conn = get_db()
     try:
         conn.execute(
-            'INSERT INTO users (username, password, branch_id, role) VALUES (%s,%s,%s,%s)',
+            'INSERT INTO users (username, password, branch_id, role, password_changed_at) VALUES (%s,%s,%s,%s,NULL)',
             (username, hash_pw(password), branch_id, role)
         )
         conn.commit()
@@ -4172,7 +4179,7 @@ def reset_user_password(uid):
         flash(pw_err, 'danger')
         return redirect(url_for('manage_users'))
     conn = get_db()
-    conn.execute('UPDATE users SET password=%s, password_changed_at=NOW() WHERE id=%s', (hash_pw(new_pw), uid))
+    conn.execute('UPDATE users SET password=%s, password_changed_at=NULL WHERE id=%s', (hash_pw(new_pw), uid))
     conn.commit()
     conn.close()
     flash(T('flash.pw_reset'), 'success')
