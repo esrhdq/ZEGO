@@ -1054,6 +1054,26 @@ def init_db():
                 except Exception:
                     pass
 
+            # 1회성 데이터 마이그레이션 추적 테이블
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS _migrations (
+                    name TEXT PRIMARY KEY,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+
+            # 기존 계정 전체 초기 비밀번호 강제 변경 적용
+            _mig_done = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('null_initial_passwords',)
+            ).fetchone()
+            if not _mig_done:
+                conn.execute('UPDATE users SET password_changed_at=NULL')
+                conn.execute(
+                    "INSERT INTO _migrations (name) VALUES (%s)", ('null_initial_passwords',)
+                )
+                conn.commit()
+
         already_seeded = conn.execute('SELECT COUNT(*) AS cnt FROM branches').fetchone()['cnt'] > 0
 
         if not already_seeded:
