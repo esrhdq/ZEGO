@@ -415,10 +415,12 @@
       </span>
       {% endif %}
     </a>
+    {% if session.role != 'admin' %}
     <a href="{{ url_for('my_transfer_requests') }}"
        class="nav-link {% if endpoint=='my_transfer_requests' %}active{% endif %}">
       <i class="fa-solid fa-clock-rotate-left"></i>{{ T('nav.my_transfer_requests') }}
     </a>
+    {% endif %}
 
     <div class="section-label">{{ T('nav.analysis_section') }}</div>
     <a href="{{ url_for('transactions') }}"
