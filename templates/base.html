@@ -476,6 +476,10 @@
        class="nav-link {% if endpoint in ('form_supply_admin_requests','form_supply_admin_action') %}active{% endif %}">
       <i class="fa-solid fa-file-invoice"></i>{{ T('nav.form_request_admin') }}
     </a>
+    <a href="{{ url_for('catalog_item_settings') }}"
+       class="nav-link {% if endpoint=='catalog_item_settings' %}active{% endif %}">
+      <i class="fa-solid fa-calendar-check"></i>운송아이템 신청기간
+    </a>
     <a href="{{ url_for('form_supply_settings') }}"
        class="nav-link {% if endpoint=='form_supply_settings' %}active{% endif %}">
       <i class="fa-solid fa-calendar-days"></i>{{ T('nav.form_period_settings') }}

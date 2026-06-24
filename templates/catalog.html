@@ -253,6 +253,36 @@
   .adm-img-label.has-file { border-color:var(--red); color:var(--red); background:#fff0f0; font-weight:600; }
 </style>
 
+<!-- 신청 기간 배너 -->
+{% if session.role != 'admin' %}
+{% if is_period_active %}
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:var(--success-bg);border:1px solid #86efac;border-radius:12px">
+  <i class="fa-solid fa-circle-check" style="color:var(--success);font-size:1.1rem"></i>
+  <div>
+    <strong>운송아이템 신청 기간입니다.</strong>
+    <span class="text-muted ms-2 small">{{ period.period_start }} ~ {{ period.period_end }}</span>
+  </div>
+</div>
+{% else %}
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:var(--warning-bg);border:1px solid #fcd34d;border-radius:12px">
+  <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:1.1rem"></i>
+  <div>
+    <strong>현재 운송아이템 신청 기간이 아닙니다.</strong>
+    {% if period and period.period_start and period.period_end %}
+    <div class="small text-muted mt-1">
+      예정 기간: {{ period.period_start }} ~ {{ period.period_end }}
+      {% if not period.is_enabled %} · 관리자가 비활성화했습니다.{% endif %}
+    </div>
+    {% else %}
+    <div class="small text-muted mt-1">관리자가 신청 기간을 설정하지 않았습니다.</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
 <!-- 라이트박스 -->
 <div id="catLightbox" onclick="catCloseLB(event)">
   <div class="lb-inner" onclick="event.stopPropagation()">
@@ -678,6 +708,7 @@ var _reqMode        = {{ T("cat.req_mode") | tojson }};
 var _reqCancel      = {{ T("cat.req_cancel") | tojson }};
 var _cartAdded      = {{ T("catalog.toast_added_to_cart") | tojson }};
 var _errPrefix      = {{ T("common.error_prefix") | tojson }};
+var IS_PERIOD_ACTIVE = {{ 'true' if (session.role == 'admin' or is_period_active) else 'false' }};
 var _editMode       = {{ T("cat.edit_mode") | tojson }};
 var _viewMode       = {{ T("cat.view_mode") | tojson }};
 var _itemNameReq    = {{ T("catalog.toast_item_name_required") | tojson }};
@@ -1069,6 +1100,10 @@ window.addEventListener('message', e => {
 });
 
 async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat) {
+  if (!IS_PERIOD_ACTIVE) {
+    catToast('현재 운송아이템 신청 기간이 아닙니다.', 'danger');
+    return;
+  }
   try {
     const res = await fetch('{{ url_for("catalog_cart_update") }}', {
       method: 'POST',

@@ -34,6 +34,33 @@
   </a>
 </div>
 
+<!-- 신청 기간 배너 -->
+{% if session.role != 'admin' %}
+{% if is_period_active %}
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:var(--success-bg);border:1px solid #86efac;border-radius:12px">
+  <i class="fa-solid fa-circle-check" style="color:var(--success);font-size:1.1rem"></i>
+  <div>
+    <strong>운송아이템 신청 기간입니다.</strong>
+    <span class="text-muted ms-2 small">{{ period.period_start }} ~ {{ period.period_end }}</span>
+  </div>
+</div>
+{% else %}
+<div class="alert d-flex align-items-center gap-2 mb-3"
+     style="background:var(--warning-bg);border:1px solid #fcd34d;border-radius:12px">
+  <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:1.1rem"></i>
+  <div>
+    <strong>현재 운송아이템 신청 기간이 아닙니다.</strong>
+    {% if period and period.period_start and period.period_end %}
+    <div class="small text-muted mt-1">예정 기간: {{ period.period_start }} ~ {{ period.period_end }}</div>
+    {% else %}
+    <div class="small text-muted mt-1">관리자가 신청 기간을 설정하지 않았습니다.</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
 {% if session.role == 'admin' %}
 <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.83rem">
   <i class="fa-solid fa-user-tie me-1"></i>{{ T('catreq.admin_mode') }}
@@ -112,9 +139,15 @@
   <button class="btn btn-outline-danger btn-sm" onclick="clearCart()">
     <i class="fa-solid fa-trash me-1"></i>{{ T('catreq.clear_cart') }}
   </button>
+  {% if session.role == 'admin' or is_period_active %}
   <button class="btn btn-danger btn-sm px-4" onclick="submitRequest()">
     <i class="fa-solid fa-paper-plane me-1"></i>{{ T('catreq.submit') }}
   </button>
+  {% else %}
+  <button class="btn btn-secondary btn-sm px-4" disabled title="신청 기간이 아닙니다">
+    <i class="fa-solid fa-ban me-1"></i>신청 기간 아님
+  </button>
+  {% endif %}
 </div>
 
 {% else %}

@@ -485,6 +485,36 @@ def _get_active_supply_period():
     return row
 
 
+def _get_active_catalog_period():
+    """운송아이템 신청 활성 기간 반환. 없으면 None."""
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        row = conn.execute(
+            f"SELECT * FROM catalog_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
+            (today, today)
+        ).fetchone()
+        return row
+    except Exception:
+        return None
+
+
+def _build_catalog_period_ctx():
+    """catalog_settings 최신 행 + in_range 플래그를 dict로 반환."""
+    conn = get_db()
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        latest = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 1').fetchone()
+    except Exception:
+        latest = None
+    if not latest:
+        return None
+    d = dict(latest)
+    d['in_range'] = str(d.get('period_start', '')) <= today <= str(d.get('period_end', ''))
+    return d
+
+
 # ── Jinja2 필터 ──────────────────────────────────────────────────────────────
 
 @app.template_filter('dt')
@@ -3399,6 +3429,8 @@ def catalog():
         import threading
         threading.Thread(target=_warm_img_tmp_cache_bg, daemon=True).start()
 
+    period_ctx = _build_catalog_period_ctx()
+    is_period_active = bool(period_ctx and period_ctx.get('is_enabled') and period_ctx.get('in_range'))
     return render_template('catalog.html',
         catalog_items=catalog_items,
         cat_groups=cat_groups,
@@ -3406,6 +3438,8 @@ def catalog():
         branches=branches,
         cart_cnt=cart_cnt,
         custom_cats=['X-Banner', '스탠션'],
+        period=period_ctx,
+        is_period_active=is_period_active,
     )
 
 
@@ -3506,6 +3540,10 @@ def catalog_cart_update():
     item_cat    = (data.get('item_cat') or '').strip()
     action      = data.get('action', 'add')   # add | remove | clear
 
+    # 신청 기간 외 장바구니 추가 차단 (remove/clear는 허용, admin 제외)
+    if action == 'add' and role != 'admin' and not _get_active_catalog_period():
+        return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아닙니다.'}), 403
+
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
 
@@ -3602,12 +3640,16 @@ def catalog_cart():
     catalog_items = _get_catalog_items(conn)
     conn.close()
 
+    period_ctx = _build_catalog_period_ctx()
+    is_period_active = bool(period_ctx and period_ctx.get('is_enabled') and period_ctx.get('in_range'))
     return render_template('catalog_request.html',
         cart_items=cart_items,
         branches=branches,
         target_bid=target_bid,
         catalog_items=catalog_items,
         custom_cats=['X-Banner', '스탠션'],
+        period=period_ctx,
+        is_period_active=is_period_active,
     )
 
 
@@ -3626,6 +3668,10 @@ def catalog_request_submit():
 
     if not target_bid:
         return jsonify({'ok': False, 'msg': T('flash.no_branch_info')}), 400
+
+    # 신청 기간 체크 (admin 제외)
+    if role != 'admin' and not _get_active_catalog_period():
+        return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아닙니다.'}), 403
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
@@ -5323,6 +5369,135 @@ def form_supply_setting_delete(setting_id):
         return jsonify({'ok': True})
     except Exception as e:
         app.logger.error(f'[setting_delete] {e}')
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ── 운송아이템 신청 기간 설정 ─────────────────────────────────────────────────
+
+@app.route('/admin/catalog/settings', methods=['GET', 'POST'])
+@login_required
+def catalog_item_settings():
+    T = _get_T()
+    if session.get('role') != 'admin':
+        flash(T('flash.admin_only'), 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    ph = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    # 테이블 lazy 생성
+    try:
+        if USE_SQLITE:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_settings (
+                    id           INTEGER PRIMARY KEY,
+                    title        TEXT NOT NULL DEFAULT '',
+                    period_start TEXT NOT NULL,
+                    period_end   TEXT NOT NULL,
+                    is_enabled   INTEGER DEFAULT 1,
+                    created_by   TEXT NOT NULL,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+        else:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_settings (
+                    id           SERIAL PRIMARY KEY,
+                    title        TEXT NOT NULL DEFAULT '',
+                    period_start TEXT NOT NULL,
+                    period_end   TEXT NOT NULL,
+                    is_enabled   INTEGER DEFAULT 1,
+                    created_by   TEXT NOT NULL,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+        conn.commit()
+    except Exception as _me:
+        app.logger.warning(f'[catalog_settings lazy-create] {_me}')
+        try: conn.rollback()
+        except Exception: pass
+
+    if request.method == 'POST':
+        period_title = request.form.get('period_title', '').strip()
+        period_start = request.form.get('period_start', '').strip()
+        period_end   = request.form.get('period_end', '').strip()
+        is_enabled   = 1 if request.form.get('is_enabled') else 0
+
+        if not period_start or not period_end:
+            flash(T('flash.date_range_required'), 'danger')
+            conn.close()
+            return redirect(url_for('catalog_item_settings'))
+        if period_start > period_end:
+            flash(T('flash.date_range_invalid'), 'danger')
+            conn.close()
+            return redirect(url_for('catalog_item_settings'))
+
+        conn.execute(
+            f"INSERT INTO catalog_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
+            f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
+            (period_title, period_start, period_end, is_enabled, session['username'])
+        )
+        conn.commit()
+        log_action('운송아이템_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
+        flash('신청 기간이 저장되었습니다.', 'success')
+        conn.close()
+        return redirect(url_for('catalog_item_settings'))
+
+    try:
+        current = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 1').fetchone()
+        settings_history = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 50').fetchall()
+    except Exception:
+        current, settings_history = None, []
+    history_list = [dict(s) for s in settings_history]
+    conn.close()
+    return render_template('catalog_settings.html', current=current, settings_history=history_list)
+
+
+@app.route('/admin/catalog/settings/<int:setting_id>/edit', methods=['POST'])
+@login_required
+def catalog_item_setting_edit(setting_id):
+    T = _get_T()
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
+    data = request.get_json(force=True)
+    title        = data.get('title', '').strip()
+    period_start = data.get('period_start', '').strip()
+    period_end   = data.get('period_end', '').strip()
+    is_enabled   = 1 if data.get('is_enabled') else 0
+    if not period_start or not period_end or period_start > period_end:
+        return jsonify({'ok': False, 'error': T('flash.invalid_date')}), 400
+    ph = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+    try:
+        conn = get_db()
+        conn.execute(
+            f'UPDATE catalog_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, updated_at={now_sql} WHERE id={ph}',
+            (title, period_start, period_end, is_enabled, setting_id)
+        )
+        conn.commit()
+        conn.close()
+        log_action('운송아이템_신청기간_수정', f'#{setting_id} [{title}] {period_start}~{period_end}')
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/catalog/settings/<int:setting_id>/delete', methods=['POST'])
+@login_required
+def catalog_item_setting_delete(setting_id):
+    T = _get_T()
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': T('flash.no_permission')}), 403
+    ph = '%s' if not USE_SQLITE else '?'
+    try:
+        conn = get_db()
+        conn.execute(f'DELETE FROM catalog_settings WHERE id={ph}', (setting_id,))
+        conn.commit()
+        conn.close()
+        log_action('운송아이템_신청기간_삭제', f'#{setting_id}')
+        return jsonify({'ok': True})
+    except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
