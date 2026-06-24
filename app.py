@@ -559,7 +559,21 @@ def inject_globals():
                         ('PENDING',)
                     ).fetchone()
                     notif_pending_tr = int(r['cnt']) if r else 0
-                    notif_count      = notif_pending_tr
+                    # 운송양식 신청 대기 목록 → notif_list로 표시
+                    fs_rows = conn.execute(
+                        'SELECT fsr.id, b.name AS branch_name, fsr.created_at '
+                        'FROM form_supply_requests fsr '
+                        'JOIN branches b ON b.id = fsr.branch_id '
+                        'WHERE fsr.status=%s '
+                        'ORDER BY fsr.id DESC LIMIT 10',
+                        ('pending',)
+                    ).fetchall()
+                    notif_list = [
+                        {'message': f"[운송양식 신청] {r['branch_name']} — 신청 #{r['id']}",
+                         'created_at': r['created_at']}
+                        for r in fs_rows
+                    ]
+                    notif_count = notif_pending_tr + len(fs_rows)
                 elif bid:
                     r = conn.execute(
                         'SELECT '
