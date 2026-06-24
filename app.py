@@ -5628,7 +5628,7 @@ def form_supply_admin_action(req_id):
     conn.commit()
 
     # ── 이메일 발송 ──────────────────────────────────────────────────
-    branch_email = (req.get('branch_email') or '').strip()
+    branch_email = (req['branch_email'] or '').strip()
     if not branch_email:
         flash(f'처리 완료. 지점 이메일 미등록으로 안내 메일이 발송되지 않았습니다. (지점 이메일 관리에서 등록해 주세요)', 'warning')
     else:
@@ -5755,7 +5755,7 @@ def form_supply_partial_action(req_id):
     )
     conn.commit()
 
-    branch_email = (req.get('branch_email') or '').strip()
+    branch_email = (req['branch_email'] or '').strip()
     if branch_email:
         approved_items = conn.execute(
             f"SELECT i.quantity, ft.name AS form_name "
