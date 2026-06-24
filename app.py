@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # .env 파일이 있으면 자동 로드 (로컬 개발용, 없어도 무시)
+
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_file, g
 from i18n import make_T, SUPPORTED, LANG_LABELS
 import psycopg2
