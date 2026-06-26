@@ -106,7 +106,8 @@
           </td>
           <td>
             <input type="number" class="qty-input" value="{{ it.quantity }}" min="1" max="99"
-                   onchange="updateQty('{{ it.item_code }}', this.value)">
+                   onchange="updateQty('{{ it.item_code }}', this.value)"
+                   {% if session.role != 'admin' and not is_period_active %}disabled{% endif %}>
           </td>
           <td>
             {% if it.custom_img_data or it.custom_text %}
@@ -114,10 +115,16 @@
             {% else %}—{% endif %}
           </td>
           <td style="text-align:center">
+            {% if session.role == 'admin' or is_period_active %}
             <button class="btn btn-sm btn-outline-danger" style="font-size:.72rem;padding:3px 8px"
                     onclick="removeItem('{{ it.item_code }}')">
               <i class="fa-solid fa-trash"></i>
             </button>
+            {% else %}
+            <button class="btn btn-sm btn-outline-secondary" style="font-size:.72rem;padding:3px 8px;opacity:.4" disabled>
+              <i class="fa-solid fa-trash"></i>
+            </button>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -136,14 +143,17 @@
 </div>
 
 <div class="d-flex gap-2 justify-content-end">
+  {% if session.role == 'admin' or is_period_active %}
   <button class="btn btn-outline-danger btn-sm" onclick="clearCart()">
     <i class="fa-solid fa-trash me-1"></i>{{ T('catreq.clear_cart') }}
   </button>
-  {% if session.role == 'admin' or is_period_active %}
   <button class="btn btn-danger btn-sm px-4" onclick="submitRequest()">
     <i class="fa-solid fa-paper-plane me-1"></i>{{ T('catreq.submit') }}
   </button>
   {% else %}
+  <button class="btn btn-outline-secondary btn-sm" disabled style="opacity:.5">
+    <i class="fa-solid fa-trash me-1"></i>{{ T('catreq.clear_cart') }}
+  </button>
   <button class="btn btn-secondary btn-sm px-4" disabled title="신청 기간이 아닙니다">
     <i class="fa-solid fa-ban me-1"></i>신청 기간 아님
   </button>

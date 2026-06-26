@@ -580,7 +580,10 @@
     <button id="catEditBtn" class="btn btn-sm btn-outline-success" onclick="catToggleEdit()">
       <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.edit_mode') }}
     </button>
-    <button id="catReqBtn" class="btn btn-sm btn-outline-warning" onclick="catToggleReq()">
+    <button id="catReqBtn" class="btn btn-sm btn-outline-warning" onclick="catToggleReq()"
+      {% if session.role != 'admin' and not is_period_active %}
+      title="신청 기간이 아닙니다" style="opacity:.5;cursor:not-allowed"
+      {% endif %}>
       <i class="fa-solid fa-clipboard-list me-1"></i>{{ T('cat.req_mode') }}
     </button>
     <a href="{{ url_for('catalog_cart') }}" class="btn btn-sm btn-outline-danger position-relative" id="cartLink">
@@ -904,6 +907,10 @@ let reqMode = false;
 let cartCount = {{ cart_cnt }};
 
 function catToggleReq() {
+  if (!reqMode && !IS_PERIOD_ACTIVE) {
+    catToast('현재 운송아이템 신청 기간이 아닙니다.', 'danger');
+    return;
+  }
   reqMode = !reqMode;
   document.body.classList.toggle('req-mode', reqMode);
   const btn = document.getElementById('catReqBtn');
