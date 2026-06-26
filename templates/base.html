@@ -489,6 +489,12 @@
       <i class="fa-solid fa-shield-halved"></i>{{ T('nav.access_logs') }}
     </a>
     {% endif %}
+
+    <div class="section-label">안내</div>
+    <a href="{{ url_for('manual_page') }}"
+       class="nav-link {% if endpoint=='manual_page' %}active{% endif %}">
+      <i class="fa-solid fa-book-open"></i>매뉴얼
+    </a>
   </nav>
 
   <div class="sidebar-footer">

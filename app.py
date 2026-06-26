@@ -1790,6 +1790,12 @@ def dashboard():
                            chart_data=_json.dumps(chart_data))
 
 
+@app.route('/manual')
+@login_required
+def manual_page():
+    return render_template('manual.html')
+
+
 @app.route('/inventory')
 @login_required
 def inventory():
