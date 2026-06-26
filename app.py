@@ -171,6 +171,12 @@ if DATABASE_URL:
             }
         except Exception:
             _PG = {}
+
+# Supabase pooler: session mode(5432) → transaction mode(6543) 강제 전환
+# transaction mode는 연결 수 제한이 훨씬 높아 서버리스 환경에 적합
+if _PG and 'pooler.supabase.com' in str(_PG.get('host', '')):
+    _PG['port'] = 6543
+
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not _PG
 _catalog_table_ready   = False  # warm 인스턴스에서 DDL 재실행 방지
@@ -268,35 +274,40 @@ def _get_pg_pool():
     return _PG_POOL
 
 
+_MODULE_CONN = None  # 모듈 레벨 연결 재사용 (Vercel warm instance)
+
 def _acquire_pg_db():
-    """직접 연결 + 재시도. 파싱 kwargs 우선, 실패 시 raw URL 폴백."""
+    """모듈 레벨 연결 재사용 → 새 연결 생성. transaction mode pooler 사용."""
+    global _MODULE_CONN
+    # warm instance: 기존 연결이 살아있으면 재사용
+    if _MODULE_CONN is not None and not _MODULE_CONN.closed:
+        try:
+            _MODULE_CONN.rollback()
+            with _MODULE_CONN.cursor() as _chk:
+                _chk.execute('SELECT 1')
+            return _DB(_MODULE_CONN)
+        except Exception:
+            try: _MODULE_CONN.close()
+            except Exception: pass
+            _MODULE_CONN = None
+
     last_err = None
-    # 시도 순서: (1) 파싱된 _PG dict (2) raw DATABASE_URL 문자열
-    _attempts = [
-        lambda: psycopg2.connect(**_PG) if _PG else (_ for _ in ()).throw(RuntimeError),
-        lambda: psycopg2.connect(DATABASE_URL, connect_timeout=10,
-                                 sslmode='require',
-                                 keepalives=1, keepalives_idle=10,
-                                 keepalives_interval=5, keepalives_count=3),
-    ]
-    for fn in _attempts:
-        for wait in (0, 1, 2):          # 0s → 1s → 2s 백오프, 총 3회
-            conn = None
-            try:
-                if wait:
-                    _time.sleep(wait)
-                conn = fn()
-                with conn.cursor() as _cur:
-                    _cur.execute('SELECT 1')
-                conn.rollback()
-                return _DB(conn)
-            except Exception as e:
-                last_err = e
-                if conn:
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
+    for wait in (0, 1, 2):
+        conn = None
+        try:
+            if wait:
+                _time.sleep(wait)
+            conn = psycopg2.connect(**_PG)
+            with conn.cursor() as _cur:
+                _cur.execute('SELECT 1')
+            conn.rollback()
+            _MODULE_CONN = conn
+            return _DB(conn)
+        except Exception as e:
+            last_err = e
+            if conn:
+                try: conn.close()
+                except Exception: pass
     raise last_err
 
 
@@ -321,7 +332,14 @@ def get_db():
 @app.teardown_appcontext
 def close_db(e=None):
     db = g.pop('db', None)
-    if db is not None:
+    if db is not None and not USE_SQLITE:
+        # transaction mode: 커밋되지 않은 트랜잭션만 롤백, 연결은 모듈 레벨에서 재사용
+        try:
+            db._conn.rollback()
+        except Exception:
+            pass
+        db._returned = True  # 실제 close() 건너뜀
+    elif db is not None:
         try:
             db.close()
         except Exception:
