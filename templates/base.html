@@ -409,9 +409,9 @@
        class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}"
        style="position:relative">
       <i class="fa-solid fa-truck-moving"></i>{{ T('nav.transfer') }}
-      {% if notif_count > 0 %}
+      {% if notif_transfer > 0 %}
       <span class="position-absolute top-50 end-0 translate-middle-y me-2">
-        <span class="badge rounded-pill" style="background:var(--warning);font-size:.6rem">{{ notif_count }}</span>
+        <span class="badge rounded-pill" style="background:var(--warning);font-size:.6rem">{{ notif_transfer }}</span>
       </span>
       {% endif %}
     </a>
@@ -450,8 +450,14 @@
       <i class="fa-solid fa-cart-shopping"></i>{{ T('nav.request_cart') }}
     </a>
     <a href="{{ url_for('catalog_requests_branch') }}"
-       class="nav-link nav-sub {% if endpoint in ('catalog_requests_branch','catalog_request_detail') %}active{% endif %}">
+       class="nav-link nav-sub {% if endpoint in ('catalog_requests_branch','catalog_request_detail') %}active{% endif %}"
+       style="position:relative">
       <i class="fa-solid fa-clock-rotate-left"></i>{{ T('nav.request_history') }}
+      {% if session.role == 'admin' and notif_catalog > 0 %}
+      <span class="position-absolute top-50 end-0 translate-middle-y me-2">
+        <span class="badge rounded-pill" style="background:var(--warning);font-size:.6rem">{{ notif_catalog }}</span>
+      </span>
+      {% endif %}
     </a>
 
     <div class="section-label">{{ T('nav.form_supply_section') }}</div>
@@ -473,8 +479,14 @@
       <i class="fa-solid fa-users-gear"></i>{{ T('nav.user_management') }}
     </a>
     <a href="{{ url_for('form_supply_admin_requests') }}"
-       class="nav-link {% if endpoint in ('form_supply_admin_requests','form_supply_admin_action') %}active{% endif %}">
+       class="nav-link {% if endpoint in ('form_supply_admin_requests','form_supply_admin_action') %}active{% endif %}"
+       style="position:relative">
       <i class="fa-solid fa-file-invoice"></i>{{ T('nav.form_request_admin') }}
+      {% if notif_form_supply > 0 %}
+      <span class="position-absolute top-50 end-0 translate-middle-y me-2">
+        <span class="badge rounded-pill" style="background:var(--warning);font-size:.6rem">{{ notif_form_supply }}</span>
+      </span>
+      {% endif %}
     </a>
     <a href="{{ url_for('form_supply_settings') }}"
        class="nav-link {% if endpoint in ('form_supply_settings','catalog_item_settings') %}active{% endif %}">

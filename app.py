@@ -560,33 +560,40 @@ def handle_exception(e):
 
 @app.context_processor
 def inject_globals():
-    notif_count      = 0
-    notif_list       = []
-    notif_pending_tr = 0   # 이관 승인 대기 건수 (팝업에 별도 표시용)
-    pw_expire_days   = None
+    notif_count       = 0
+    notif_list        = []
+    notif_pending_tr  = 0   # 이관 승인 대기 건수 (팝업용)
+    notif_transfer    = 0   # 지점 간 이전 배지
+    notif_form_supply = 0   # 운송양식 신청 관리 배지 (admin)
+    notif_catalog     = 0   # 운송아이템 신청 배지 (admin)
+    pw_expire_days    = None
     bid  = session.get('branch_id')
     role = session.get('role')
 
     if 'user_id' in session:
-        # 비밀번호 만료일 계산 (DB 불필요)
         changed_ts = session.get('_pwd_changed_at', 0)
         if changed_ts:
             elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
             pw_expire_days = int(180 - elapsed / 86400)
 
         now_ts = datetime.now(timezone.utc).timestamp()
-        # 30초 캐시: 매 페이지 요청마다 DB 조회하지 않음
         if now_ts - session.get('_notif_ts', 0) < _NOTIF_TTL:
-            notif_count      = session.get('_notif_count', 0)
-            notif_pending_tr = session.get('_notif_pending_tr', 0)
-            # notif_list는 캐시 미적용(빈 목록) — 카운트 배지만 캐시
+            notif_count       = session.get('_notif_count', 0)
+            notif_pending_tr  = session.get('_notif_pending_tr', 0)
+            notif_transfer    = session.get('_notif_transfer', 0)
+            notif_form_supply = session.get('_notif_form_supply', 0)
+            notif_catalog     = session.get('_notif_catalog', 0)
         else:
             try:
                 conn = get_db()
                 if role == 'admin':
-                    # 이관 승인 대기는 관리자 알림에 미표시
-                    notif_pending_tr = 0
-                    # 운송양식 신청 대기 목록 → notif_list로 표시
+                    # 지점 간 이전 대기 (전체)
+                    tr_row = conn.execute(
+                        "SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status='PENDING'"
+                    ).fetchone()
+                    notif_transfer = int(tr_row['cnt']) if tr_row else 0
+
+                    # 운송양식 신청 대기
                     fs_rows = conn.execute(
                         'SELECT fsr.id, b.name AS branch_name, fsr.created_at '
                         'FROM form_supply_requests fsr '
@@ -595,12 +602,24 @@ def inject_globals():
                         'ORDER BY fsr.id DESC LIMIT 10',
                         ('pending',)
                     ).fetchall()
+                    notif_form_supply = len(fs_rows)
                     notif_list = [
                         {'message': f"[운송양식 신청] {r['branch_name']} — 신청 #{r['id']}",
                          'created_at': r['created_at']}
                         for r in fs_rows
                     ]
-                    notif_count = len(fs_rows)
+
+                    # 운송아이템 신청 대기
+                    try:
+                        cat_row = conn.execute(
+                            "SELECT COUNT(*) AS cnt FROM catalog_requests WHERE status='pending'"
+                        ).fetchone()
+                        notif_catalog = int(cat_row['cnt']) if cat_row else 0
+                    except Exception:
+                        notif_catalog = 0
+
+                    notif_count = notif_transfer + notif_form_supply + notif_catalog
+
                 elif bid:
                     r = conn.execute(
                         'SELECT '
@@ -609,6 +628,7 @@ def inject_globals():
                         (bid, 'PENDING', bid)
                     ).fetchone()
                     notif_pending_tr = int(r['pending']) if r else 0
+                    notif_transfer   = notif_pending_tr
                     notif_count      = (notif_pending_tr + int(r['unread'])) if r else 0
                     notif_list       = conn.execute(
                         'SELECT id, message, created_at FROM notifications '
@@ -618,12 +638,18 @@ def inject_globals():
                 conn.close()
             except Exception:
                 pass
-            session['_notif_count']      = notif_count
-            session['_notif_pending_tr'] = notif_pending_tr
-            session['_notif_ts']         = now_ts
+            session['_notif_count']       = notif_count
+            session['_notif_pending_tr']  = notif_pending_tr
+            session['_notif_transfer']    = notif_transfer
+            session['_notif_form_supply'] = notif_form_supply
+            session['_notif_catalog']     = notif_catalog
+            session['_notif_ts']          = now_ts
 
     return {'notif_count': notif_count, 'notif_list': notif_list,
             'notif_pending_tr': notif_pending_tr,
+            'notif_transfer': notif_transfer,
+            'notif_form_supply': notif_form_supply,
+            'notif_catalog': notif_catalog,
             'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days,
             'now_dt': datetime.now(timezone.utc).astimezone()}
 
