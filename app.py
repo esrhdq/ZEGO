@@ -274,23 +274,8 @@ def _get_pg_pool():
     return _PG_POOL
 
 
-_MODULE_CONN = None  # 모듈 레벨 연결 재사용 (Vercel warm instance)
-
 def _acquire_pg_db():
-    """모듈 레벨 연결 재사용 → 새 연결 생성. transaction mode pooler 사용."""
-    global _MODULE_CONN
-    # warm instance: 기존 연결이 살아있으면 재사용
-    if _MODULE_CONN is not None and not _MODULE_CONN.closed:
-        try:
-            _MODULE_CONN.rollback()
-            with _MODULE_CONN.cursor() as _chk:
-                _chk.execute('SELECT 1')
-            return _DB(_MODULE_CONN)
-        except Exception:
-            try: _MODULE_CONN.close()
-            except Exception: pass
-            _MODULE_CONN = None
-
+    """직접 연결 + 재시도."""
     last_err = None
     for wait in (0, 1, 2):
         conn = None
@@ -301,7 +286,6 @@ def _acquire_pg_db():
             with conn.cursor() as _cur:
                 _cur.execute('SELECT 1')
             conn.rollback()
-            _MODULE_CONN = conn
             return _DB(conn)
         except Exception as e:
             last_err = e
@@ -332,14 +316,7 @@ def get_db():
 @app.teardown_appcontext
 def close_db(e=None):
     db = g.pop('db', None)
-    if db is not None and not USE_SQLITE:
-        # transaction mode: 커밋되지 않은 트랜잭션만 롤백, 연결은 모듈 레벨에서 재사용
-        try:
-            db._conn.rollback()
-        except Exception:
-            pass
-        db._returned = True  # 실제 close() 건너뜀
-    elif db is not None:
+    if db is not None:
         try:
             db.close()
         except Exception:
