@@ -1535,6 +1535,9 @@ def init_db():
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate2,))
             # inventory.min_threshold 컬럼 추가 (지점별 최소기준)
             conn.execute("ALTER TABLE inventory ADD COLUMN IF NOT EXISTS min_threshold INTEGER DEFAULT 2")
+            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE")
+            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_by TEXT")
+            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP")
             conn.execute('''
                 UPDATE inventory i SET min_threshold = ft.min_threshold
                 FROM form_types ft WHERE ft.id = i.form_type_id
@@ -2576,6 +2579,9 @@ def transaction_edit(tx_id):
     if tx['type'] != 'OUT':
         conn.close()
         return jsonify({'ok': False, 'msg': T('flash.outbound_only_editable')}), 400
+    if tx['is_cancelled']:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '취소된 출고 기록은 수정할 수 없습니다.'}), 400
     if role != 'admin' and tx['from_branch_id'] != bid:
         conn.close()
         return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
@@ -2620,6 +2626,43 @@ def transaction_edit(tx_id):
     conn.commit()
     conn.close()
     return jsonify({'ok': True, 'new_qty': new_qty, 'new_date': new_date, 'new_notes': new_notes})
+
+
+@app.route('/transactions/<int:tx_id>/cancel', methods=['POST'])
+@login_required
+def transaction_cancel(tx_id):
+    conn = get_db()
+    ph   = '%s' if not USE_SQLITE else '?'
+    role = session.get('role')
+    bid  = session.get('branch_id')
+
+    tx = conn.execute(f'SELECT * FROM transactions WHERE id={ph}', (tx_id,)).fetchone()
+    if not tx:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '기록을 찾을 수 없습니다.'}), 404
+    if tx['type'] != 'OUT':
+        conn.close()
+        return jsonify({'ok': False, 'msg': '출고 기록만 취소할 수 있습니다.'}), 400
+    if tx['is_cancelled']:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '이미 취소된 기록입니다.'}), 400
+    if role != 'admin' and tx['from_branch_id'] != bid:
+        conn.close()
+        return jsonify({'ok': False, 'msg': '권한이 없습니다.'}), 403
+
+    conn.execute(
+        f'UPDATE inventory SET quantity=quantity+{ph}, last_updated=NOW() '
+        f'WHERE branch_id={ph} AND form_type_id={ph}',
+        (tx['quantity'], tx['from_branch_id'], tx['form_type_id'])
+    )
+    conn.execute(
+        f'UPDATE transactions SET is_cancelled=TRUE, cancelled_by={ph}, cancelled_at=NOW() '
+        f'WHERE id={ph}',
+        (session['username'], tx_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'cancelled_by': session['username']})
 
 
 @app.route('/report')
