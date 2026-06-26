@@ -1533,6 +1533,13 @@ def init_db():
                 'NOTOC',
             ):
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate2,))
+            # inventory.min_threshold 컬럼 추가 (지점별 최소기준)
+            conn.execute("ALTER TABLE inventory ADD COLUMN IF NOT EXISTS min_threshold INTEGER DEFAULT 2")
+            conn.execute('''
+                UPDATE inventory i SET min_threshold = ft.min_threshold
+                FROM form_types ft WHERE ft.id = i.form_type_id
+                  AND (i.min_threshold IS NULL OR i.min_threshold = 2)
+            ''')
             conn.execute('''
                 INSERT INTO inventory (branch_id, form_type_id, quantity)
                 SELECT b.id, ft.id, 0
@@ -1742,12 +1749,12 @@ def dashboard():
     branch_cond = f'AND i.branch_id = {bid}' if role != 'admin' and bid else ''
 
     low_stock = conn.execute(f'''
-        SELECT i.quantity, f.name form_name, f.min_threshold,
+        SELECT i.quantity, f.name form_name, i.min_threshold,
                b.name branch_name, b.code branch_code
         FROM inventory i
         JOIN form_types f ON i.form_type_id = f.id
         JOIN branches b ON i.branch_id = b.id
-        WHERE i.quantity > 0 AND i.quantity <= f.min_threshold {branch_cond}
+        WHERE i.quantity > 0 AND i.quantity <= i.min_threshold {branch_cond}
         ORDER BY i.quantity ASC LIMIT 20
     ''').fetchall()
 
@@ -1843,7 +1850,7 @@ def inventory():
     where_clause = " AND ".join(conditions)
 
     rows = conn.execute(f'''
-        SELECT i.*, f.name form_name, f.unit, f.unit_detail, f.unit_price, f.min_threshold,
+        SELECT i.*, f.name form_name, f.unit, f.unit_detail, f.unit_price, i.min_threshold,
                b.name branch_name, b.code branch_code, b.type branch_type
         FROM inventory i
         JOIN form_types f ON i.form_type_id = f.id
@@ -1854,18 +1861,19 @@ def inventory():
 
     summary_rows = conn.execute(f'''
         SELECT f.id form_type_id,
-               f.name form_name, f.unit, f.unit_detail, f.unit_price, f.min_threshold,
+               f.name form_name, f.unit, f.unit_detail, f.unit_price,
+               MIN(i.min_threshold) min_threshold,
                SUM(i.quantity)              total_qty,
                COUNT(DISTINCT i.branch_id) branch_cnt,
                SUM(CASE WHEN i.quantity = 0 THEN 1 ELSE 0 END)               empty_cnt,
-               SUM(CASE WHEN i.quantity > 0 AND i.quantity <= f.min_threshold
+               SUM(CASE WHEN i.quantity > 0 AND i.quantity <= i.min_threshold
                         THEN 1 ELSE 0 END)                                    low_cnt,
                SUM(i.quantity * f.unit_price)                                 total_value
         FROM inventory i
         JOIN form_types f ON i.form_type_id = f.id
         JOIN branches b ON i.branch_id = b.id
         WHERE {where_clause}
-        GROUP BY f.id
+        GROUP BY f.id, f.name, f.unit, f.unit_detail, f.unit_price
         ORDER BY f.name
     ''', params).fetchall()
 
@@ -1999,12 +2007,12 @@ def inbound():
         conn.commit()
 
         b = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
-        f = conn.execute('SELECT name, min_threshold FROM form_types WHERE id=%s', (fid,)).fetchone()
+        f = conn.execute('SELECT name FROM form_types WHERE id=%s', (fid,)).fetchone()
         # 입고 후에도 여전히 부족한 경우 알림 (기존 미읽음 없을 때만)
         inv_after = conn.execute(
-            'SELECT quantity FROM inventory WHERE branch_id=%s AND form_type_id=%s', (bid, fid)
+            'SELECT quantity, min_threshold FROM inventory WHERE branch_id=%s AND form_type_id=%s', (bid, fid)
         ).fetchone()
-        if inv_after and f and inv_after['quantity'] <= f['min_threshold']:
+        if inv_after and f and inv_after['quantity'] <= inv_after['min_threshold']:
             dup_notif = conn.execute(
                 "SELECT id FROM notifications WHERE branch_id=%s AND is_read=0 "
                 "AND message LIKE %s LIMIT 1",
@@ -2073,9 +2081,8 @@ def outbound():
         conn.commit()
         # 출고 후 재고 부족/소진 즉시 알림
         inv_after = conn.execute(
-            'SELECT i.quantity, f.min_threshold FROM inventory i '
-            'JOIN form_types f ON i.form_type_id=f.id '
-            'WHERE i.branch_id=%s AND i.form_type_id=%s', (bid, fid)
+            'SELECT quantity, min_threshold FROM inventory '
+            'WHERE branch_id=%s AND form_type_id=%s', (bid, fid)
         ).fetchone()
         if inv_after and inv_after['quantity'] <= inv_after['min_threshold']:
             b_name = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
@@ -2610,8 +2617,8 @@ def report():
     summary = conn.execute(f'''
         SELECT b.code, b.name, b.type,
                COUNT(CASE WHEN i.quantity=0 THEN 1 END) empty_cnt,
-               COUNT(CASE WHEN i.quantity>0 AND i.quantity<=f.min_threshold THEN 1 END) low_cnt,
-               COUNT(CASE WHEN i.quantity>f.min_threshold THEN 1 END) ok_cnt,
+               COUNT(CASE WHEN i.quantity>0 AND i.quantity<=i.min_threshold THEN 1 END) low_cnt,
+               COUNT(CASE WHEN i.quantity>i.min_threshold THEN 1 END) ok_cnt,
                COALESCE(SUM(i.quantity*f.unit_price),0) total_value
         FROM branches b
         LEFT JOIN inventory i  ON b.id=i.branch_id
@@ -2641,8 +2648,8 @@ def report():
 
     status_row = conn.execute(f'''
         SELECT COUNT(CASE WHEN i.quantity=0 THEN 1 END) empty_cnt,
-               COUNT(CASE WHEN i.quantity>0 AND i.quantity<=f.min_threshold THEN 1 END) low_cnt,
-               COUNT(CASE WHEN i.quantity>f.min_threshold THEN 1 END) ok_cnt
+               COUNT(CASE WHEN i.quantity>0 AND i.quantity<=i.min_threshold THEN 1 END) low_cnt,
+               COUNT(CASE WHEN i.quantity>i.min_threshold THEN 1 END) ok_cnt
         FROM inventory i
         JOIN form_types f ON i.form_type_id=f.id
         WHERE 1=1 {i_cond}
@@ -2664,16 +2671,16 @@ def report():
     chart_branch_status = conn.execute(f'''
         SELECT b.code label,
                COALESCE(SUM(CASE WHEN i.quantity=0 THEN 1 ELSE 0 END),0) empty_cnt,
-               COALESCE(SUM(CASE WHEN i.quantity>0 AND i.quantity<=f.min_threshold THEN 1 ELSE 0 END),0) low_cnt,
-               COALESCE(SUM(CASE WHEN i.quantity>f.min_threshold THEN 1 ELSE 0 END),0) ok_cnt
+               COALESCE(SUM(CASE WHEN i.quantity>0 AND i.quantity<=i.min_threshold THEN 1 ELSE 0 END),0) low_cnt,
+               COALESCE(SUM(CASE WHEN i.quantity>i.min_threshold THEN 1 ELSE 0 END),0) ok_cnt
         FROM branches b
         LEFT JOIN inventory i  ON b.id=i.branch_id
         LEFT JOIN form_types f ON i.form_type_id=f.id
         WHERE 1=1 {b_cond}
         GROUP BY b.id, b.code, b.type
         HAVING (COALESCE(SUM(CASE WHEN i.quantity=0 THEN 1 ELSE 0 END),0) +
-                COALESCE(SUM(CASE WHEN i.quantity>0 AND i.quantity<=f.min_threshold THEN 1 ELSE 0 END),0) +
-                COALESCE(SUM(CASE WHEN i.quantity>f.min_threshold THEN 1 ELSE 0 END),0)) > 0
+                COALESCE(SUM(CASE WHEN i.quantity>0 AND i.quantity<=i.min_threshold THEN 1 ELSE 0 END),0) +
+                COALESCE(SUM(CASE WHEN i.quantity>i.min_threshold THEN 1 ELSE 0 END),0)) > 0
         ORDER BY b.type, b.code
     ''').fetchall()
 
@@ -4704,7 +4711,7 @@ def api_inventory_branches():
 
     rows = conn.execute(f'''
         SELECT b.code branch_code, b.name branch_name, b.type branch_type,
-               i.quantity, i.last_updated, f.min_threshold, f.name form_name
+               i.quantity, i.last_updated, i.min_threshold, f.name form_name
         FROM inventory i
         JOIN branches b ON i.branch_id = b.id
         JOIN form_types f ON i.form_type_id = f.id
@@ -4767,11 +4774,18 @@ def update_threshold():
     T = _get_T()
     data = request.get_json()
     form_type_id = data.get('form_type_id')
+    branch_id    = data.get('branch_id')
     threshold    = data.get('threshold')
     if form_type_id is None or threshold is None or int(threshold) < 0:
         return jsonify({'ok': False, 'error': T('flash.invalid_value')}), 400
     conn = get_db()
-    conn.execute('UPDATE form_types SET min_threshold=%s WHERE id=%s', (int(threshold), form_type_id))
+    if branch_id:
+        conn.execute('UPDATE inventory SET min_threshold=%s WHERE branch_id=%s AND form_type_id=%s',
+                     (int(threshold), branch_id, form_type_id))
+    else:
+        # branch_id 없으면 전체 지점 일괄 업데이트 (fallback)
+        conn.execute('UPDATE inventory SET min_threshold=%s WHERE form_type_id=%s',
+                     (int(threshold), form_type_id))
     conn.commit()
     conn.close()
     return jsonify({'ok': True})
@@ -4821,7 +4835,7 @@ def inventory_download():
         conditions.append('i.form_type_id=%s'); params.append(ff)
 
     rows = conn.execute(f'''
-        SELECT i.*, f.name form_name, f.unit, f.unit_detail, f.unit_price, f.min_threshold,
+        SELECT i.*, f.name form_name, f.unit, f.unit_detail, f.unit_price, i.min_threshold,
                b.name branch_name, b.code branch_code, b.type branch_type
         FROM inventory i
         JOIN form_types f ON i.form_type_id = f.id
@@ -5015,7 +5029,7 @@ def bulk_outbound_page():
         if bid_filter:
             rows = conn.execute('''
                 SELECT i.branch_id, i.form_type_id, i.quantity,
-                       f.name form_name, f.unit, f.min_threshold,
+                       f.name form_name, f.unit, i.min_threshold,
                        b.name branch_name, b.code branch_code
                 FROM inventory i
                 JOIN form_types f ON i.form_type_id=f.id
@@ -5026,7 +5040,7 @@ def bulk_outbound_page():
         else:
             rows = conn.execute('''
                 SELECT i.branch_id, i.form_type_id, i.quantity,
-                       f.name form_name, f.unit, f.min_threshold,
+                       f.name form_name, f.unit, i.min_threshold,
                        b.name branch_name, b.code branch_code
                 FROM inventory i
                 JOIN form_types f ON i.form_type_id=f.id
@@ -5036,7 +5050,7 @@ def bulk_outbound_page():
     else:
         rows = conn.execute('''
             SELECT i.branch_id, i.form_type_id, i.quantity,
-                   f.name form_name, f.unit, f.min_threshold,
+                   f.name form_name, f.unit, i.min_threshold,
                    b.name branch_name, b.code branch_code
             FROM inventory i
             JOIN form_types f ON i.form_type_id=f.id
@@ -5201,7 +5215,7 @@ def bulk_outbound():
             )
             # 재고 부족 알림
             inv_after = conn.execute(
-                'SELECT i.quantity, f.min_threshold, f.name fn, b.name bn '
+                'SELECT i.quantity, i.min_threshold, f.name fn, b.name bn '
                 'FROM inventory i JOIN form_types f ON i.form_type_id=f.id '
                 'JOIN branches b ON i.branch_id=b.id '
                 'WHERE i.branch_id=%s AND i.form_type_id=%s', (bid, fid)

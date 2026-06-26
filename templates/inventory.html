@@ -142,6 +142,7 @@
                            value="{{ r.min_threshold }}"
                            min="0"
                            data-form-type-id="{{ r.form_type_id }}"
+                           data-branch-id="{{ r.branch_id }}"
                            data-original="{{ r.min_threshold }}"
                            title="{{ T('inv.enter_to_save') }}">
                     <span class="save-indicator text-success d-none" style="font-size:.8rem">
@@ -243,6 +244,7 @@
                                    value="{{ r.min_threshold }}"
                                    min="0"
                                    data-form-type-id="{{ r.form_type_id }}"
+                                   data-branch-id="{{ r.branch_id }}"
                                    data-original="{{ r.min_threshold }}"
                                    title="{{ T('inv.enter_to_save') }}">
                             <span class="save-indicator text-success d-none" style="font-size:.8rem">
@@ -590,26 +592,32 @@ const errToast  = new bootstrap.Toast(document.getElementById('errToast'),  {del
 
 document.querySelectorAll('.threshold-input').forEach(input => {
   async function save() {
-    const val  = parseInt(input.value);
-    const orig = parseInt(input.dataset.original);
+    const val      = parseInt(input.value);
+    const orig     = parseInt(input.dataset.original);
+    const fid      = parseInt(input.dataset.formTypeId);
+    const branchId = input.dataset.branchId ? parseInt(input.dataset.branchId) : null;
     if (isNaN(val) || val < 0 || val === orig) return;
+
+    const payload = { form_type_id: fid, threshold: val };
+    if (branchId) payload.branch_id = branchId;
 
     const res  = await fetch('/api/update_threshold', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ form_type_id: parseInt(input.dataset.formTypeId), threshold: val })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (data.ok) {
-      // 같은 form_type_id 를 가진 모든 입력 동기화
-      document.querySelectorAll(`.threshold-input[data-form-type-id="${input.dataset.formTypeId}"]`)
-        .forEach(el => {
-          el.dataset.original = val;
-          el.value = val;
-          const ind = el.nextElementSibling;
-          ind.classList.remove('d-none');
-          setTimeout(() => ind.classList.add('d-none'), 2000);
-        });
+      // branch_id가 있으면 같은 지점+양식 입력만 동기화, 없으면(summary) 같은 양식 전체
+      let selector = `.threshold-input[data-form-type-id="${fid}"]`;
+      if (branchId) selector += `[data-branch-id="${branchId}"]`;
+      document.querySelectorAll(selector).forEach(el => {
+        el.dataset.original = val;
+        el.value = val;
+        const ind = el.nextElementSibling;
+        ind.classList.remove('d-none');
+        setTimeout(() => ind.classList.add('d-none'), 2000);
+      });
       saveToast.show();
     } else {
       input.value = orig;
