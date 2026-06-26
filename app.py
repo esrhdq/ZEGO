@@ -172,10 +172,6 @@ if DATABASE_URL:
         except Exception:
             _PG = {}
 
-# Supabase pooler: session mode(5432) → transaction mode(6543) 강제 전환
-# transaction mode는 연결 수 제한이 훨씬 높아 서버리스 환경에 적합
-if _PG and 'pooler.supabase.com' in str(_PG.get('host', '')):
-    _PG['port'] = 6543
 
 ALLOWED_IPS  = [ip.strip() for ip in os.environ.get('ALLOWED_IPS', '').split(',') if ip.strip()]
 USE_SQLITE   = not _PG
