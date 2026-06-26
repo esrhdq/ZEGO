@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZEGO User Manual — English</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:#1C1917;background:#fff;line-height:1.7}
+  .cover{background:linear-gradient(135deg,#1a56db,#0d3b8f);color:#fff;padding:60px 48px 48px;min-height:220px}
+  .cover h1{font-size:2rem;font-weight:900;letter-spacing:-.02em;margin-bottom:6px}
+  .cover .sub{font-size:.9rem;opacity:.85;margin-bottom:24px}
+  .cover .meta{font-size:.78rem;opacity:.7;border-top:1px solid rgba(255,255,255,.3);padding-top:16px;margin-top:16px}
+  .toc{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:10px;padding:20px 24px;margin:28px 48px 0}
+  .toc h3{font-size:.8rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+  .toc ol{padding-left:18px}
+  .toc li{margin-bottom:4px;font-size:.85rem}
+  .toc a{color:#1a56db;text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  .body{padding:20px 48px 60px}
+  .section{margin-bottom:36px;padding-top:8px}
+  .section-title{font-size:1.05rem;font-weight:800;color:#1a56db;border-left:4px solid #1a56db;padding-left:12px;margin-bottom:14px;padding-top:2px;padding-bottom:2px}
+  .sub-title{font-size:.88rem;font-weight:700;color:#1C1917;margin:18px 0 8px;padding-left:4px}
+  p{margin-bottom:8px;font-size:.87rem;color:#3B3836}
+  ul,ol{padding-left:20px;margin-bottom:8px}
+  li{font-size:.87rem;color:#3B3836;margin-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.84rem}
+  th{background:#1a56db;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid #E7E5E4;vertical-align:top}
+  tr:nth-child(even) td{background:#FAF9F7}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.74rem;font-weight:700;vertical-align:middle}
+  .badge-ok{background:#DCFCE7;color:#15803D}
+  .badge-low{background:#FEF3C7;color:#92400E}
+  .badge-empty{background:#FEE2E2;color:#B91C1C}
+  .badge-admin{background:#1a56db;color:#fff}
+  .badge-branch{background:#DBEAFE;color:#1D4ED8}
+  .info-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#1D4ED8}
+  .warn-box{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#92400E}
+  .tip-box{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#15803D}
+  .step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .step-num{background:#1a56db;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px}
+  hr{border:none;border-top:1px solid #E7E5E4;margin:28px 0}
+  kbd{background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;padding:1px 6px;font-size:.8rem;font-family:monospace}
+  .menu-tree{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:8px;padding:14px 18px;font-size:.84rem}
+  .menu-tree .section-name{font-size:.72rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:4px}
+  .menu-tree .section-name:first-child{margin-top:0}
+  .menu-tree .item{padding:3px 0 3px 14px;color:#3B3836}
+  .menu-tree .item.admin-only::after{content:'Admin';background:#1a56db;color:#fff;font-size:.65rem;padding:1px 5px;border-radius:10px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <div style="width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.3rem">✈</div>
+    <div style="font-size:1.6rem;font-weight:900;letter-spacing:.08em">ZEGO</div>
+  </div>
+  <h1>User Manual</h1>
+  <div class="sub">Eastar Jet Logistics &amp; Supply Management System — Complete Feature Guide</div>
+  <div class="meta">
+    For: All Branch Staff &amp; Administrators &nbsp;|&nbsp; Language: English &nbsp;|&nbsp; As of June 2026
+  </div>
+</div>
+
+<div class="toc">
+  <h3>Table of Contents</h3>
+  <ol>
+    <li><a href="#s1">System Overview</a></li>
+    <li><a href="#s2">Login &amp; Password</a></li>
+    <li><a href="#s3">Dashboard</a></li>
+    <li><a href="#s4">Inventory Status</a></li>
+    <li><a href="#s5">Inbound Processing</a></li>
+    <li><a href="#s6">Outbound Processing</a></li>
+    <li><a href="#s7">Bulk Outbound</a></li>
+    <li><a href="#s8">Branch-to-Branch Transfer</a></li>
+    <li><a href="#s9">Transaction History &amp; Reports</a></li>
+    <li><a href="#s10">Catalog (Transport Items) Request</a></li>
+    <li><a href="#s11">Form Supply Request</a></li>
+    <li><a href="#s12">Admin Functions</a></li>
+    <li><a href="#s13">Notifications &amp; Menu Guide</a></li>
+  </ol>
+</div>
+
+<div class="body">
+
+<div class="section" id="s1">
+  <div class="section-title">1. System Overview</div>
+  <p>ZEGO is a web-based system for <strong>integrated management of transport forms and supplies (transport items)</strong> across all Eastar Jet branches. Branch staff and HQ administrators use it together.</p>
+
+  <div class="sub-title">Key Features</div>
+  <ul>
+    <li><strong>Inventory Management</strong> — Inbound, outbound, branch transfers, real-time stock status</li>
+    <li><strong>Form Supply Requests</strong> — Branches request consumable forms, administrators approve</li>
+    <li><strong>Catalog (Transport Items) Requests</strong> — Online requests for X-banners, stanchions, etc.</li>
+    <li><strong>Reports &amp; Demand Forecasting</strong> — Monthly consumption analysis, depletion prediction</li>
+    <li><strong>Multi-language Support</strong> — Korean, English, Japanese, Simplified Chinese, Traditional Chinese</li>
+  </ul>
+
+  <div class="sub-title">Managed Form Types</div>
+  <table>
+    <tr><th>Category</th><th>Form Name</th></tr>
+    <tr><td>Passenger Documents</td><td>Declaration of Indemnity (Musical Instrument)</td></tr>
+    <tr><td>Passenger Documents</td><td>Declaration of Parent/Guardian</td></tr>
+    <tr><td>Cargo Documents</td><td>Firearm Handover Form</td></tr>
+    <tr><td>Special Cargo</td><td>NOTOC (Notification to Captain)</td></tr>
+    <tr><td>General Supplies</td><td>X-banners, stanchions, notices, boarding passes, and other forms</td></tr>
+  </table>
+
+  <div class="sub-title">Branch Types</div>
+  <table>
+    <tr><th>Type</th><th>Code</th><th>Description</th></tr>
+    <tr><td><span class="badge badge-branch">Domestic</span></td><td>DOM</td><td>Domestic flight branches</td></tr>
+    <tr><td><span class="badge" style="background:#EDE9FE;color:#6D28D9">International</span></td><td>INTL</td><td>International flight branches</td></tr>
+    <tr><td><span class="badge" style="background:#FEF3C7;color:#92400E">Cargo</span></td><td>CARGO</td><td>Cargo-dedicated branches</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s2">
+  <div class="section-title">2. Login &amp; Password</div>
+
+  <div class="sub-title">How to Log In</div>
+  <div class="step"><div class="step-num">1</div><div>Open the ZEGO website in your browser</div></div>
+  <div class="step"><div class="step-num">2</div><div>Enter your ID (employee number or assigned ID) and password</div></div>
+  <div class="step"><div class="step-num">3</div><div>Click the <strong>Login</strong> button</div></div>
+
+  <div class="warn-box">⚠ <strong>Initial password:</strong> <kbd>$eastar12</kbd> — You must change it on first login. Some features may be restricted until you do.</div>
+
+  <div class="sub-title">Changing Your Password</div>
+  <p>Click <strong>🔑 Change Password</strong> at the bottom of the left sidebar at any time.</p>
+  <div class="info-box">ℹ A warning banner appears 7 days before your password expires. Please change it within that period.</div>
+
+  <div class="sub-title">Language Setting</div>
+  <p>Click the language dropdown in the top-right corner to switch languages instantly.</p>
+</div>
+
+<hr>
+
+<div class="section" id="s3">
+  <div class="section-title">3. Dashboard</div>
+  <p>The first screen after login. Get an at-a-glance overview of current status.</p>
+
+  <div class="sub-title">Stat Cards</div>
+  <table>
+    <tr><th>Card</th><th>Content</th></tr>
+    <tr><td>Operating Branches</td><td>Total number of registered branches</td></tr>
+    <tr><td>Form Types</td><td>Number of managed form items</td></tr>
+    <tr><td>Today's Transactions</td><td>Inbound, outbound, and transfer count for today</td></tr>
+    <tr><td>Stock Alerts</td><td>Items below minimum threshold or depleted</td></tr>
+  </table>
+
+  <div class="sub-title">Stock Alert Tables</div>
+  <p>Items that have fallen below the minimum threshold appear in <strong>Low Stock Warning</strong>. Items with zero quantity appear in the <strong>Depleted Stock</strong> table. Branch staff should initiate an inbound request immediately.</p>
+
+  <div class="sub-title">Stock Status Indicators</div>
+  <table>
+    <tr><th>Color</th><th>Status</th><th>Meaning</th></tr>
+    <tr><td><span class="badge badge-ok">Normal</span></td><td>OK</td><td>Above minimum threshold</td></tr>
+    <tr><td><span class="badge badge-low">Low</span></td><td>Low</td><td>Qty &gt; 0, at or below minimum threshold</td></tr>
+    <tr><td><span class="badge badge-empty">Empty</span></td><td>Empty</td><td>Qty = 0</td></tr>
+  </table>
+
+  <div class="sub-title">6-Month Outbound Trend Chart</div>
+  <p>View the outbound quantity trend over the past 6 months as a line chart.</p>
+</div>
+
+<hr>
+
+<div class="section" id="s4">
+  <div class="section-title">4. Inventory Status</div>
+  <p>Click <strong>Inventory</strong> in the left menu. There are 4 tabs.</p>
+
+  <div class="sub-title">Tab 1 — Branch Detail</div>
+  <p>Displays current stock for all branch-form combinations in a table.</p>
+  <ul>
+    <li><strong>Filter</strong>: Narrow results by branch or form type</li>
+    <li><strong>Edit Minimum Threshold</strong>: Type a number in the input field and press <kbd>Enter</kbd> — saves for that branch only</li>
+    <li><strong>Excel Download</strong>: Download an Excel file with current filter conditions</li>
+  </ul>
+
+  <div class="sub-title">Tab 2 — Branch View <span class="badge badge-admin">Admin</span></div>
+  <p>Each branch is displayed as an accordion panel showing all its form stock.</p>
+  <ul>
+    <li>Empty/low stock counts are summarized in each branch header</li>
+    <li>Minimum thresholds can be set per-branch independently</li>
+  </ul>
+
+  <div class="sub-title">Tab 3 — Form Summary</div>
+  <p>See total stock across all branches, grouped by form type.</p>
+  <ul>
+    <li>Click the <strong>branch count button</strong> to see a popup with per-branch details</li>
+    <li>Low branch count and empty branch count are shown</li>
+  </ul>
+
+  <div class="sub-title">Tab 4 — Monthly Consumption</div>
+  <p>View monthly outbound quantity trends for each form over the past 6 months.</p>
+
+  <div class="tip-box">💡 <strong>Minimum thresholds are managed per branch.</strong> Changing one branch's threshold does not affect other branches.</div>
+</div>
+
+<hr>
+
+<div class="section" id="s5">
+  <div class="section-title">5. Inbound Processing</div>
+  <p>Use this when you receive forms from HQ or an external source.</p>
+
+  <div class="step"><div class="step-num">1</div><div>Click <strong>Inbound</strong> in the left menu</div></div>
+  <div class="step"><div class="step-num">2</div><div>Select branch (admin only; branch accounts are set automatically)</div></div>
+  <div class="step"><div class="step-num">3</div><div>Enter form type, quantity, date, and notes</div></div>
+  <div class="step"><div class="step-num">4</div><div>Click the <strong>Process Inbound</strong> button</div></div>
+
+  <div class="info-box">ℹ If stock remains below the minimum threshold after inbound, an alert is automatically generated.</div>
+</div>
+
+<hr>
+
+<div class="section" id="s6">
+  <div class="section-title">6. Outbound Processing</div>
+  <p>Use this when forms are consumed or sent out.</p>
+
+  <div class="step"><div class="step-num">1</div><div>Click <strong>Outbound</strong> in the left menu</div></div>
+  <div class="step"><div class="step-num">2</div><div>Enter branch, form type, quantity, date, and notes</div></div>
+  <div class="step"><div class="step-num">3</div><div>Click the <strong>Process Outbound</strong> button</div></div>
+
+  <div class="warn-box">⚠ You cannot process an outbound for more than the current stock quantity. An alert is sent automatically if stock falls to or below the minimum threshold after outbound.</div>
+</div>
+
+<hr>
+
+<div class="section" id="s7">
+  <div class="section-title">7. Bulk Outbound</div>
+  <p>Process multiple forms at once in a single operation.</p>
+
+  <div class="step"><div class="step-num">1</div><div>Click <strong>Bulk Outbound</strong> in the left menu</div></div>
+  <div class="step"><div class="step-num">2</div><div>Select branch — the form list for that branch appears</div></div>
+  <div class="step"><div class="step-num">3</div><div>Enter outbound quantity for each form (leave 0 to skip)</div></div>
+  <div class="step"><div class="step-num">4</div><div>Enter date and shared notes, then click <strong>Bulk Outbound</strong></div></div>
+
+  <div class="tip-box">💡 Save time by processing multiple forms simultaneously in a single submission.</div>
+</div>
+
+<hr>
+
+<div class="section" id="s8">
+  <div class="section-title">8. Branch-to-Branch Transfer</div>
+  <p>Transfer forms from a branch with surplus stock to one with insufficient stock.</p>
+
+  <div class="sub-title">Requesting a Transfer (Branch Account)</div>
+  <div class="step"><div class="step-num">1</div><div>Click <strong>Branch Transfer</strong> in the left menu</div></div>
+  <div class="step"><div class="step-num">2</div><div>Your branch is set as origin; select destination branch, form, quantity, and date</div></div>
+  <div class="step"><div class="step-num">3</div><div>Click <strong>Request Transfer</strong> → status becomes "Pending"</div></div>
+
+  <div class="sub-title">Approving / Rejecting Transfers <span class="badge badge-admin">Admin</span></div>
+  <p>Admins review requests in the <strong>Received Requests</strong> tab of the Branch Transfer menu and approve or reject them. Approval automatically moves the stock.</p>
+
+  <div class="sub-title">Confirming a Transfer <span class="badge badge-branch">Branch</span></div>
+  <p>The receiving branch must click <strong>Confirm</strong> for the stock to be finally reflected in inventory.</p>
+
+  <div class="sub-title">Transfer Status Flow</div>
+  <table>
+    <tr><th>Status</th><th>Meaning</th></tr>
+    <tr><td>Pending</td><td>Awaiting admin approval</td></tr>
+    <tr><td>Approved</td><td>Approved by admin; awaiting receiving branch confirmation</td></tr>
+    <tr><td>Confirmed</td><td>Transfer complete; inventory updated</td></tr>
+    <tr><td>Rejected</td><td>Rejected by admin</td></tr>
+  </table>
+
+  <div class="sub-title">My Transfer Requests</div>
+  <p>Branch accounts can view their transfer history in the <strong>My Transfer Requests</strong> menu.</p>
+</div>
+
+<hr>
+
+<div class="section" id="s9">
+  <div class="section-title">9. Transaction History &amp; Reports</div>
+
+  <div class="sub-title">Transaction History</div>
+  <p>View all inbound, outbound, and transfer records. Filter by branch, form type, transaction type, and date range.</p>
+
+  <div class="sub-title">Reports</div>
+  <p>Analyze inventory with various statistical charts:</p>
+  <ul>
+    <li>Branch-level stock status (Normal / Low / Empty ratios)</li>
+    <li>Monthly inbound vs. outbound comparison</li>
+    <li>Top outbound forms by form type</li>
+    <li>Branch stock quantity chart</li>
+  </ul>
+
+  <div class="sub-title">Demand Forecasting</div>
+  <p>Analyzes historical outbound patterns to estimate future depletion dates. Use this to plan inbound orders in advance.</p>
+
+  <div class="sub-title">Flight Schedule</div>
+  <p>View the Eastar Jet flight schedule to help plan supply preparations.</p>
+</div>
+
+<hr>
+
+<div class="section" id="s10">
+  <div class="section-title">10. Catalog (Transport Items) Request</div>
+  <p>Request transport supplies such as X-banners, stanchions, and guidance tools online.</p>
+
+  <div class="sub-title">How to Request</div>
+  <div class="step"><div class="step-num">1</div><div>Click <strong>Catalog</strong> in the left menu — view the item list</div></div>
+  <div class="step"><div class="step-num">2</div><div>Enter quantity and click <strong>Add to Cart</strong> for each item</div></div>
+  <div class="step"><div class="step-num">3</div><div>Go to <strong>Request Cart</strong>, review, and click <strong>Submit Request</strong></div></div>
+  <div class="step"><div class="step-num">4</div><div>Check progress in <strong>Request History</strong></div></div>
+
+  <div class="info-box">ℹ Catalog requests are only possible during the <strong>request period</strong> set by the administrator. If the period is closed, the request button is disabled.</div>
+
+  <div class="sub-title">Request Status</div>
+  <table>
+    <tr><th>Status</th><th>Meaning</th></tr>
+    <tr><td><span class="badge" style="background:#FEF9C3;color:#854D0E">Pending</span></td><td>Under admin review</td></tr>
+    <tr><td><span class="badge" style="background:#DBEAFE;color:#1D4ED8">Approved</span></td><td>Processing scheduled</td></tr>
+    <tr><td><span class="badge" style="background:#DCFCE7;color:#15803D">Confirmed</span></td><td>Delivered / issued</td></tr>
+    <tr><td><span class="badge" style="background:#FEE2E2;color:#B91C1C">Rejected</span></td><td>Request rejected</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s11">
+  <div class="section-title">11. Form Supply Request</div>
+  <p>Branches use this to request consumable transport forms from HQ.</p>
+
+  <div class="sub-title">How to Request</div>
+  <div class="step"><div class="step-num">1</div><div>Click <strong>Form Request</strong> in the left menu</div></div>
+  <div class="step"><div class="step-num">2</div><div>Select form type, enter quantity and notes</div></div>
+  <div class="step"><div class="step-num">3</div><div>Click the <strong>Submit</strong> button</div></div>
+  <div class="step"><div class="step-num">4</div><div>Track progress in <strong>My Requests</strong></div></div>
+
+  <div class="info-box">ℹ Form supply requests are also subject to the <strong>request period</strong> configured by the administrator.</div>
+</div>
+
+<hr>
+
+<div class="section" id="s12">
+  <div class="section-title">12. Admin Functions <span class="badge badge-admin">Admin Only</span></div>
+
+  <div class="sub-title">User Management</div>
+  <ul>
+    <li>Create, edit, and delete user accounts</li>
+    <li>Set roles: Admin or Branch</li>
+    <li>Assign branch</li>
+    <li>Reset passwords</li>
+  </ul>
+
+  <div class="sub-title">Form Request Management</div>
+  <p>Review, approve, or reject form supply requests submitted by branches. Pending count shown as a badge on the menu.</p>
+
+  <div class="sub-title">Request Period Settings</div>
+  <p>The Request Period Settings menu has two tabs:</p>
+  <ul>
+    <li><strong>Transport Forms tab</strong>: Set the form supply request period</li>
+    <li><strong>Transport Items tab</strong>: Set the catalog request period</li>
+  </ul>
+  <p>In each tab, configure the period title, start date, end date, and enabled/disabled status. Historical periods are also viewable.</p>
+
+  <div class="sub-title">Branch Email Settings</div>
+  <p>Set the contact email per branch for important notifications (transfer approvals, rejections, etc.).</p>
+
+  <div class="sub-title">Access Logs</div>
+  <p>View login and logout history for all users.</p>
+
+  <div class="sub-title">Branch View in Inventory</div>
+  <p>The <strong>Branch View</strong> tab (admin only) shows each branch's stock in accordion-style panels.</p>
+</div>
+
+<hr>
+
+<div class="section" id="s13">
+  <div class="section-title">13. Notifications &amp; Menu Guide</div>
+
+  <div class="sub-title">Notification Badges</div>
+  <table>
+    <tr><th>Menu</th><th>Badge Meaning</th></tr>
+    <tr><td>Branch Transfer</td><td>Number of pending transfer requests</td></tr>
+    <tr><td>Form Request Management <span class="badge badge-admin">Admin</span></td><td>Number of unprocessed form requests</td></tr>
+    <tr><td>Request History (Catalog) <span class="badge badge-admin">Admin</span></td><td>Number of unprocessed catalog requests</td></tr>
+  </table>
+
+  <div class="sub-title">Notification Center</div>
+  <p>Click the 🔔 icon in the top-right to view low/empty stock alerts and pending transfer notifications. Use <strong>Mark All Read</strong> to clear all at once.</p>
+
+  <div class="sub-title">Full Menu Structure</div>
+  <div class="menu-tree">
+    <div class="section-name">Menu</div>
+    <div class="item">📊 Dashboard</div>
+    <div class="item">📦 Inventory Status</div>
+    <div class="section-name">Processing</div>
+    <div class="item">📥 Inbound</div>
+    <div class="item">📤 Outbound</div>
+    <div class="item">📋 Bulk Outbound</div>
+    <div class="item">🚚 Branch Transfer</div>
+    <div class="item">🕐 My Transfer Requests (branch accounts)</div>
+    <div class="section-name">Analysis</div>
+    <div class="item">🧾 Transaction History</div>
+    <div class="item">📈 Reports</div>
+    <div class="item">🔢 Demand Forecast</div>
+    <div class="item">✈ Flight Schedule</div>
+    <div class="section-name">Catalog</div>
+    <div class="item">📦 Catalog</div>
+    <div class="item">🛒 Request Cart</div>
+    <div class="item">🕐 Request History</div>
+    <div class="section-name">Form Supply Requests</div>
+    <div class="item">📄 Form Request</div>
+    <div class="item">🕐 My Requests</div>
+    <div class="section-name">Admin</div>
+    <div class="item admin-only">👥 User Management</div>
+    <div class="item admin-only">📋 Form Request Management</div>
+    <div class="item admin-only">📅 Request Period Settings</div>
+    <div class="item admin-only">📧 Branch Email Settings</div>
+    <div class="item admin-only">🛡 Access Logs</div>
+    <div class="section-name">Guide</div>
+    <div class="item">📖 Manual</div>
+  </div>
+
+  <div style="margin-top:28px;padding:16px;background:#EFF6FF;border-radius:8px;font-size:.82rem;color:#1D4ED8;text-align:center">
+    For inquiries, please contact HQ Operations Support. &nbsp;|&nbsp; hdqapo@eastarjet.com
+  </div>
+</div>
+
+</div>
+</body>
+</html>

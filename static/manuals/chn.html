@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZEGO用户手册 — 中文（简体）</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif;font-size:13px;color:#1C1917;background:#fff;line-height:1.8}
+  .cover{background:linear-gradient(135deg,#d97706,#92400E);color:#fff;padding:60px 48px 48px;min-height:220px}
+  .cover h1{font-size:1.9rem;font-weight:900;margin-bottom:6px}
+  .cover .sub{font-size:.88rem;opacity:.85;margin-bottom:24px}
+  .cover .meta{font-size:.78rem;opacity:.7;border-top:1px solid rgba(255,255,255,.3);padding-top:16px;margin-top:16px}
+  .toc{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:10px;padding:20px 24px;margin:28px 48px 0}
+  .toc h3{font-size:.8rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+  .toc ol{padding-left:18px}
+  .toc li{margin-bottom:4px;font-size:.85rem}
+  .toc a{color:#d97706;text-decoration:none}
+  .body{padding:20px 48px 60px}
+  .section{margin-bottom:36px;padding-top:8px}
+  .section-title{font-size:1.05rem;font-weight:800;color:#d97706;border-left:4px solid #d97706;padding-left:12px;margin-bottom:14px;padding-top:2px;padding-bottom:2px}
+  .sub-title{font-size:.88rem;font-weight:700;color:#1C1917;margin:18px 0 8px;padding-left:4px}
+  p{margin-bottom:8px;font-size:.87rem;color:#3B3836}
+  ul,ol{padding-left:20px;margin-bottom:8px}
+  li{font-size:.87rem;color:#3B3836;margin-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.84rem}
+  th{background:#d97706;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid #E7E5E4;vertical-align:top}
+  tr:nth-child(even) td{background:#FAF9F7}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.74rem;font-weight:700;vertical-align:middle}
+  .badge-ok{background:#DCFCE7;color:#15803D}
+  .badge-low{background:#FEF3C7;color:#92400E}
+  .badge-empty{background:#FEE2E2;color:#B91C1C}
+  .badge-admin{background:#d97706;color:#fff}
+  .info-box{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#92400E}
+  .warn-box{background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#B91C1C}
+  .tip-box{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#15803D}
+  .step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .step-num{background:#d97706;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px}
+  hr{border:none;border-top:1px solid #E7E5E4;margin:28px 0}
+  kbd{background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;padding:1px 6px;font-size:.8rem;font-family:monospace}
+  .menu-tree{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:8px;padding:14px 18px;font-size:.84rem}
+  .menu-tree .section-name{font-size:.72rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:4px}
+  .menu-tree .section-name:first-child{margin-top:0}
+  .menu-tree .item{padding:3px 0 3px 14px;color:#3B3836}
+  .menu-tree .item.admin-only::after{content:'管理员';background:#d97706;color:#fff;font-size:.65rem;padding:1px 5px;border-radius:10px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <div style="width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.3rem">✈</div>
+    <div style="font-size:1.6rem;font-weight:900;letter-spacing:.08em">ZEGO</div>
+  </div>
+  <h1>用户手册</h1>
+  <div class="sub">易斯达航空 物流·备品管理系统 — 全功能指南</div>
+  <div class="meta">适用对象：全部网点工作人员·管理员 &nbsp;|&nbsp; 语言：中文（简体）&nbsp;|&nbsp; 2026年6月版</div>
+</div>
+
+<div class="toc">
+  <h3>目录</h3>
+  <ol>
+    <li><a href="#s1">系统概述</a></li>
+    <li><a href="#s2">登录与密码</a></li>
+    <li><a href="#s3">仪表盘</a></li>
+    <li><a href="#s4">库存状况</a></li>
+    <li><a href="#s5">入库处理</a></li>
+    <li><a href="#s6">出库处理</a></li>
+    <li><a href="#s7">批量出库</a></li>
+    <li><a href="#s8">网点间调拨</a></li>
+    <li><a href="#s9">交易记录与报表</a></li>
+    <li><a href="#s10">目录（运输物品）申请</a></li>
+    <li><a href="#s11">表单耗材申请</a></li>
+    <li><a href="#s12">管理员功能</a></li>
+    <li><a href="#s13">通知与菜单说明</a></li>
+  </ol>
+</div>
+
+<div class="body">
+
+<div class="section" id="s1">
+  <div class="section-title">1. 系统概述</div>
+  <p>ZEGO是一个基于Web的系统，用于<strong>统一管理易斯达航空各网点的运输表单及备品（运输物品）库存</strong>。</p>
+
+  <div class="sub-title">主要功能</div>
+  <ul>
+    <li><strong>库存管理</strong> — 入库、出库、网点间调拨，实时库存状况</li>
+    <li><strong>表单耗材申请</strong> — 网点申请耗材，管理员审批</li>
+    <li><strong>目录申请</strong> — X形展架、隔离带等物品在线申请</li>
+    <li><strong>报表与需求预测</strong> — 月度消耗分析，库存枯竭预测</li>
+    <li><strong>多语言支持</strong> — 韩语、英语、日语、简体中文、繁体中文</li>
+  </ul>
+
+  <div class="sub-title">管理表单种类</div>
+  <table>
+    <tr><th>分类</th><th>表单名称</th></tr>
+    <tr><td>旅客文件</td><td>乐器免责声明书（DECLARATION OF INDEMNITY, Musical Instrument）</td></tr>
+    <tr><td>旅客文件</td><td>监护人声明书（DECLARATION OF PARENT GUARDIAN）</td></tr>
+    <tr><td>货物文件</td><td>枪支交接书（Firearm Handover Form）</td></tr>
+    <tr><td>特种货物</td><td>NOTOC（危险货物通知书）</td></tr>
+    <tr><td>一般备品</td><td>X形展架、隔离带、告示文、登机牌等</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s2">
+  <div class="section-title">2. 登录与密码</div>
+
+  <div class="step"><div class="step-num">1</div><div>在浏览器中打开ZEGO网站</div></div>
+  <div class="step"><div class="step-num">2</div><div>输入账号（工号或指定ID）和密码</div></div>
+  <div class="step"><div class="step-num">3</div><div>点击<strong>登录</strong>按钮</div></div>
+
+  <div class="warn-box">⚠ <strong>初始密码：</strong><kbd>$eastar12</kbd> — 首次登录时必须修改密码。</div>
+
+  <div class="sub-title">修改密码</div>
+  <p>随时点击左侧边栏底部的<strong>🔑 修改密码</strong>进行更改。</p>
+  <div class="info-box">ℹ 密码到期前7天上方将显示警告提示，请及时修改。</div>
+
+  <div class="sub-title">语言设置</div>
+  <p>点击右上角的语言下拉菜单，即可立即切换语言。</p>
+</div>
+
+<hr>
+
+<div class="section" id="s3">
+  <div class="section-title">3. 仪表盘</div>
+  <p>登录后的第一个页面，可一目了然地掌握当前状况。</p>
+
+  <div class="sub-title">统计卡片</div>
+  <table>
+    <tr><th>卡片</th><th>内容</th></tr>
+    <tr><td>运营网点数</td><td>当前注册的全部网点数量</td></tr>
+    <tr><td>表单种类</td><td>管理中的表单品目数量</td></tr>
+    <tr><td>今日交易</td><td>当日入库、出库、调拨件数</td></tr>
+    <tr><td>库存预警</td><td>低于最低标准或已枯竭的品目数</td></tr>
+  </table>
+
+  <div class="sub-title">库存状态</div>
+  <table>
+    <tr><th>颜色</th><th>状态</th><th>含义</th></tr>
+    <tr><td><span class="badge badge-ok">正常</span></td><td>Normal</td><td>超过最低标准，库存充足</td></tr>
+    <tr><td><span class="badge badge-low">不足</span></td><td>Low</td><td>数量&gt;0，低于或等于最低标准</td></tr>
+    <tr><td><span class="badge badge-empty">枯竭</span></td><td>Empty</td><td>数量=0</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s4">
+  <div class="section-title">4. 库存状况</div>
+  <p>点击左侧菜单的<strong>库存状况</strong>，共有4个标签页。</p>
+
+  <div class="sub-title">标签1 — 网点详细</div>
+  <ul>
+    <li>以表格显示所有网点·表单的当前库存</li>
+    <li><strong>修改最低标准</strong>：在输入框输入数字后按<kbd>Enter</kbd> — 仅保存该网点</li>
+    <li><strong>Excel下载</strong>：按当前筛选条件下载Excel文件</li>
+  </ul>
+
+  <div class="sub-title">标签2 — 按网点查看 <span class="badge badge-admin">管理员</span></div>
+  <p>以折叠面板展开各网点，查看该网点内所有表单库存。最低标准可按网点分别设置。</p>
+
+  <div class="sub-title">标签3 — 按表单汇总</div>
+  <p>按表单种类查看全部网点合计库存。点击网点数量按钮可弹出各网点详细信息。</p>
+
+  <div class="sub-title">标签4 — 月度消耗状况</div>
+  <p>查看近6个月各表单出库数量的变化趋势。</p>
+
+  <div class="tip-box">💡 <strong>最低标准按网点独立管理。</strong>修改某一网点的最低标准，不会影响其他网点。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s5">
+  <div class="section-title">5. 入库处理</div>
+  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>入库处理</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>选择网点，输入表单种类、数量、日期、备注</div></div>
+  <div class="step"><div class="step-num">3</div><div>点击<strong>入库处理</strong>按钮</div></div>
+  <div class="info-box">ℹ 入库后若仍低于最低标准，系统将自动生成警报通知。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s6">
+  <div class="section-title">6. 出库处理</div>
+  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>出库处理</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>输入网点、表单种类、数量、日期、备注</div></div>
+  <div class="step"><div class="step-num">3</div><div>点击<strong>出库处理</strong>按钮</div></div>
+  <div class="warn-box">⚠ 出库数量不能超过当前库存。出库后若库存降至最低标准以下，将自动发送通知。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s7">
+  <div class="section-title">7. 批量出库</div>
+  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>批量出库</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>选择网点后，显示该网点的表单列表</div></div>
+  <div class="step"><div class="step-num">3</div><div>输入各表单的出库数量（0则跳过）</div></div>
+  <div class="step"><div class="step-num">4</div><div>输入日期和公共备注，点击<strong>批量出库</strong></div></div>
+  <div class="tip-box">💡 一次操作即可同时处理多个表单的出库，节省时间。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s8">
+  <div class="section-title">8. 网点间调拨</div>
+
+  <div class="sub-title">申请调拨（网点账户）</div>
+  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>网点间调拨</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>选择目标网点、表单、数量、日期</div></div>
+  <div class="step"><div class="step-num">3</div><div>点击<strong>申请调拨</strong> → 状态变为"待审批"</div></div>
+
+  <div class="sub-title">调拨状态流程</div>
+  <table>
+    <tr><th>状态</th><th>含义</th></tr>
+    <tr><td>待审批（Pending）</td><td>等待管理员审批</td></tr>
+    <tr><td>已审批（Approved）</td><td>管理员已审批，等待接收网点确认</td></tr>
+    <tr><td>已确认（Confirmed）</td><td>调拨完成，库存已更新</td></tr>
+    <tr><td>已拒绝（Rejected）</td><td>管理员拒绝</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s9">
+  <div class="section-title">9. 交易记录与报表</div>
+
+  <div class="sub-title">交易记录</div>
+  <p>查询所有入库、出库、调拨记录。可按网点、表单、交易类型、日期范围筛选。</p>
+
+  <div class="sub-title">报表</div>
+  <ul>
+    <li>各网点库存状况（正常/不足/枯竭比例）</li>
+    <li>月度入库与出库对比</li>
+    <li>表单别出库排名</li>
+    <li>各网点库存数量图表</li>
+  </ul>
+
+  <div class="sub-title">需求预测</div>
+  <p>分析历史出库规律，计算未来库存枯竭预计日期。</p>
+
+  <div class="sub-title">航班时刻</div>
+  <p>查看易斯达航空航班时刻表，辅助备品准备计划。</p>
+</div>
+
+<hr>
+
+<div class="section" id="s10">
+  <div class="section-title">10. 目录（运输物品）申请</div>
+  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>目录</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>输入各物品数量后点击<strong>加入购物车</strong></div></div>
+  <div class="step"><div class="step-num">3</div><div>在<strong>申请购物车</strong>中确认后点击<strong>完成申请</strong></div></div>
+  <div class="step"><div class="step-num">4</div><div>在<strong>申请记录</strong>中查看进度</div></div>
+  <div class="info-box">ℹ 目录申请仅在管理员设置的<strong>申请期间</strong>内可进行。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s11">
+  <div class="section-title">11. 表单耗材申请</div>
+  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>表单申请</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>选择表单种类，输入申请数量和备注</div></div>
+  <div class="step"><div class="step-num">3</div><div>点击<strong>申请</strong>按钮</div></div>
+  <div class="step"><div class="step-num">4</div><div>在<strong>我的申请记录</strong>中查看处理状况</div></div>
+  <div class="info-box">ℹ 表单申请同样仅在管理员设置的<strong>申请期间</strong>内可进行。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s12">
+  <div class="section-title">12. 管理员功能 <span class="badge badge-admin">仅管理员</span></div>
+
+  <div class="sub-title">用户管理</div>
+  <ul>
+    <li>创建、编辑、删除用户账户</li>
+    <li>设置角色：管理员 / 网点</li>
+    <li>分配网点，重置密码</li>
+  </ul>
+
+  <div class="sub-title">表单申请管理</div>
+  <p>查看并审批或拒绝网点提交的表单耗材申请。菜单旁的徽章显示未处理件数。</p>
+
+  <div class="sub-title">申请期间设置</div>
+  <p>申请期间设置菜单有两个标签：</p>
+  <ul>
+    <li><strong>运输表单标签</strong>：设置表单耗材申请期间</li>
+    <li><strong>运输物品标签</strong>：设置目录申请期间</li>
+  </ul>
+
+  <div class="sub-title">网点邮件设置</div>
+  <p>设置各网点接收调拨审批通知等重要邮件的联系人邮箱。</p>
+
+  <div class="sub-title">访问日志</div>
+  <p>查看所有用户的登录和退出记录。</p>
+</div>
+
+<hr>
+
+<div class="section" id="s13">
+  <div class="section-title">13. 通知与菜单说明</div>
+
+  <div class="sub-title">通知徽章</div>
+  <table>
+    <tr><th>菜单</th><th>徽章含义</th></tr>
+    <tr><td>网点间调拨</td><td>待审批的调拨申请件数</td></tr>
+    <tr><td>表单申请管理 <span class="badge badge-admin">管理员</span></td><td>未处理的表单申请件数</td></tr>
+    <tr><td>申请记录（目录）<span class="badge badge-admin">管理员</span></td><td>未处理的目录申请件数</td></tr>
+  </table>
+
+  <div class="sub-title">通知中心</div>
+  <p>点击右上角🔔图标查看库存不足/枯竭警报及调拨待处理通知。</p>
+
+  <div class="menu-tree">
+    <div class="section-name">菜单</div>
+    <div class="item">📊 仪表盘</div>
+    <div class="item">📦 库存状况</div>
+    <div class="section-name">处理</div>
+    <div class="item">📥 入库处理</div>
+    <div class="item">📤 出库处理</div>
+    <div class="item">📋 批量出库</div>
+    <div class="item">🚚 网点间调拨</div>
+    <div class="item">🕐 我的调拨申请</div>
+    <div class="section-name">分析</div>
+    <div class="item">🧾 交易记录</div>
+    <div class="item">📈 报表</div>
+    <div class="item">🔢 需求预测</div>
+    <div class="item">✈ 航班时刻</div>
+    <div class="section-name">目录</div>
+    <div class="item">📦 目录</div>
+    <div class="item">🛒 申请购物车</div>
+    <div class="item">🕐 申请记录</div>
+    <div class="section-name">表单耗材申请</div>
+    <div class="item">📄 表单申请</div>
+    <div class="item">🕐 我的申请记录</div>
+    <div class="section-name">管理员</div>
+    <div class="item admin-only">👥 用户管理</div>
+    <div class="item admin-only">📋 表单申请管理</div>
+    <div class="item admin-only">📅 申请期间设置</div>
+    <div class="item admin-only">📧 网点邮件设置</div>
+    <div class="item admin-only">🛡 访问日志</div>
+    <div class="section-name">指南</div>
+    <div class="item">📖 用户手册</div>
+  </div>
+
+  <div style="margin-top:28px;padding:16px;background:#FFFBEB;border-radius:8px;font-size:.82rem;color:#92400E;text-align:center">
+    如有疑问，请联系总部运营支持团队。 &nbsp;|&nbsp; hdqapo@eastarjet.com
+  </div>
+</div>
+
+</div>
+</body>
+</html>

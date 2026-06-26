@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZEGOユーザーマニュアル — 日本語</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Hiragino Kaku Gothic Pro','Yu Gothic',Meiryo,sans-serif;font-size:13px;color:#1C1917;background:#fff;line-height:1.8}
+  .cover{background:linear-gradient(135deg,#e84393,#9B1B60);color:#fff;padding:60px 48px 48px;min-height:220px}
+  .cover h1{font-size:1.9rem;font-weight:900;margin-bottom:6px}
+  .cover .sub{font-size:.88rem;opacity:.85;margin-bottom:24px}
+  .cover .meta{font-size:.78rem;opacity:.7;border-top:1px solid rgba(255,255,255,.3);padding-top:16px;margin-top:16px}
+  .toc{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:10px;padding:20px 24px;margin:28px 48px 0}
+  .toc h3{font-size:.8rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+  .toc ol{padding-left:18px}
+  .toc li{margin-bottom:4px;font-size:.85rem}
+  .toc a{color:#e84393;text-decoration:none}
+  .body{padding:20px 48px 60px}
+  .section{margin-bottom:36px;padding-top:8px}
+  .section-title{font-size:1.05rem;font-weight:800;color:#e84393;border-left:4px solid #e84393;padding-left:12px;margin-bottom:14px;padding-top:2px;padding-bottom:2px}
+  .sub-title{font-size:.88rem;font-weight:700;color:#1C1917;margin:18px 0 8px;padding-left:4px}
+  p{margin-bottom:8px;font-size:.87rem;color:#3B3836}
+  ul,ol{padding-left:20px;margin-bottom:8px}
+  li{font-size:.87rem;color:#3B3836;margin-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.84rem}
+  th{background:#e84393;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid #E7E5E4;vertical-align:top}
+  tr:nth-child(even) td{background:#FAF9F7}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.74rem;font-weight:700;vertical-align:middle}
+  .badge-ok{background:#DCFCE7;color:#15803D}
+  .badge-low{background:#FEF3C7;color:#92400E}
+  .badge-empty{background:#FEE2E2;color:#B91C1C}
+  .badge-admin{background:#e84393;color:#fff}
+  .info-box{background:#FDF2F8;border:1px solid #F9A8D4;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#9B1B60}
+  .warn-box{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#92400E}
+  .tip-box{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#15803D}
+  .step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .step-num{background:#e84393;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px}
+  hr{border:none;border-top:1px solid #E7E5E4;margin:28px 0}
+  kbd{background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;padding:1px 6px;font-size:.8rem;font-family:monospace}
+  .menu-tree{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:8px;padding:14px 18px;font-size:.84rem}
+  .menu-tree .section-name{font-size:.72rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:4px}
+  .menu-tree .section-name:first-child{margin-top:0}
+  .menu-tree .item{padding:3px 0 3px 14px;color:#3B3836}
+  .menu-tree .item.admin-only::after{content:'管理者';background:#e84393;color:#fff;font-size:.65rem;padding:1px 5px;border-radius:10px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <div style="width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.3rem">✈</div>
+    <div style="font-size:1.6rem;font-weight:900;letter-spacing:.08em">ZEGO</div>
+  </div>
+  <h1>ユーザーマニュアル</h1>
+  <div class="sub">イースター航空 物流・備品管理システム — 全機能ガイド</div>
+  <div class="meta">対象：全支店スタッフ・管理者 &nbsp;|&nbsp; 言語：日本語 &nbsp;|&nbsp; 2026年6月現在</div>
+</div>
+
+<div class="toc">
+  <h3>目次</h3>
+  <ol>
+    <li><a href="#s1">システム概要</a></li>
+    <li><a href="#s2">ログイン・パスワード</a></li>
+    <li><a href="#s3">ダッシュボード</a></li>
+    <li><a href="#s4">在庫状況</a></li>
+    <li><a href="#s5">入庫処理</a></li>
+    <li><a href="#s6">出庫処理</a></li>
+    <li><a href="#s7">一括出庫</a></li>
+    <li><a href="#s8">支店間移動</a></li>
+    <li><a href="#s9">取引履歴・レポート</a></li>
+    <li><a href="#s10">カタログ（輸送アイテム）申請</a></li>
+    <li><a href="#s11">様式備品申請</a></li>
+    <li><a href="#s12">管理者機能</a></li>
+    <li><a href="#s13">通知・メニュー案内</a></li>
+  </ol>
+</div>
+
+<div class="body">
+
+<div class="section" id="s1">
+  <div class="section-title">1. システム概要</div>
+  <p>ZEGOはイースター航空の全支店における<strong>輸送様式・備品（輸送アイテム）在庫を一元管理</strong>するWebベースのシステムです。</p>
+
+  <div class="sub-title">主な機能</div>
+  <ul>
+    <li><strong>在庫管理</strong> — 入庫・出庫・支店間移動、リアルタイム在庫確認</li>
+    <li><strong>様式備品申請</strong> — 支店が消耗品を申請し、管理者が承認</li>
+    <li><strong>カタログ申請</strong> — Xバナー、スタンション等のオンライン申請</li>
+    <li><strong>レポート・需要予測</strong> — 月別消費分析、在庫枯渇予測</li>
+    <li><strong>多言語対応</strong> — 韓国語、英語、日本語、中国語（簡体・繁体）</li>
+  </ul>
+
+  <div class="sub-title">管理様式の種類</div>
+  <table>
+    <tr><th>区分</th><th>様式名</th></tr>
+    <tr><td>旅客書類</td><td>楽器誓約書（DECLARATION OF INDEMNITY, Musical Instrument）</td></tr>
+    <tr><td>旅客書類</td><td>保護者誓約書（DECLARATION OF PARENT GUARDIAN）</td></tr>
+    <tr><td>貨物書類</td><td>銃器引渡書（Firearm Handover Form）</td></tr>
+    <tr><td>特殊貨物</td><td>NOTOC（Notification to Captain）</td></tr>
+    <tr><td>一般備品</td><td>Xバナー、スタンション、案内文、搭乗券等</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s2">
+  <div class="section-title">2. ログイン・パスワード</div>
+
+  <div class="step"><div class="step-num">1</div><div>ブラウザでZEGOサイトにアクセス</div></div>
+  <div class="step"><div class="step-num">2</div><div>IDとパスワードを入力</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>ログイン</strong>ボタンをクリック</div></div>
+
+  <div class="warn-box">⚠ <strong>初期パスワード：</strong><kbd>$eastar12</kbd> — 初回ログイン時に必ず変更してください。</div>
+
+  <div class="sub-title">パスワード変更</div>
+  <p>左サイドバー下部の<strong>🔑 パスワード変更</strong>からいつでも変更できます。</p>
+  <div class="info-box">ℹ パスワード期限の7日前から上部に警告が表示されます。期間内に変更してください。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s3">
+  <div class="section-title">3. ダッシュボード</div>
+  <p>ログイン後の最初の画面です。現状を一目で把握できます。</p>
+
+  <div class="sub-title">統計カード</div>
+  <table>
+    <tr><th>カード</th><th>内容</th></tr>
+    <tr><td>運営支店数</td><td>登録済みの全支店数</td></tr>
+    <tr><td>様式種類</td><td>管理中の様式品目数</td></tr>
+    <tr><td>当日取引</td><td>本日の入庫・出庫・移動件数</td></tr>
+    <tr><td>在庫警告</td><td>最低基準以下または枯渇状態の品目数</td></tr>
+  </table>
+
+  <div class="sub-title">在庫ステータス</div>
+  <table>
+    <tr><th>色</th><th>状態</th><th>意味</th></tr>
+    <tr><td><span class="badge badge-ok">正常</span></td><td>OK</td><td>最低基準超過、在庫十分</td></tr>
+    <tr><td><span class="badge badge-low">不足</span></td><td>Low</td><td>数量&gt;0、最低基準以下</td></tr>
+    <tr><td><span class="badge badge-empty">枯渇</span></td><td>Empty</td><td>数量=0</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s4">
+  <div class="section-title">4. 在庫状況</div>
+  <p>左メニューの<strong>在庫状況</strong>をクリック。4つのタブで構成されています。</p>
+
+  <div class="sub-title">タブ1 — 支店別詳細</div>
+  <ul>
+    <li>支店・様式ごとの現在庫をテーブル表示</li>
+    <li><strong>最低基準修正</strong>：数値入力後<kbd>Enter</kbd> — その支店のみ保存</li>
+    <li><strong>Excelダウンロード</strong>：現フィルター条件でExcelファイルをダウンロード</li>
+  </ul>
+
+  <div class="sub-title">タブ2 — 支店別表示 <span class="badge badge-admin">管理者</span></div>
+  <p>各支店をアコーディオンパネルで展開して在庫を確認。最低基準を支店ごとに設定可能。</p>
+
+  <div class="sub-title">タブ3 — 様式別集計</div>
+  <p>様式種類ごとに全支店の合計在庫を確認。</p>
+
+  <div class="sub-title">タブ4 — 月別消費状況</div>
+  <p>直近6ヶ月間の様式別出庫数量の推移を確認。</p>
+
+  <div class="tip-box">💡 <strong>最低基準は支店ごとに独立して管理されます。</strong>一支店の基準を変更しても他支店に影響しません。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s5">
+  <div class="section-title">5. 入庫処理</div>
+  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>入庫処理</strong>をクリック</div></div>
+  <div class="step"><div class="step-num">2</div><div>支店、様式種類、数量、日付、備考を入力</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>入庫処理</strong>ボタンをクリック</div></div>
+  <div class="info-box">ℹ 入庫後も最低基準以下の場合、自動的にアラートが生成されます。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s6">
+  <div class="section-title">6. 出庫処理</div>
+  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>出庫処理</strong>をクリック</div></div>
+  <div class="step"><div class="step-num">2</div><div>支店、様式種類、数量、日付、備考を入力</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>出庫処理</strong>ボタンをクリック</div></div>
+  <div class="warn-box">⚠ 現在庫より多い数量は出庫できません。出庫後に最低基準以下になった場合、自動通知が送信されます。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s7">
+  <div class="section-title">7. 一括出庫</div>
+  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>一括出庫</strong>をクリック</div></div>
+  <div class="step"><div class="step-num">2</div><div>支店を選択 — その支店の様式リストが表示</div></div>
+  <div class="step"><div class="step-num">3</div><div>各様式の出庫数量を入力（0は無視）</div></div>
+  <div class="step"><div class="step-num">4</div><div>日付と共通備考を入力し<strong>一括出庫</strong>をクリック</div></div>
+  <div class="tip-box">💡 複数の様式を一度に出庫処理でき、時間を節約できます。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s8">
+  <div class="section-title">8. 支店間移動</div>
+
+  <div class="sub-title">移動申請（支店アカウント）</div>
+  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>支店間移動</strong>をクリック</div></div>
+  <div class="step"><div class="step-num">2</div><div>送り先支店、様式、数量、日付を入力</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>移動申請</strong>ボタンをクリック → 承認待ち状態</div></div>
+
+  <div class="sub-title">移動ステータス</div>
+  <table>
+    <tr><th>ステータス</th><th>意味</th></tr>
+    <tr><td>待機（Pending）</td><td>管理者承認前</td></tr>
+    <tr><td>承認（Approved）</td><td>管理者が承認、受け取り支店の確認待ち</td></tr>
+    <tr><td>確認（Confirmed）</td><td>移動完了、在庫反映</td></tr>
+    <tr><td>却下（Rejected）</td><td>管理者が却下</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s9">
+  <div class="section-title">9. 取引履歴・レポート</div>
+
+  <div class="sub-title">取引履歴</div>
+  <p>全ての入庫・出庫・移動履歴を照会。支店、様式、取引タイプ、期間でフィルタリング可能。</p>
+
+  <div class="sub-title">レポート</div>
+  <ul>
+    <li>支店別在庫状況（正常/不足/枯渇の比率）</li>
+    <li>月別入庫・出庫比較</li>
+    <li>様式別上位出庫状況</li>
+    <li>支店別在庫数量チャート</li>
+  </ul>
+
+  <div class="sub-title">需要予測</div>
+  <p>過去の出庫パターンを分析し、将来の在庫枯渇予想日を計算します。</p>
+
+  <div class="sub-title">運航スケジュール</div>
+  <p>イースター航空の運航スケジュールを確認し、備品準備計画に役立てます。</p>
+</div>
+
+<hr>
+
+<div class="section" id="s10">
+  <div class="section-title">10. カタログ（輸送アイテム）申請</div>
+  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>カタログ</strong>をクリック</div></div>
+  <div class="step"><div class="step-num">2</div><div>各品目の数量を入力し<strong>カートに追加</strong></div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>申請カート</strong>で確認し<strong>申請完了</strong></div></div>
+  <div class="step"><div class="step-num">4</div><div><strong>申請履歴</strong>で進捗確認</div></div>
+  <div class="info-box">ℹ 管理者が設定した<strong>申請期間</strong>内のみ申請可能です。</div>
+
+  <div class="sub-title">申請ステータス</div>
+  <table>
+    <tr><th>ステータス</th><th>意味</th></tr>
+    <tr><td><span class="badge" style="background:#FEF9C3;color:#854D0E">待機</span></td><td>管理者確認中</td></tr>
+    <tr><td><span class="badge" style="background:#DBEAFE;color:#1D4ED8">承認</span></td><td>処理予定</td></tr>
+    <tr><td><span class="badge" style="background:#DCFCE7;color:#15803D">確認</span></td><td>配送・支給完了</td></tr>
+    <tr><td><span class="badge" style="background:#FEE2E2;color:#B91C1C">却下</span></td><td>申請却下</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="section" id="s11">
+  <div class="section-title">11. 様式備品申請</div>
+  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>様式申請</strong>をクリック</div></div>
+  <div class="step"><div class="step-num">2</div><div>様式種類、申請数量、備考を入力</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>申請</strong>ボタンをクリック</div></div>
+  <div class="step"><div class="step-num">4</div><div><strong>私の申請履歴</strong>で処理状況を確認</div></div>
+  <div class="info-box">ℹ 様式申請も管理者が設定した<strong>申請期間</strong>内のみ可能です。</div>
+</div>
+
+<hr>
+
+<div class="section" id="s12">
+  <div class="section-title">12. 管理者機能 <span class="badge badge-admin">管理者専用</span></div>
+
+  <div class="sub-title">ユーザー管理</div>
+  <ul>
+    <li>アカウントの作成・編集・削除</li>
+    <li>役割設定：管理者 / 支店</li>
+    <li>支店割り当て、パスワードリセット</li>
+  </ul>
+
+  <div class="sub-title">様式申請管理</div>
+  <p>支店からの様式備品申請を確認し、承認/却下します。</p>
+
+  <div class="sub-title">申請期間設定</div>
+  <p>申請期間設定メニューには2つのタブがあります：</p>
+  <ul>
+    <li><strong>輸送様式タブ</strong>：様式備品申請期間の設定</li>
+    <li><strong>輸送アイテムタブ</strong>：カタログ申請期間の設定</li>
+  </ul>
+
+  <div class="sub-title">支店メール設定</div>
+  <p>移動承認・却下等の通知メールを受け取る支店別担当者メールを設定します。</p>
+
+  <div class="sub-title">アクセスログ</div>
+  <p>全ユーザーのログイン・ログアウト履歴を確認します。</p>
+</div>
+
+<hr>
+
+<div class="section" id="s13">
+  <div class="section-title">13. 通知・メニュー案内</div>
+
+  <div class="sub-title">通知バッジ</div>
+  <table>
+    <tr><th>メニュー</th><th>バッジの意味</th></tr>
+    <tr><td>支店間移動</td><td>承認待ちの移動申請件数</td></tr>
+    <tr><td>様式申請管理 <span class="badge badge-admin">管理者</span></td><td>未処理の様式申請件数</td></tr>
+    <tr><td>申請履歴（カタログ）<span class="badge badge-admin">管理者</span></td><td>未処理のカタログ申請件数</td></tr>
+  </table>
+
+  <div class="sub-title">通知センター</div>
+  <p>右上の🔔アイコンをクリックすると在庫不足・枯渇アラートや移動待ち通知を確認できます。</p>
+
+  <div class="menu-tree">
+    <div class="section-name">メニュー</div>
+    <div class="item">📊 ダッシュボード</div>
+    <div class="item">📦 在庫状況</div>
+    <div class="section-name">処理</div>
+    <div class="item">📥 入庫処理</div>
+    <div class="item">📤 出庫処理</div>
+    <div class="item">📋 一括出庫</div>
+    <div class="item">🚚 支店間移動</div>
+    <div class="item">🕐 私の移動申請</div>
+    <div class="section-name">分析</div>
+    <div class="item">🧾 取引履歴</div>
+    <div class="item">📈 レポート</div>
+    <div class="item">🔢 需要予測</div>
+    <div class="item">✈ 運航スケジュール</div>
+    <div class="section-name">カタログ</div>
+    <div class="item">📦 カタログ</div>
+    <div class="item">🛒 申請カート</div>
+    <div class="item">🕐 申請履歴</div>
+    <div class="section-name">様式備品申請</div>
+    <div class="item">📄 様式申請</div>
+    <div class="item">🕐 私の申請履歴</div>
+    <div class="section-name">管理者</div>
+    <div class="item admin-only">👥 ユーザー管理</div>
+    <div class="item admin-only">📋 様式申請管理</div>
+    <div class="item admin-only">📅 申請期間設定</div>
+    <div class="item admin-only">📧 支店メール設定</div>
+    <div class="item admin-only">🛡 アクセスログ</div>
+    <div class="section-name">案内</div>
+    <div class="item">📖 マニュアル</div>
+  </div>
+
+  <div style="margin-top:28px;padding:16px;background:#FDF2F8;border-radius:8px;font-size:.82rem;color:#9B1B60;text-align:center">
+    お問い合わせは本社運営サポートチームまで。 &nbsp;|&nbsp; hdqapo@eastarjet.com
+  </div>
+</div>
+
+</div>
+</body>
+</html>

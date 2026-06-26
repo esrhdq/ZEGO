@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZEGO 사용자 매뉴얼 — 한국어</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-size:13px;color:#1C1917;background:#fff;line-height:1.7}
+  .cover{background:linear-gradient(135deg,#CC1625,#8B0F1A);color:#fff;padding:60px 48px 48px;min-height:220px}
+  .cover h1{font-size:2rem;font-weight:900;letter-spacing:-.02em;margin-bottom:6px}
+  .cover .sub{font-size:.9rem;opacity:.85;margin-bottom:24px}
+  .cover .meta{font-size:.78rem;opacity:.7;border-top:1px solid rgba(255,255,255,.3);padding-top:16px;margin-top:16px}
+  .toc{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:10px;padding:20px 24px;margin:28px 48px 0}
+  .toc h3{font-size:.8rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+  .toc ol{padding-left:18px}
+  .toc li{margin-bottom:4px;font-size:.85rem}
+  .toc a{color:#CC1625;text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  .body{padding:20px 48px 60px}
+  .section{margin-bottom:36px;padding-top:8px}
+  .section-title{font-size:1.05rem;font-weight:800;color:#CC1625;border-left:4px solid #CC1625;padding-left:12px;margin-bottom:14px;padding-top:2px;padding-bottom:2px}
+  .sub-title{font-size:.88rem;font-weight:700;color:#1C1917;margin:18px 0 8px;padding-left:4px}
+  p{margin-bottom:8px;font-size:.87rem;color:#3B3836}
+  ul,ol{padding-left:20px;margin-bottom:8px}
+  li{font-size:.87rem;color:#3B3836;margin-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.84rem}
+  th{background:#CC1625;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid #E7E5E4;vertical-align:top}
+  tr:nth-child(even) td{background:#FAF9F7}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.74rem;font-weight:700;vertical-align:middle}
+  .badge-ok{background:#DCFCE7;color:#15803D}
+  .badge-low{background:#FEF3C7;color:#92400E}
+  .badge-empty{background:#FEE2E2;color:#B91C1C}
+  .badge-admin{background:#CC1625;color:#fff}
+  .badge-branch{background:#DBEAFE;color:#1D4ED8}
+  .info-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#1D4ED8}
+  .warn-box{background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#92400E}
+  .tip-box{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px 16px;margin:10px 0;font-size:.84rem;color:#15803D}
+  .step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .step-num{background:#CC1625;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px}
+  hr{border:none;border-top:1px solid #E7E5E4;margin:28px 0}
+  kbd{background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;padding:1px 6px;font-size:.8rem;font-family:monospace}
+  .menu-tree{background:#FAF9F7;border:1px solid #E7E5E4;border-radius:8px;padding:14px 18px;font-size:.84rem}
+  .menu-tree .section-name{font-size:.72rem;font-weight:700;color:#A8A29E;text-transform:uppercase;letter-spacing:.1em;margin-top:10px;margin-bottom:4px}
+  .menu-tree .section-name:first-child{margin-top:0}
+  .menu-tree .item{padding:3px 0 3px 14px;color:#3B3836}
+  .menu-tree .item.admin-only::after{content:'관리자';background:#CC1625;color:#fff;font-size:.65rem;padding:1px 5px;border-radius:10px;margin-left:6px;vertical-align:middle}
+  @media print{.cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <div style="width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.3rem">✈</div>
+    <div style="font-size:1.6rem;font-weight:900;letter-spacing:.08em">ZEGO</div>
+  </div>
+  <h1>사용자 매뉴얼</h1>
+  <div class="sub">이스타항공 물류/비품 관리 시스템 — 전 기능 안내서</div>
+  <div class="meta">
+    대상: 전 지점 담당자 · 관리자 &nbsp;|&nbsp; 언어: 한국어 &nbsp;|&nbsp; 2026년 6월 기준
+  </div>
+</div>
+
+<div class="toc">
+  <h3>목차</h3>
+  <ol>
+    <li><a href="#s1">시스템 소개</a></li>
+    <li><a href="#s2">로그인 &amp; 비밀번호</a></li>
+    <li><a href="#s3">대시보드</a></li>
+    <li><a href="#s4">재고현황</a></li>
+    <li><a href="#s5">입고 처리</a></li>
+    <li><a href="#s6">출고 처리</a></li>
+    <li><a href="#s7">일괄 출고</a></li>
+    <li><a href="#s8">지점 간 이전</a></li>
+    <li><a href="#s9">거래 내역 &amp; 보고서</a></li>
+    <li><a href="#s10">카탈로그 (운송아이템) 신청</a></li>
+    <li><a href="#s11">양식 비품 신청</a></li>
+    <li><a href="#s12">관리자 기능</a></li>
+    <li><a href="#s13">알림 &amp; 메뉴 안내</a></li>
+  </ol>
+</div>
+
+<div class="body">
+
+<!-- ① 시스템 소개 -->
+<div class="section" id="s1">
+  <div class="section-title">1. 시스템 소개</div>
+  <p>ZEGO는 이스타항공 전 지점의 <strong>운송양식 및 비품(운송아이템) 재고를 통합 관리</strong>하는 웹 기반 시스템입니다. 국내·국제·화물 지점 담당자와 본사 관리자가 함께 사용합니다.</p>
+
+  <div class="sub-title">주요 기능</div>
+  <ul>
+    <li><strong>재고 관리</strong> — 입고·출고·지점 간 이전, 실시간 재고 현황</li>
+    <li><strong>운송양식 비품 신청</strong> — 지점에서 양식 소모품 신청, 관리자 승인</li>
+    <li><strong>운송아이템 카탈로그 신청</strong> — X-배너, 스탠션 등 비품 온라인 신청</li>
+    <li><strong>보고서 &amp; 수요예측</strong> — 월별 소비 분석, 재고 소진 예측</li>
+    <li><strong>다국어 지원</strong> — 한국어, English, 日本語, 中文(简体), 中文(繁體)</li>
+  </ul>
+
+  <div class="sub-title">운영 양식 종류</div>
+  <table>
+    <tr><th>분류</th><th>양식명</th></tr>
+    <tr><td>승객 서류</td><td>악기 서약서 (DECLARATION OF INDEMNITY, Musical Instrument)</td></tr>
+    <tr><td>승객 서류</td><td>보호자 서약서 (DECLARATION OF PARENT GUARDIAN)</td></tr>
+    <tr><td>화물 서류</td><td>총기인수인계서 (Firearm Handover Form)</td></tr>
+    <tr><td>특수화물</td><td>NOTOC (Notification to Captain)</td></tr>
+    <tr><td>일반 비품</td><td>X-배너, 스탠션, 안내문, 탑승권 등 기타 양식</td></tr>
+  </table>
+
+  <div class="sub-title">지점 구분</div>
+  <table>
+    <tr><th>구분</th><th>표시</th><th>설명</th></tr>
+    <tr><td><span class="badge badge-branch">국내</span></td><td>DOM</td><td>국내선 지점</td></tr>
+    <tr><td><span class="badge" style="background:#EDE9FE;color:#6D28D9">국제</span></td><td>INTL</td><td>국제선 지점</td></tr>
+    <tr><td><span class="badge" style="background:#FEF3C7;color:#92400E">화물</span></td><td>CARGO</td><td>화물 전담 지점</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<!-- ② 로그인 -->
+<div class="section" id="s2">
+  <div class="section-title">2. 로그인 &amp; 비밀번호</div>
+
+  <div class="sub-title">로그인 방법</div>
+  <div class="step"><div class="step-num">1</div><div>브라우저에서 ZEGO 사이트 주소 접속</div></div>
+  <div class="step"><div class="step-num">2</div><div>아이디(사원번호 또는 지정 ID)와 비밀번호 입력</div></div>
+  <div class="step"><div class="step-num">3</div><div>로그인 버튼 클릭</div></div>
+
+  <div class="warn-box">⚠ <strong>초기 비밀번호:</strong> <kbd>$eastar12</kbd> — 첫 로그인 시 반드시 변경하세요. 변경하지 않으면 일부 기능이 제한됩니다.</div>
+
+  <div class="sub-title">비밀번호 변경</div>
+  <p>좌측 사이드바 하단의 <strong>🔑 비밀번호 변경</strong> 메뉴를 클릭하면 언제든지 변경 가능합니다.</p>
+  <div class="info-box">ℹ 비밀번호 만료 7일 전부터 상단에 경고 메시지가 표시됩니다. 기간 내 변경하세요.</div>
+
+  <div class="sub-title">언어 설정</div>
+  <p>우측 상단 언어 드롭다운에서 원하는 언어를 선택하면 즉시 전환됩니다.</p>
+</div>
+
+<hr>
+
+<!-- ③ 대시보드 -->
+<div class="section" id="s3">
+  <div class="section-title">3. 대시보드</div>
+  <p>로그인 후 첫 화면입니다. 현황을 한눈에 파악할 수 있습니다.</p>
+
+  <div class="sub-title">통계 카드</div>
+  <table>
+    <tr><th>카드</th><th>내용</th></tr>
+    <tr><td>운영 지점 수</td><td>현재 등록된 전체 지점 수</td></tr>
+    <tr><td>양식 종류</td><td>관리 중인 양식 품목 수</td></tr>
+    <tr><td>당일 거래</td><td>오늘 처리된 입고·출고·이전 건수</td></tr>
+    <tr><td>재고 경고</td><td>부족(최소기준 이하) 또는 소진 상태 항목 수</td></tr>
+  </table>
+
+  <div class="sub-title">재고 경고 테이블</div>
+  <p>최소기준 이하로 떨어진 항목이 <strong>재고 부족 경고</strong>, 수량이 0이 된 항목이 <strong>소진</strong> 테이블에 표시됩니다. 해당 지점 담당자는 즉시 입고 요청을 진행하세요.</p>
+
+  <div class="sub-title">재고 상태 표시</div>
+  <table>
+    <tr><th>색상</th><th>상태</th><th>의미</th></tr>
+    <tr><td><span class="badge badge-ok">정상</span></td><td>Normal</td><td>최소기준 초과, 재고 충분</td></tr>
+    <tr><td><span class="badge badge-low">부족</span></td><td>Low</td><td>수량 > 0, 최소기준 이하</td></tr>
+    <tr><td><span class="badge badge-empty">소진</span></td><td>Empty</td><td>수량 = 0</td></tr>
+  </table>
+
+  <div class="sub-title">6개월 출고 트렌드 차트</div>
+  <p>최근 6개월간 출고 수량 변화를 라인 차트로 확인할 수 있습니다.</p>
+</div>
+
+<hr>
+
+<!-- ④ 재고현황 -->
+<div class="section" id="s4">
+  <div class="section-title">4. 재고현황</div>
+  <p>좌측 메뉴 <strong>재고현황</strong>을 클릭합니다. 4개의 탭으로 구성되어 있습니다.</p>
+
+  <div class="sub-title">탭 1 — 지점별 상세</div>
+  <p>모든 지점·양식 조합의 현재 재고를 테이블로 표시합니다.</p>
+  <ul>
+    <li><strong>필터</strong>: 지점, 양식 종류로 좁혀서 조회 가능</li>
+    <li><strong>최소기준 수정</strong>: 수량 옆 입력창에 숫자 입력 후 <kbd>Enter</kbd> — 해당 지점만 저장</li>
+    <li><strong>엑셀 다운로드</strong>: 현재 필터 조건으로 엑셀 파일 다운로드</li>
+  </ul>
+
+  <div class="sub-title">탭 2 — 지점별 보기 <span class="badge badge-admin">관리자</span></div>
+  <p>각 지점을 아코디언 패널로 펼쳐서 해당 지점 내 모든 양식 재고를 확인합니다.</p>
+  <ul>
+    <li>소진/부족 현황이 각 지점 헤더에 요약 표시됩니다</li>
+    <li>지점별로 최소기준을 별도 설정할 수 있습니다</li>
+  </ul>
+
+  <div class="sub-title">탭 3 — 양식별 누적 합계</div>
+  <p>양식 종류별로 전체 지점 합계 재고를 확인합니다.</p>
+  <ul>
+    <li><strong>지점 수 버튼</strong> 클릭 시 해당 양식을 보유한 지점별 상세 팝업</li>
+    <li>부족 지점 수, 소진 지점 수 표시</li>
+  </ul>
+
+  <div class="sub-title">탭 4 — 월별 소비 현황</div>
+  <p>최근 6개월간 양식별 출고 수량 추이를 확인합니다.</p>
+
+  <div class="tip-box">💡 <strong>최소기준은 지점별로 독립 관리됩니다.</strong> 한 지점의 최소기준을 변경해도 다른 지점에 영향을 주지 않습니다.</div>
+</div>
+
+<hr>
+
+<!-- ⑤ 입고 처리 -->
+<div class="section" id="s5">
+  <div class="section-title">5. 입고 처리</div>
+  <p>본사 또는 외부에서 양식을 수령했을 때 처리합니다.</p>
+
+  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>입고 처리</strong> 클릭</div></div>
+  <div class="step"><div class="step-num">2</div><div>지점 선택 (관리자만, 지점 계정은 자동 설정)</div></div>
+  <div class="step"><div class="step-num">3</div><div>양식 종류, 수량, 날짜, 비고 입력</div></div>
+  <div class="step"><div class="step-num">4</div><div><strong>입고 처리</strong> 버튼 클릭</div></div>
+
+  <div class="info-box">ℹ 입고 후에도 해당 지점의 재고가 최소기준 이하인 경우 자동으로 알림이 생성됩니다.</div>
+</div>
+
+<hr>
+
+<!-- ⑥ 출고 처리 -->
+<div class="section" id="s6">
+  <div class="section-title">6. 출고 처리</div>
+  <p>양식을 실제로 사용하거나 외부로 내보낼 때 처리합니다.</p>
+
+  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>출고 처리</strong> 클릭</div></div>
+  <div class="step"><div class="step-num">2</div><div>지점, 양식 종류, 수량, 날짜, 비고 입력</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>출고 처리</strong> 버튼 클릭</div></div>
+
+  <div class="warn-box">⚠ 현재 재고보다 많은 수량은 출고할 수 없습니다. 출고 후 재고가 최소기준 이하로 떨어지면 자동 알림이 발송됩니다.</div>
+</div>
+
+<hr>
+
+<!-- ⑦ 일괄 출고 -->
+<div class="section" id="s7">
+  <div class="section-title">7. 일괄 출고</div>
+  <p>여러 양식을 한 번에 출고할 때 사용합니다.</p>
+
+  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>일괄 출고</strong> 클릭</div></div>
+  <div class="step"><div class="step-num">2</div><div>지점 선택 후 해당 지점의 양식 목록이 표시됨</div></div>
+  <div class="step"><div class="step-num">3</div><div>각 양식의 출고 수량 입력 (0이면 건너뜀)</div></div>
+  <div class="step"><div class="step-num">4</div><div>날짜, 공통 비고 입력 후 <strong>일괄 출고</strong> 버튼 클릭</div></div>
+
+  <div class="tip-box">💡 한 번의 작업으로 여러 양식을 동시에 출고 처리하여 시간을 절약할 수 있습니다.</div>
+</div>
+
+<hr>
+
+<!-- ⑧ 지점 간 이전 -->
+<div class="section" id="s8">
+  <div class="section-title">8. 지점 간 이전</div>
+  <p>재고가 남는 지점에서 부족한 지점으로 양식을 이전할 때 사용합니다.</p>
+
+  <div class="sub-title">이전 신청 (지점 계정)</div>
+  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>지점 간 이전</strong> 클릭</div></div>
+  <div class="step"><div class="step-num">2</div><div>출발 지점(자동), 도착 지점, 양식, 수량, 날짜 입력</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>이전 신청</strong> 버튼 클릭 → 승인 대기 상태</div></div>
+
+  <div class="sub-title">이전 승인/거부 <span class="badge badge-admin">관리자</span></div>
+  <p>관리자가 <strong>지점 간 이전</strong> 메뉴의 <strong>받은 신청</strong> 탭에서 승인하거나 거부합니다. 승인 시 재고가 자동으로 이동됩니다.</p>
+
+  <div class="sub-title">이전 확인 <span class="badge badge-branch">지점</span></div>
+  <p>승인된 이전 건은 받는 지점에서 <strong>확인(Confirm)</strong> 처리해야 재고가 최종 반영됩니다.</p>
+
+  <div class="sub-title">이전 상태 흐름</div>
+  <table>
+    <tr><th>상태</th><th>의미</th></tr>
+    <tr><td>대기 (Pending)</td><td>관리자 승인 전</td></tr>
+    <tr><td>승인 (Approved)</td><td>관리자가 승인, 받는 지점의 확인 대기</td></tr>
+    <tr><td>확인 (Confirmed)</td><td>이전 완료, 재고 반영</td></tr>
+    <tr><td>거부 (Rejected)</td><td>관리자가 거부</td></tr>
+  </table>
+
+  <div class="sub-title">나의 이전 신청 내역</div>
+  <p>지점 계정은 <strong>나의 이전 신청</strong> 메뉴에서 본인 지점의 이전 내역을 확인할 수 있습니다.</p>
+</div>
+
+<hr>
+
+<!-- ⑨ 거래 내역 & 보고서 -->
+<div class="section" id="s9">
+  <div class="section-title">9. 거래 내역 &amp; 보고서</div>
+
+  <div class="sub-title">거래 내역</div>
+  <p>모든 입고·출고·이전 내역을 조회합니다. 지점, 양식, 거래 유형, 기간으로 필터링 가능합니다.</p>
+
+  <div class="sub-title">보고서</div>
+  <p>다양한 통계 차트로 재고 현황을 분석합니다.</p>
+  <ul>
+    <li>지점별 재고 현황 (정상/부족/소진 비율)</li>
+    <li>월별 입고·출고 비교</li>
+    <li>양식별 상위 출고 현황</li>
+    <li>지점별 재고 수량 차트</li>
+  </ul>
+
+  <div class="sub-title">수요예측</div>
+  <p>과거 출고 패턴을 분석하여 향후 재고 소진 예상일을 계산합니다. 미리 입고 계획을 수립하는 데 활용하세요.</p>
+
+  <div class="sub-title">운항스케줄</div>
+  <p>이스타항공 운항 스케줄을 조회하여 비품 준비 계획을 수립할 수 있습니다.</p>
+</div>
+
+<hr>
+
+<!-- ⑩ 카탈로그 신청 -->
+<div class="section" id="s10">
+  <div class="section-title">10. 카탈로그 (운송아이템) 신청</div>
+  <p>X-배너, 스탠션, 안내 도구 등 운송 비품을 온라인으로 신청합니다.</p>
+
+  <div class="sub-title">신청 방법</div>
+  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>카탈로그</strong> 클릭 — 품목 목록 확인</div></div>
+  <div class="step"><div class="step-num">2</div><div>원하는 품목에서 수량 입력 후 <strong>담기</strong> 버튼 클릭</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>신청 장바구니</strong> 메뉴에서 최종 확인 후 <strong>신청 완료</strong></div></div>
+  <div class="step"><div class="step-num">4</div><div><strong>신청 내역</strong> 메뉴에서 진행 상황 확인</div></div>
+
+  <div class="info-box">ℹ 카탈로그 신청은 관리자가 설정한 <strong>신청 기간</strong> 내에만 가능합니다. 기간이 닫혀 있으면 신청 버튼이 비활성화됩니다.</div>
+
+  <div class="sub-title">신청 상태</div>
+  <table>
+    <tr><th>상태</th><th>의미</th></tr>
+    <tr><td><span class="badge" style="background:#FEF9C3;color:#854D0E">대기</span></td><td>관리자 검토 중</td></tr>
+    <tr><td><span class="badge" style="background:#DBEAFE;color:#1D4ED8">승인</span></td><td>처리 예정</td></tr>
+    <tr><td><span class="badge" style="background:#DCFCE7;color:#15803D">확인</span></td><td>배송/지급 완료</td></tr>
+    <tr><td><span class="badge" style="background:#FEE2E2;color:#B91C1C">거부</span></td><td>신청 거부</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<!-- ⑪ 양식 비품 신청 -->
+<div class="section" id="s11">
+  <div class="section-title">11. 양식 비품 신청</div>
+  <p>지점에서 운송양식 소모품을 본사에 신청할 때 사용합니다.</p>
+
+  <div class="sub-title">신청 방법</div>
+  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>양식 신청</strong> 클릭</div></div>
+  <div class="step"><div class="step-num">2</div><div>양식 종류, 신청 수량, 비고 입력</div></div>
+  <div class="step"><div class="step-num">3</div><div><strong>신청</strong> 버튼 클릭</div></div>
+  <div class="step"><div class="step-num">4</div><div><strong>나의 신청 내역</strong>에서 처리 상황 확인</div></div>
+
+  <div class="info-box">ℹ 양식 신청도 관리자가 설정한 <strong>신청 기간</strong> 내에만 가능합니다.</div>
+</div>
+
+<hr>
+
+<!-- ⑫ 관리자 기능 -->
+<div class="section" id="s12">
+  <div class="section-title">12. 관리자 기능 <span class="badge badge-admin">관리자 전용</span></div>
+
+  <div class="sub-title">사용자 관리</div>
+  <ul>
+    <li>사용자 계정 생성·수정·삭제</li>
+    <li>역할 설정: 관리자(admin) / 지점(branch)</li>
+    <li>지점 배정</li>
+    <li>비밀번호 초기화</li>
+  </ul>
+
+  <div class="sub-title">양식 신청 관리</div>
+  <p>지점에서 신청한 양식 비품 신청 건을 확인하고 승인/거부합니다. 미처리 건수는 메뉴 옆 배지로 표시됩니다.</p>
+
+  <div class="sub-title">신청 기간 설정</div>
+  <p>신청 기간 설정 메뉴에는 두 개의 탭이 있습니다:</p>
+  <ul>
+    <li><strong>운송양식 탭</strong>: 양식 비품 신청 기간 설정</li>
+    <li><strong>운송아이템 탭</strong>: 카탈로그 신청 기간 설정</li>
+  </ul>
+  <p>각 탭에서 기간 제목, 시작일, 종료일, 활성화 여부를 설정합니다. 역대 기간 이력도 확인 가능합니다.</p>
+
+  <div class="sub-title">지점 이메일 설정</div>
+  <p>이전 승인·거부 등 중요 알림 이메일을 받을 지점별 담당자 이메일을 설정합니다.</p>
+
+  <div class="sub-title">접속 로그</div>
+  <p>전체 사용자의 로그인·로그아웃 이력을 확인합니다.</p>
+
+  <div class="sub-title">재고현황 지점별 보기</div>
+  <p>관리자 계정에서만 표시되는 <strong>지점별 보기</strong> 탭에서 각 지점의 재고를 아코디언 방식으로 확인합니다.</p>
+</div>
+
+<hr>
+
+<!-- ⑬ 알림 & 메뉴 안내 -->
+<div class="section" id="s13">
+  <div class="section-title">13. 알림 &amp; 메뉴 안내</div>
+
+  <div class="sub-title">알림 배지</div>
+  <table>
+    <tr><th>메뉴</th><th>배지 의미</th></tr>
+    <tr><td>지점 간 이전</td><td>승인 대기 중인 이전 신청 건수</td></tr>
+    <tr><td>양식 신청 관리 <span class="badge badge-admin">관리자</span></td><td>미처리 양식 신청 건수</td></tr>
+    <tr><td>신청 내역 (카탈로그) <span class="badge badge-admin">관리자</span></td><td>미처리 카탈로그 신청 건수</td></tr>
+  </table>
+
+  <div class="sub-title">알림 센터</div>
+  <p>상단 우측 🔔 아이콘을 클릭하면 재고 부족·소진 알림, 이전 대기 알림을 확인할 수 있습니다. <strong>모두 읽음</strong> 버튼으로 일괄 처리 가능합니다.</p>
+
+  <div class="sub-title">전체 메뉴 구조</div>
+  <div class="menu-tree">
+    <div class="section-name">메뉴</div>
+    <div class="item">📊 대시보드</div>
+    <div class="item">📦 재고현황</div>
+    <div class="section-name">처리</div>
+    <div class="item">📥 입고 처리</div>
+    <div class="item">📤 출고 처리</div>
+    <div class="item">📋 일괄 출고</div>
+    <div class="item">🚚 지점 간 이전</div>
+    <div class="item">🕐 나의 이전 신청 (지점 계정)</div>
+    <div class="section-name">분석</div>
+    <div class="item">🧾 거래 내역</div>
+    <div class="item">📈 보고서</div>
+    <div class="item">🔢 수요예측</div>
+    <div class="item">✈ 운항스케줄</div>
+    <div class="section-name">카탈로그</div>
+    <div class="item">📦 카탈로그</div>
+    <div class="item">🛒 신청 장바구니</div>
+    <div class="item">🕐 신청 내역</div>
+    <div class="section-name">양식 비품 신청</div>
+    <div class="item">📄 양식 신청</div>
+    <div class="item">🕐 나의 신청 내역</div>
+    <div class="section-name">관리자</div>
+    <div class="item admin-only">👥 사용자 관리</div>
+    <div class="item admin-only">📋 양식 신청 관리</div>
+    <div class="item admin-only">📅 신청 기간 설정</div>
+    <div class="item admin-only">📧 지점 이메일 설정</div>
+    <div class="item admin-only">🛡 접속 로그</div>
+    <div class="section-name">안내</div>
+    <div class="item">📖 매뉴얼</div>
+  </div>
+
+  <div style="margin-top:28px;padding:16px;background:#FFF1F2;border-radius:8px;font-size:.82rem;color:#92400E;text-align:center">
+    문의사항은 본사 운영지원팀으로 연락 바랍니다. &nbsp;|&nbsp; hdqapo@eastarjet.com
+  </div>
+</div>
+
+</div><!-- /body -->
+</body>
+</html>
