@@ -71,6 +71,14 @@
       <span class="badge bg-secondary ms-1">{{ rows|length }}</span>
     </button>
   </li>
+  {% if session.role == 'admin' %}
+  <li class="nav-item">
+    <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tabBranch">
+      <i class="fa-solid fa-building me-1"></i>지점별 보기
+      <span class="badge bg-info ms-1">{{ branches_rows|length }}</span>
+    </button>
+  </li>
+  {% endif %}
   <li class="nav-item">
     <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tabSummary">
       <i class="fa-solid fa-chart-bar me-1"></i>{{ T('inv.tab_summary') }}
@@ -164,7 +172,113 @@
     </div>
   </div>
 
-  <!-- ── 탭2: 양식별 누적 합계 ── -->
+  <!-- ── 탭2: 지점별 보기 (관리자 전용) ── -->
+  {% if session.role == 'admin' %}
+  <div class="tab-pane fade" id="tabBranch">
+    <div class="card" style="border-top-left-radius:0">
+      <div class="card-body p-0">
+        {% if branches_rows %}
+        <div class="accordion accordion-flush" id="branchSectionAccordion">
+          {% for bg in branches_rows %}
+          {% set bid = bg.code | replace(' ', '_') %}
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button {% if not loop.first %}collapsed{% endif %} py-2 px-3"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#bsec_{{ bid }}"
+                      aria-expanded="{{ 'true' if loop.first else 'false' }}">
+                <span class="d-flex align-items-center gap-2 w-100">
+                  {% if bg.type == 'DOM' %}<span class="badge badge-dom">국내</span>
+                  {% elif bg.type == 'INTL' %}<span class="badge badge-intl">국제</span>
+                  {% else %}<span class="badge badge-cargo">화물</span>{% endif %}
+                  <strong>{{ bg.code }}</strong>
+                  <span class="text-muted small">{{ bg.name }}</span>
+                  <span class="ms-auto d-flex gap-2 align-items-center me-3 small">
+                    <span class="text-muted">총 {{ bg.items|length }}종</span>
+                    {% if bg.empty_cnt > 0 %}
+                    <span class="badge bg-danger">소진 {{ bg.empty_cnt }}</span>
+                    {% endif %}
+                    {% if bg.low_cnt > 0 %}
+                    <span class="badge bg-warning text-dark">부족 {{ bg.low_cnt }}</span>
+                    {% endif %}
+                    {% if bg.empty_cnt == 0 and bg.low_cnt == 0 %}
+                    <span class="badge bg-success">정상</span>
+                    {% endif %}
+                  </span>
+                </span>
+              </button>
+            </h2>
+            <div id="bsec_{{ bid }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                 data-bs-parent="#branchSectionAccordion">
+              <div class="accordion-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover table-sm mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>{{ T('common.form_name') }}</th>
+                        <th>{{ T('common.unit') }}</th>
+                        <th class="text-center">{{ T('inv.current_qty') }}</th>
+                        <th class="text-center" style="min-width:110px">{{ T('inv.min_threshold') }}</th>
+                        <th class="text-center">{{ T('common.status') }}</th>
+                        <th>{{ T('common.updated_at') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for r in bg.items %}
+                      <tr>
+                        <td class="small">{{ r.form_name }}</td>
+                        <td class="small text-muted">{{ r.unit | unit_i18n }} ({{ r.unit_detail | unit_i18n }})</td>
+                        <td class="text-center fw-bold
+                          {% if r.quantity == 0 %}status-empty
+                          {% elif r.quantity <= r.min_threshold %}status-low
+                          {% else %}status-ok{% endif %}">
+                          {{ r.quantity }}
+                        </td>
+                        <td class="text-center">
+                          <div class="d-flex align-items-center justify-content-center gap-1">
+                            <input type="number"
+                                   class="form-control form-control-sm threshold-input text-center"
+                                   style="width:68px;font-weight:600"
+                                   value="{{ r.min_threshold }}"
+                                   min="0"
+                                   data-form-type-id="{{ r.form_type_id }}"
+                                   data-original="{{ r.min_threshold }}"
+                                   title="{{ T('inv.enter_to_save') }}">
+                            <span class="save-indicator text-success d-none" style="font-size:.8rem">
+                              <i class="fa-regular fa-circle-check-fill"></i>
+                            </span>
+                          </div>
+                        </td>
+                        <td class="text-center">
+                          {% if r.quantity == 0 %}<span class="badge badge-status-empty rounded-pill">{{ T('common.exhausted') }}</span>
+                          {% elif r.quantity <= r.min_threshold %}<span class="badge badge-status-low rounded-pill">{{ T('common.low') }}</span>
+                          {% else %}<span class="badge badge-status-safe rounded-pill">{{ T('common.normal') }}</span>{% endif %}
+                        </td>
+                        <td class="small text-muted">{{ r.last_updated | dt if r.last_updated else '—' }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="px-3 py-2 text-muted small border-top">총 {{ branches_rows|length }}개 지점</div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-warehouse"></i></div>
+          <h6>{{ T('inv.no_data') }}</h6>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── 탭3: 양식별 누적 합계 ── -->
   <div class="tab-pane fade" id="tabSummary">
     <div class="card" style="border-top-left-radius:0">
       <div class="card-body p-0">

@@ -1500,13 +1500,26 @@ def init_db():
                 conn.execute('UPDATE form_types SET sort_order=%s WHERE name=%s', (order, name))
             for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate,))
-            for _deactivate in (
+            for _reactivate2 in (
                 '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
                 '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
                 '총기인수인계서 (Firearm handover form)',
                 'NOTOC',
             ):
-                conn.execute('UPDATE form_types SET is_active=FALSE WHERE name=%s', (_deactivate,))
+                conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate2,))
+            conn.execute('''
+                INSERT INTO inventory (branch_id, form_type_id, quantity)
+                SELECT b.id, ft.id, 0
+                FROM branches b
+                CROSS JOIN form_types ft
+                WHERE ft.name IN (%s,%s,%s,%s)
+                ON CONFLICT (branch_id, form_type_id) DO NOTHING
+            ''', (
+                '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
+                '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
+                '총기인수인계서 (Firearm handover form)',
+                'NOTOC',
+            ))
             # 신규 지점 추가 (이미 있으면 무시) — KOJ는 아래 KOR 병합에서 처리
             for _bc, _bn, _bt in [('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
                 conn.execute(
@@ -1885,6 +1898,26 @@ def inventory():
                              'vals': vals, 'total': sum(vals)})
     monthly_totals = [sum(r['vals'][i] for r in monthly_rows) for i in range(6)]
 
+    # 관리자 지점별 섹션 뷰용 그룹 데이터
+    branches_rows = []
+    if session.get('role') == 'admin':
+        from collections import OrderedDict
+        _grp = OrderedDict()
+        for r in rows:
+            key = (r['branch_type'], r['branch_code'], r['branch_name'])
+            if key not in _grp:
+                _grp[key] = {'type': r['branch_type'], 'code': r['branch_code'],
+                             'name': r['branch_name'], 'items': [],
+                             'total_qty': 0, 'low_cnt': 0, 'empty_cnt': 0}
+            g = _grp[key]
+            g['items'].append(r)
+            g['total_qty'] += r['quantity']
+            if r['quantity'] == 0:
+                g['empty_cnt'] += 1
+            elif r['quantity'] <= r['min_threshold']:
+                g['low_cnt'] += 1
+        branches_rows = list(_grp.values())
+
     conn.close()
     return render_template('inventory.html',
                            rows=rows, summary_rows=summary_rows,
@@ -1894,6 +1927,7 @@ def inventory():
                            monthly_totals=monthly_totals,
                            month_labels=month_labels,
                            branches=branches, form_types=form_types,
+                           branches_rows=branches_rows,
                            bf=bf, ff=ff)
 
 
@@ -5276,7 +5310,10 @@ def form_supply_settings():
         try: conn.rollback()
         except Exception: pass
 
+    active_tab = request.args.get('tab', 'form')
+
     if request.method == 'POST':
+        supply_type  = request.form.get('supply_type', 'form')
         period_title = request.form.get('period_title', '').strip()
         period_start = request.form.get('period_start', '').strip()
         period_end   = request.form.get('period_end', '').strip()
@@ -5285,42 +5322,63 @@ def form_supply_settings():
         if not period_start or not period_end:
             flash(T('flash.date_range_required'), 'danger')
             conn.close()
-            return redirect(url_for('form_supply_settings'))
+            return redirect(url_for('form_supply_settings', tab=supply_type))
         if period_start > period_end:
             flash(T('flash.date_range_invalid'), 'danger')
             conn.close()
-            return redirect(url_for('form_supply_settings'))
+            return redirect(url_for('form_supply_settings', tab=supply_type))
 
-        conn.execute(
-            f"INSERT INTO form_supply_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
-            f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
-            (period_title, period_start, period_end, is_enabled, session['username'])
-        )
+        if supply_type == 'catalog':
+            conn.execute(
+                f"INSERT INTO catalog_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
+                f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
+                (period_title, period_start, period_end, is_enabled, session['username'])
+            )
+            log_action('운송아이템_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
+            flash('신청 기간이 저장되었습니다.', 'success')
+        else:
+            conn.execute(
+                f"INSERT INTO form_supply_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
+                f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
+                (period_title, period_start, period_end, is_enabled, session['username'])
+            )
+            log_action('운송양식_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
+            flash(T('flash.period_settings_saved'), 'success')
+
         conn.commit()
-        log_action('운송양식_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
-        flash(T('flash.period_settings_saved'), 'success')
         conn.close()
-        return redirect(url_for('form_supply_settings'))
+        return redirect(url_for('form_supply_settings', tab=supply_type))
 
-    # GET — 현재 최신 설정 + 이력
+    # GET — 운송양식 설정 이력
     current = conn.execute(
         'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 1'
     ).fetchone()
     settings_history = conn.execute(
         'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 50'
     ).fetchall()
-    # SQLite Row를 dict처럼 다루기 위해 created_at 대체 (테이블에는 updated_at만 있음)
     history_list = []
     for s in settings_history:
         d = dict(s)
         d['created_at'] = d.get('updated_at')
         history_list.append(d)
     form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+
+    # 운송아이템 설정 이력
+    try:
+        catalog_current = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 1').fetchone()
+        catalog_history_raw = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 50').fetchall()
+        catalog_history = [dict(s) for s in catalog_history_raw]
+    except Exception:
+        catalog_current, catalog_history = None, []
+
     conn.close()
     return render_template('form_supply_settings.html',
                            current=current,
                            settings_history=history_list,
-                           form_types=form_types)
+                           form_types=form_types,
+                           catalog_current=catalog_current,
+                           catalog_history=catalog_history,
+                           active_tab=active_tab)
 
 
 @app.route('/admin/form-supply/settings/<int:setting_id>/edit', methods=['POST'])
@@ -5372,86 +5430,13 @@ def form_supply_setting_delete(setting_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-# ── 운송아이템 신청 기간 설정 ─────────────────────────────────────────────────
+# ── 운송아이템 신청 기간 설정 (구 URL 호환 리다이렉트) ────────────────────────
 
 @app.route('/admin/catalog/settings', methods=['GET', 'POST'])
 @login_required
 def catalog_item_settings():
-    T = _get_T()
-    if session.get('role') != 'admin':
-        flash(T('flash.admin_only'), 'danger')
-        return redirect(url_for('dashboard'))
-
-    conn = get_db()
-    ph = '%s' if not USE_SQLITE else '?'
-    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
-
-    # 테이블 lazy 생성
-    try:
-        if USE_SQLITE:
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS catalog_settings (
-                    id           INTEGER PRIMARY KEY,
-                    title        TEXT NOT NULL DEFAULT '',
-                    period_start TEXT NOT NULL,
-                    period_end   TEXT NOT NULL,
-                    is_enabled   INTEGER DEFAULT 1,
-                    created_by   TEXT NOT NULL,
-                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        else:
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS catalog_settings (
-                    id           SERIAL PRIMARY KEY,
-                    title        TEXT NOT NULL DEFAULT '',
-                    period_start TEXT NOT NULL,
-                    period_end   TEXT NOT NULL,
-                    is_enabled   INTEGER DEFAULT 1,
-                    created_by   TEXT NOT NULL,
-                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        conn.commit()
-    except Exception as _me:
-        app.logger.warning(f'[catalog_settings lazy-create] {_me}')
-        try: conn.rollback()
-        except Exception: pass
-
-    if request.method == 'POST':
-        period_title = request.form.get('period_title', '').strip()
-        period_start = request.form.get('period_start', '').strip()
-        period_end   = request.form.get('period_end', '').strip()
-        is_enabled   = 1 if request.form.get('is_enabled') else 0
-
-        if not period_start or not period_end:
-            flash(T('flash.date_range_required'), 'danger')
-            conn.close()
-            return redirect(url_for('catalog_item_settings'))
-        if period_start > period_end:
-            flash(T('flash.date_range_invalid'), 'danger')
-            conn.close()
-            return redirect(url_for('catalog_item_settings'))
-
-        conn.execute(
-            f"INSERT INTO catalog_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
-            f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
-            (period_title, period_start, period_end, is_enabled, session['username'])
-        )
-        conn.commit()
-        log_action('운송아이템_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
-        flash('신청 기간이 저장되었습니다.', 'success')
-        conn.close()
-        return redirect(url_for('catalog_item_settings'))
-
-    try:
-        current = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 1').fetchone()
-        settings_history = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 50').fetchall()
-    except Exception:
-        current, settings_history = None, []
-    history_list = [dict(s) for s in settings_history]
-    conn.close()
-    return render_template('catalog_settings.html', current=current, settings_history=history_list)
+    """구 URL 호환 — 신청 기간 설정(운송아이템 탭)으로 리다이렉트"""
+    return redirect(url_for('form_supply_settings', tab='catalog'))
 
 
 @app.route('/admin/catalog/settings/<int:setting_id>/edit', methods=['POST'])

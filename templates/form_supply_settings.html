@@ -1,127 +1,193 @@
 {% extends 'base.html' %}
-{% block title %}{{ T('fssettings.title') }}{% endblock %}
+{% block title %}신청 기간 설정{% endblock %}
 {% block title_icon %}<i class="fa-solid fa-calendar-days"></i>{% endblock %}
-{% block page_title %}{{ T('fssettings.title') }}{% endblock %}
+{% block page_title %}신청 기간 설정{% endblock %}
 
 {% block content %}
-<div class="row g-3">
-  <!-- ── 카드 1: 기간 설정 폼 ───────────────────────────────── -->
-  <div class="col-lg-5">
-    <div class="card h-100">
-      <div class="card-header bg-white d-flex align-items-center gap-2">
-        <i class="fa-solid fa-calendar-plus text-primary"></i>
-        <strong>{{ T('fssettings.card_title') }}</strong>
+<!-- 신청종류 탭 -->
+<ul class="nav nav-tabs mb-3" id="periodTab">
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab != 'catalog' %}active{% endif %} fw-semibold"
+            data-bs-toggle="tab" data-bs-target="#tabForm">
+      <i class="fa-solid fa-file-lines me-1"></i>운송양식
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab == 'catalog' %}active{% endif %} fw-semibold"
+            data-bs-toggle="tab" data-bs-target="#tabCatalog">
+      <i class="fa-solid fa-box-open me-1"></i>운송아이템
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- ── 탭1: 운송양식 ── -->
+  <div class="tab-pane fade {% if active_tab != 'catalog' %}show active{% endif %}" id="tabForm">
+    <div class="row g-3">
+      <!-- 기간 설정 폼 -->
+      <div class="col-lg-5">
+        <div class="card h-100">
+          <div class="card-header bg-white d-flex align-items-center gap-2">
+            <i class="fa-solid fa-calendar-plus text-primary"></i>
+            <strong>{{ T('fssettings.card_title') }}</strong>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">
+              {{ T('fssettings.desc1') }}
+              {{ T('fssettings.desc2') }}
+            </p>
+            <form method="post" action="{{ url_for('form_supply_settings') }}">
+              <input type="hidden" name="supply_type" value="form">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-tag me-1 text-warning"></i>
+                  {{ T('fssettings.col_title') }} <span class="text-muted fw-normal">{{ T('fssettings.title_example') }}</span>
+                </label>
+                <input type="text" name="period_title" class="form-control"
+                       placeholder="{{ T('fssettings.title_placeholder') }}"
+                       value="{{ current.title if current and current.title else '' }}">
+                <div class="form-text">{{ T('fssettings.title_hint') }}</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calendar-day me-1 text-primary"></i>
+                  {{ T('fssettings.start_label') }} <span class="text-danger">*</span>
+                </label>
+                <input type="date" name="period_start" class="form-control" required
+                       value="{{ current.period_start if current and current.period_start else '' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calendar-xmark me-1 text-primary"></i>
+                  {{ T('fssettings.end_label') }} <span class="text-danger">*</span>
+                </label>
+                <input type="date" name="period_end" class="form-control" required
+                       value="{{ current.period_end if current and current.period_end else '' }}">
+                <div class="form-text">{{ T('fssettings.end_hint') }}</div>
+              </div>
+              <div class="mb-4">
+                <div class="form-check form-switch">
+                  <input type="checkbox" name="is_enabled" id="formEnabledSwitch"
+                         class="form-check-input" role="switch" value="1"
+                         {% if current and current.is_enabled %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="formEnabledSwitch">
+                    {{ T('fssettings.enable_label') }}
+                  </label>
+                </div>
+                <div class="form-text">{{ T('fssettings.enable_hint') }}</div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4" data-loading>
+                  <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('common.save') }}
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">{{ T('common.cancel') }}</a>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        <p class="text-muted small mb-3">
-          {{ T('fssettings.desc1') }}
-          {{ T('fssettings.desc2') }}
-        </p>
 
-        <form method="post" action="{{ url_for('form_supply_settings') }}">
-          <div class="mb-3">
-            <label class="form-label fw-semibold">
-              <i class="fa-solid fa-tag me-1 text-warning"></i>
-              {{ T('fssettings.col_title') }} <span class="text-muted fw-normal">{{ T('fssettings.title_example') }}</span>
-            </label>
-            <input type="text" name="period_title" class="form-control"
-                   placeholder="{{ T('fssettings.title_placeholder') }}"
-                   value="{{ current.title if current and current.title else '' }}">
-            <div class="form-text">{{ T('fssettings.title_hint') }}</div>
+      <!-- 설정 이력 -->
+      <div class="col-lg-7">
+        <div class="card h-100">
+          <div class="card-header bg-white d-flex align-items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
+            <strong>{{ T('fssettings.history_title') }}</strong>
+            <span class="badge bg-secondary ms-1">{{ settings_history|length if settings_history else 0 }}{{ T('common.count_suffix') }}</span>
           </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold">
-              <i class="fa-solid fa-calendar-day me-1 text-primary"></i>
-              {{ T('fssettings.start_label') }} <span class="text-danger">*</span>
-            </label>
-            <input type="date" name="period_start" class="form-control" required
-                   value="{{ current.period_start if current and current.period_start else '' }}">
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold">
-              <i class="fa-solid fa-calendar-xmark me-1 text-primary"></i>
-              {{ T('fssettings.end_label') }} <span class="text-danger">*</span>
-            </label>
-            <input type="date" name="period_end" class="form-control" required
-                   value="{{ current.period_end if current and current.period_end else '' }}">
-            <div class="form-text">{{ T('fssettings.end_hint') }}</div>
-          </div>
-
-          <div class="mb-4">
-            <div class="form-check form-switch">
-              <input type="checkbox" name="is_enabled" id="enabledSwitch"
-                     class="form-check-input" role="switch" value="1"
-                     {% if current and current.is_enabled %}checked{% endif %}>
-              <label class="form-check-label fw-semibold" for="enabledSwitch">
-                {{ T('fssettings.enable_label') }}
-              </label>
+          <div class="card-body p-0">
+            {% if settings_history %}
+            <div class="table-scroll">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>{{ T('fssettings.col_title') }}</th>
+                    <th>{{ T('fssettings.col_period') }}</th>
+                    <th class="text-center">{{ T('common.status') }}</th>
+                    <th>{{ T('fssettings.col_setter') }}</th>
+                    <th style="width:80px" class="text-center">{{ T('common.manage') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in settings_history %}
+                  <tr id="setting-row-{{ s.id }}">
+                    <td class="small fw-semibold">{{ s.title if s.title else '—' }}</td>
+                    <td class="small text-muted" style="white-space:nowrap">{{ s.period_start }} ~ {{ s.period_end }}</td>
+                    <td class="text-center">
+                      {% if s.is_enabled %}
+                        <span class="badge badge-confirmed rounded-pill">{{ T('fssettings.status_active') }}</span>
+                      {% else %}
+                        <span class="badge badge-pending rounded-pill">{{ T('fssettings.status_inactive') }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ s.created_by or '—' }}</td>
+                    <td class="text-center" onclick="event.stopPropagation()">
+                      <button type="button" class="btn btn-sm btn-outline-secondary me-1 setting-edit-btn"
+                              style="font-size:.7rem;padding:2px 7px"
+                              data-type="form"
+                              data-id="{{ s.id }}"
+                              data-title="{{ s.title | e }}"
+                              data-start="{{ s.period_start }}"
+                              data-end="{{ s.period_end }}"
+                              data-enabled="{{ '1' if s.is_enabled else '0' }}">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger setting-del-btn"
+                              style="font-size:.7rem;padding:2px 7px"
+                              data-type="form"
+                              data-id="{{ s.id }}" data-title="{{ s.title | e }}">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
-            <div class="form-text">{{ T('fssettings.enable_hint') }}</div>
+            {% else %}
+            <div class="empty-state">
+              <div class="empty-icon"><i class="fa-solid fa-calendar-days"></i></div>
+              <h6>{{ T('fssettings.no_history') }}</h6>
+              <p>{{ T('fssettings.no_history_desc') }}</p>
+            </div>
+            {% endif %}
           </div>
-
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary px-4" data-loading>
-              <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('common.save') }}
-            </button>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">{{ T('common.cancel') }}</a>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ── 카드 2: 설정 이력 테이블 ───────────────────────────── -->
-  <div class="col-lg-7">
-    <div class="card h-100">
+    <!-- 양식 메모 관리 -->
+    <div class="card mt-3">
       <div class="card-header bg-white d-flex align-items-center gap-2">
-        <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
-        <strong>{{ T('fssettings.history_title') }}</strong>
-        <span class="badge bg-secondary ms-1">{{ settings_history|length if settings_history else 0 }}{{ T('common.count_suffix') }}</span>
+        <i class="fa-solid fa-note-sticky text-warning"></i>
+        <strong>{{ T('fssettings.memo_card_title') }}</strong>
+        <small class="text-muted ms-1">{{ T('fssettings.memo_desc') }}</small>
       </div>
       <div class="card-body p-0">
-        {% if settings_history %}
+        {% if form_types %}
         <div class="table-scroll">
           <table class="table table-hover mb-0">
             <thead>
               <tr>
-                <th>{{ T('fssettings.col_title') }}</th>
-                <th>{{ T('fssettings.col_period') }}</th>
-                <th class="text-center">{{ T('common.status') }}</th>
-                <th>{{ T('fssettings.col_setter') }}</th>
+                <th style="width:40px">#</th>
+                <th>{{ T('fssettings.col_form_name') }}</th>
+                <th>{{ T('fssettings.col_memo') }}</th>
                 <th style="width:80px" class="text-center">{{ T('common.manage') }}</th>
               </tr>
             </thead>
             <tbody>
-              {% for s in settings_history %}
-              <tr id="setting-row-{{ s.id }}">
-                <td class="small fw-semibold">{{ s.title if s.title else '—' }}</td>
-                <td class="small text-muted" style="white-space:nowrap">
-                  {{ s.period_start }} ~ {{ s.period_end }}
-                </td>
+              {% for f in form_types %}
+              <tr id="memo-row-{{ f.id }}">
+                <td class="text-muted small">{{ loop.index }}</td>
+                <td class="fw-semibold small">{{ f.name }}</td>
+                <td class="small text-muted memo-text-{{ f.id }}">{{ f.memo if f.memo else '—' }}</td>
                 <td class="text-center">
-                  {% if s.is_enabled %}
-                    <span class="badge badge-confirmed rounded-pill">{{ T('fssettings.status_active') }}</span>
-                  {% else %}
-                    <span class="badge badge-pending rounded-pill">{{ T('fssettings.status_inactive') }}</span>
-                  {% endif %}
-                </td>
-                <td class="small text-muted">{{ s.created_by or '—' }}</td>
-                <td class="text-center" onclick="event.stopPropagation()">
-                  <button type="button" class="btn btn-sm btn-outline-secondary me-1 setting-edit-btn"
-                          style="font-size:.7rem;padding:2px 7px"
-                          data-id="{{ s.id }}"
-                          data-title="{{ s.title | e }}"
-                          data-start="{{ s.period_start }}"
-                          data-end="{{ s.period_end }}"
-                          data-enabled="{{ '1' if s.is_enabled else '0' }}">
+                  <button type="button" class="btn btn-sm btn-outline-secondary memo-edit-btn"
+                          data-id="{{ f.id }}"
+                          data-name="{{ f.name | e }}"
+                          data-memo="{{ f.memo | e }}">
                     <i class="fa-solid fa-pen-to-square"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger setting-del-btn"
-                          style="font-size:.7rem;padding:2px 7px"
-                          data-id="{{ s.id }}" data-title="{{ s.title | e }}">
-                    <i class="fa-solid fa-trash"></i>
                   </button>
                 </td>
               </tr>
@@ -130,66 +196,149 @@
           </table>
         </div>
         {% else %}
-        <div class="empty-state">
-          <div class="empty-icon"><i class="fa-solid fa-calendar-days"></i></div>
-          <h6>{{ T('fssettings.no_history') }}</h6>
-          <p>{{ T('fssettings.no_history_desc') }}</p>
-        </div>
+        <div class="empty-state"><h6>{{ T('fssettings.no_forms') }}</h6></div>
         {% endif %}
       </div>
     </div>
-  </div>
-</div>
+  </div><!-- /tabForm -->
 
-<!-- ── 카드 3: 양식 메모 관리 ───────────────────────────────── -->
-<div class="card mt-3">
-  <div class="card-header bg-white d-flex align-items-center gap-2">
-    <i class="fa-solid fa-note-sticky text-warning"></i>
-    <strong>{{ T('fssettings.memo_card_title') }}</strong>
-    <small class="text-muted ms-1">{{ T('fssettings.memo_desc') }}</small>
-  </div>
-  <div class="card-body p-0">
-    {% if form_types %}
-    <div class="table-scroll">
-      <table class="table table-hover mb-0">
-        <thead>
-          <tr>
-            <th style="width:40px">#</th>
-            <th>{{ T('fssettings.col_form_name') }}</th>
-            <th>{{ T('fssettings.col_memo') }}</th>
-            <th style="width:80px" class="text-center">{{ T('common.manage') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for f in form_types %}
-          <tr id="memo-row-{{ f.id }}">
-            <td class="text-muted small">{{ loop.index }}</td>
-            <td class="fw-semibold small">{{ f.name }}</td>
-            <td class="small text-muted memo-text-{{ f.id }}">
-              {{ f.memo if f.memo else '—' }}
-            </td>
-            <td class="text-center">
-              <button type="button" class="btn btn-sm btn-outline-secondary memo-edit-btn"
-                      data-id="{{ f.id }}"
-                      data-name="{{ f.name | e }}"
-                      data-memo="{{ f.memo | e }}">
-                <i class="fa-solid fa-pen-to-square"></i>
-              </button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="empty-state">
-      <h6>{{ T('fssettings.no_forms') }}</h6>
-    </div>
-    {% endif %}
-  </div>
-</div>
+  <!-- ── 탭2: 운송아이템 ── -->
+  <div class="tab-pane fade {% if active_tab == 'catalog' %}show active{% endif %}" id="tabCatalog">
+    <div class="row g-3">
+      <!-- 기간 설정 폼 -->
+      <div class="col-lg-5">
+        <div class="card h-100">
+          <div class="card-header bg-white d-flex align-items-center gap-2">
+            <i class="fa-solid fa-calendar-plus text-primary"></i>
+            <strong>신청 기간 등록</strong>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">
+              운송아이템(카탈로그) 신청이 가능한 기간을 설정합니다.
+              활성화된 기간 외에는 지점에서 신청이 불가합니다.
+            </p>
+            <form method="post" action="{{ url_for('form_supply_settings') }}">
+              <input type="hidden" name="supply_type" value="catalog">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-tag me-1 text-warning"></i>
+                  기간명 <span class="text-muted fw-normal">(예: 2026년 Q3 신청)</span>
+                </label>
+                <input type="text" name="period_title" class="form-control"
+                       placeholder="기간을 구분할 이름 (선택)"
+                       value="{{ catalog_current.title if catalog_current and catalog_current.title else '' }}">
+                <div class="form-text">빈칸으로 두어도 됩니다.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calendar-day me-1 text-primary"></i>
+                  시작일 <span class="text-danger">*</span>
+                </label>
+                <input type="date" name="period_start" class="form-control" required
+                       value="{{ catalog_current.period_start if catalog_current and catalog_current.period_start else '' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calendar-xmark me-1 text-primary"></i>
+                  종료일 <span class="text-danger">*</span>
+                </label>
+                <input type="date" name="period_end" class="form-control" required
+                       value="{{ catalog_current.period_end if catalog_current and catalog_current.period_end else '' }}">
+                <div class="form-text">종료일 당일까지 신청 가능합니다.</div>
+              </div>
+              <div class="mb-4">
+                <div class="form-check form-switch">
+                  <input type="checkbox" name="is_enabled" id="catalogEnabledSwitch"
+                         class="form-check-input" role="switch" value="1"
+                         {% if catalog_current and catalog_current.is_enabled %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="catalogEnabledSwitch">즉시 활성화</label>
+                </div>
+                <div class="form-text">체크 해제 시 기간 내여도 신청이 비활성화됩니다.</div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4" data-loading>
+                  <i class="fa-solid fa-floppy-disk me-1"></i>저장
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">취소</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
 
-<!-- 기간 설정 편집 모달 -->
+      <!-- 설정 이력 -->
+      <div class="col-lg-7">
+        <div class="card h-100">
+          <div class="card-header bg-white d-flex align-items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
+            <strong>설정 이력</strong>
+            <span class="badge bg-secondary ms-1">{{ catalog_history|length if catalog_history else 0 }}건</span>
+          </div>
+          <div class="card-body p-0">
+            {% if catalog_history %}
+            <div class="table-scroll">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>기간명</th>
+                    <th>기간</th>
+                    <th class="text-center">상태</th>
+                    <th>설정자</th>
+                    <th style="width:80px" class="text-center">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in catalog_history %}
+                  <tr id="csetting-row-{{ s.id }}">
+                    <td class="small fw-semibold">{{ s.title if s.title else '—' }}</td>
+                    <td class="small text-muted" style="white-space:nowrap">{{ s.period_start }} ~ {{ s.period_end }}</td>
+                    <td class="text-center">
+                      {% if s.is_enabled %}
+                        <span class="badge badge-confirmed rounded-pill">활성</span>
+                      {% else %}
+                        <span class="badge badge-pending rounded-pill">비활성</span>
+                      {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ s.created_by or '—' }}</td>
+                    <td class="text-center" onclick="event.stopPropagation()">
+                      <button type="button" class="btn btn-sm btn-outline-secondary me-1 setting-edit-btn"
+                              style="font-size:.7rem;padding:2px 7px"
+                              data-type="catalog"
+                              data-id="{{ s.id }}"
+                              data-title="{{ s.title | e }}"
+                              data-start="{{ s.period_start }}"
+                              data-end="{{ s.period_end }}"
+                              data-enabled="{{ '1' if s.is_enabled else '0' }}">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger setting-del-btn"
+                              style="font-size:.7rem;padding:2px 7px"
+                              data-type="catalog"
+                              data-id="{{ s.id }}" data-title="{{ s.title | e }}">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+              <div class="empty-icon"><i class="fa-solid fa-calendar-days"></i></div>
+              <h6>설정 이력 없음</h6>
+              <p>아직 등록된 신청 기간이 없습니다.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tabCatalog -->
+
+</div><!-- /tab-content -->
+
+<!-- 기간 설정 편집 모달 (공용) -->
 <div class="modal fade" id="settingEditModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -253,23 +402,26 @@
 </div>
 
 <script>
-var _jsAlertEnterDates   = '{{ T("fssettings.js_alert_enter_dates") }}';
-var _jsAlertDateOrder    = '{{ T("fssettings.js_alert_date_order") }}';
-var _jsAlertSaveFailed   = '{{ T("fssettings.js_alert_save_failed") }}';
-var _jsNetworkError      = '{{ T("common.js_network_error") }}';
-var _jsConfirmDelete     = '{{ T("fssettings.js_confirm_delete") }}';
-var _jsAlertDelFailed    = '{{ T("fssettings.js_alert_del_failed") }}';
-var _jsUnknownError      = '{{ T("common.js_unknown_error") }}';
-// ── 기간 설정 수정/삭제 ──────────────────────────────────────────
-var _editSettingId = null;
-var _editModal = null;
+var _jsAlertEnterDates = '{{ T("fssettings.js_alert_enter_dates") }}';
+var _jsAlertDateOrder  = '{{ T("fssettings.js_alert_date_order") }}';
+var _jsAlertSaveFailed = '{{ T("fssettings.js_alert_save_failed") }}';
+var _jsNetworkError    = '{{ T("common.js_network_error") }}';
+var _jsConfirmDelete   = '{{ T("fssettings.js_confirm_delete") }}';
+var _jsAlertDelFailed  = '{{ T("fssettings.js_alert_del_failed") }}';
+var _jsUnknownError    = '{{ T("common.js_unknown_error") }}';
+
+// ── 기간 설정 수정/삭제 ──────────────────────────────────────────────────────
+var _editSettingId   = null;
+var _editSettingType = 'form';
+var _editModal       = null;
 
 document.querySelectorAll('.setting-edit-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
-    _editSettingId = parseInt(btn.dataset.id);
-    document.getElementById('editTitle').value   = btn.dataset.title || '';
-    document.getElementById('editStart').value   = btn.dataset.start || '';
-    document.getElementById('editEnd').value     = btn.dataset.end   || '';
+    _editSettingId   = parseInt(btn.dataset.id);
+    _editSettingType = btn.dataset.type || 'form';
+    document.getElementById('editTitle').value    = btn.dataset.title || '';
+    document.getElementById('editStart').value    = btn.dataset.start || '';
+    document.getElementById('editEnd').value      = btn.dataset.end   || '';
     document.getElementById('editEnabled').checked = btn.dataset.enabled === '1';
     if (!_editModal) _editModal = new bootstrap.Modal(document.getElementById('settingEditModal'));
     _editModal.show();
@@ -281,8 +433,11 @@ if (_saveBtn) _saveBtn.addEventListener('click', function() {
   var start = document.getElementById('editStart').value;
   var end   = document.getElementById('editEnd').value;
   if (!start || !end) { alert(_jsAlertEnterDates); return; }
-  if (start > end) { alert(_jsAlertDateOrder); return; }
-  fetch('/admin/form-supply/settings/' + _editSettingId + '/edit', {
+  if (start > end)    { alert(_jsAlertDateOrder);  return; }
+  var url = _editSettingType === 'catalog'
+    ? '/admin/catalog/settings/' + _editSettingId + '/edit'
+    : '/admin/form-supply/settings/' + _editSettingId + '/edit';
+  fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -301,7 +456,10 @@ document.querySelectorAll('.setting-del-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     var label = btn.dataset.title || ('#' + btn.dataset.id);
     if (!confirm('"' + label + '" ' + _jsConfirmDelete)) return;
-    fetch('/admin/form-supply/settings/' + btn.dataset.id + '/delete', {
+    var url = btn.dataset.type === 'catalog'
+      ? '/admin/catalog/settings/' + btn.dataset.id + '/delete'
+      : '/admin/form-supply/settings/' + btn.dataset.id + '/delete';
+    fetch(url, {
       method: 'POST', headers: {'Content-Type': 'application/json'}
     }).then(function(r) { return r.json(); }).then(function(d) {
       if (d.ok) { location.reload(); }
@@ -309,8 +467,8 @@ document.querySelectorAll('.setting-del-btn').forEach(function(btn) {
     }).catch(function() { alert(_jsNetworkError); });
   });
 });
-// ────────────────────────────────────────────────────────────────
 
+// ── 메모 편집 ────────────────────────────────────────────────────────────────
 var _memoFormId = null;
 var _memoModal  = null;
 
@@ -330,17 +488,14 @@ function saveMemo(del) {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({memo: text})
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(d) {
+  }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.ok) {
       document.querySelector('.memo-text-' + _memoFormId).textContent = text || '—';
       _memoModal.hide();
     } else {
       alert(_jsAlertSaveFailed + (d.error || _jsUnknownError));
     }
-  })
-  .catch(function() { alert(_jsNetworkError); });
+  }).catch(function() { alert(_jsNetworkError); });
 }
 </script>
 {% endblock %}

@@ -193,18 +193,6 @@
   </div>
 </div>
 
-<!-- 바로가기 버튼 -->
-<div class="row g-2 mt-3 shortcut-row">
-  <div class="col-auto">
-    <a href="{{ url_for('inbound') }}" class="btn btn-success"><i class="fa-solid fa-truck-ramp-box me-1"></i>{{ T('dash.btn_inbound') }}</a>
-  </div>
-  <div class="col-auto">
-    <a href="{{ url_for('outbound') }}" class="btn btn-danger"><i class="fa-solid fa-dolly me-1"></i>{{ T('dash.btn_outbound') }}</a>
-  </div>
-  <div class="col-auto">
-    <a href="{{ url_for('transfer') }}" class="btn btn-primary"><i class="fa-solid fa-truck-moving me-1"></i>{{ T('dash.btn_transfer') }}</a>
-  </div>
-</div>
 {% endblock %}
 {% block scripts %}
 <script>
