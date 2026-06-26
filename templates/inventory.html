@@ -195,7 +195,7 @@
                   <strong>{{ bg.code }}</strong>
                   <span class="text-muted small">{{ bg.name }}</span>
                   <span class="ms-auto d-flex gap-2 align-items-center me-3 small">
-                    <span class="text-muted">총 {{ bg.items|length }}종</span>
+                    <span class="text-muted">총 {{ bg.forms|length }}종</span>
                     {% if bg.empty_cnt > 0 %}
                     <span class="badge bg-danger">소진 {{ bg.empty_cnt }}</span>
                     {% endif %}
@@ -225,7 +225,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      {% for r in bg.items %}
+                      {% for r in bg.forms %}
                       <tr>
                         <td class="small">{{ r.form_name }}</td>
                         <td class="small text-muted">{{ r.unit | unit_i18n }} ({{ r.unit_detail | unit_i18n }})</td>

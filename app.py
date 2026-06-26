@@ -1907,10 +1907,10 @@ def inventory():
             key = (r['branch_type'], r['branch_code'], r['branch_name'])
             if key not in _grp:
                 _grp[key] = {'type': r['branch_type'], 'code': r['branch_code'],
-                             'name': r['branch_name'], 'items': [],
+                             'name': r['branch_name'], 'forms': [],
                              'total_qty': 0, 'low_cnt': 0, 'empty_cnt': 0}
             g = _grp[key]
-            g['items'].append(r)
+            g['forms'].append(r)
             g['total_qty'] += r['quantity']
             if r['quantity'] == 0:
                 g['empty_cnt'] += 1
