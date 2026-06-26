@@ -1778,7 +1778,7 @@ def dashboard():
         ORDER BY b.code, f.name LIMIT 20
     ''').fetchall()
 
-    tx_cond = f'WHERE (t.from_branch_id={bid} OR t.to_branch_id={bid})' if role != 'admin' and bid else ''
+    tx_cond = f'AND (t.from_branch_id={bid} OR t.to_branch_id={bid})' if role != 'admin' and bid else ''
     recent_tx = conn.execute(f'''
         SELECT t.*, f.name form_name,
                fb.name from_branch, tb.name to_branch
@@ -1786,7 +1786,7 @@ def dashboard():
         JOIN form_types f ON t.form_type_id = f.id
         LEFT JOIN branches fb ON t.from_branch_id = fb.id
         LEFT JOIN branches tb ON t.to_branch_id = tb.id
-        {tx_cond}
+        WHERE COALESCE(t.is_cancelled, FALSE) = FALSE {tx_cond}
         ORDER BY t.created_at DESC LIMIT 10
     ''').fetchall()
 
@@ -1794,7 +1794,7 @@ def dashboard():
         SELECT
             (SELECT COUNT(*) FROM branches)   AS branch_cnt,
             (SELECT COUNT(*) FROM form_types) AS form_cnt,
-            (SELECT COUNT(*) FROM transactions WHERE transaction_date = CURRENT_DATE) AS today_cnt
+            (SELECT COUNT(*) FROM transactions WHERE transaction_date = CURRENT_DATE AND COALESCE(is_cancelled, FALSE) = FALSE) AS today_cnt
     ''').fetchone()
     stats = {
         'branches': _s['branch_cnt'],
@@ -1820,7 +1820,7 @@ def dashboard():
             SELECT TO_CHAR(transaction_date, 'YYYY-MM') AS ym,
                    SUM(quantity) AS total
             FROM transactions
-            WHERE type='OUT' AND transaction_date >= CURRENT_DATE - INTERVAL '5 months' {chart_cond}
+            WHERE type='OUT' AND COALESCE(is_cancelled, FALSE) = FALSE AND transaction_date >= CURRENT_DATE - INTERVAL '5 months' {chart_cond}
             GROUP BY ym ORDER BY ym
         ''').fetchall()
         monthly_map = {r['ym']: int(r['total']) for r in rows_chart}
