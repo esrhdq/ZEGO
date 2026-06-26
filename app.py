@@ -1829,6 +1829,25 @@ def manual_page():
     return render_template('manual.html')
 
 
+MANUAL_NAMES = {
+    'kor': 'ZEGO MANUAL_KOR.pdf',
+    'eng': 'ZEGO MANUAL_ENG.pdf',
+    'jpn': 'ZEGO MANUAL_JPN.pdf',
+    'chn': 'ZEGO MANUAL_CHN.pdf',
+    'twn': 'ZEGO MANUAL_TWN.pdf',
+}
+
+@app.route('/manual/download/<lang>')
+@login_required
+def manual_download(lang):
+    if lang not in MANUAL_NAMES:
+        return 'Not found', 404
+    import os as _os
+    pdf_path = _os.path.join(_os.path.dirname(__file__), 'static', 'manuals', f'{lang}.pdf')
+    from flask import send_file
+    return send_file(pdf_path, as_attachment=True, download_name=MANUAL_NAMES[lang])
+
+
 @app.route('/inventory')
 @login_required
 def inventory():
