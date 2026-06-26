@@ -1535,9 +1535,6 @@ def init_db():
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate2,))
             # inventory.min_threshold 컬럼 추가 (지점별 최소기준)
             conn.execute("ALTER TABLE inventory ADD COLUMN IF NOT EXISTS min_threshold INTEGER DEFAULT 2")
-            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE")
-            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_by TEXT")
-            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP")
             conn.execute('''
                 UPDATE inventory i SET min_threshold = ft.min_threshold
                 FROM form_types ft WHERE ft.id = i.form_type_id
@@ -1598,6 +1595,17 @@ def init_db():
                     ('KOJ', '가고시마', 'INTL')
                 )
         conn.commit()
+
+        # transactions 취소 컬럼 추가 — 별도 블록으로 격리
+        try:
+            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE")
+            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_by TEXT")
+            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP")
+            conn.commit()
+        except Exception as _ce:
+            print(f'[init_db/cancel_cols] {_ce}')
+            try: conn.rollback()
+            except: pass
 
         # catalog_defs 시딩 (DO UPDATE — 코드 변경사항 배포 시 자동 반영)
         # 별도 try/except: 시딩 실패가 전체 init_db를 막지 않도록
@@ -2579,7 +2587,7 @@ def transaction_edit(tx_id):
     if tx['type'] != 'OUT':
         conn.close()
         return jsonify({'ok': False, 'msg': T('flash.outbound_only_editable')}), 400
-    if tx['is_cancelled']:
+    if tx.get('is_cancelled'):
         conn.close()
         return jsonify({'ok': False, 'msg': '취소된 출고 기록은 수정할 수 없습니다.'}), 400
     if role != 'admin' and tx['from_branch_id'] != bid:
@@ -2643,7 +2651,7 @@ def transaction_cancel(tx_id):
     if tx['type'] != 'OUT':
         conn.close()
         return jsonify({'ok': False, 'msg': '출고 기록만 취소할 수 있습니다.'}), 400
-    if tx['is_cancelled']:
+    if tx.get('is_cancelled'):
         conn.close()
         return jsonify({'ok': False, 'msg': '이미 취소된 기록입니다.'}), 400
     if role != 'admin' and tx['from_branch_id'] != bid:
