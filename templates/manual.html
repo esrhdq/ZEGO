@@ -7,18 +7,19 @@
 <div class="row g-3">
 
   {% set manuals = [
-    ('한국어', '🇰🇷', '#CC1625', '/static/manuals/kor.pdf'),
-    ('English', '🇺🇸', '#1a56db', '/static/manuals/eng.pdf'),
-    ('日本語', '🇯🇵', '#e84393', '/static/manuals/jpn.pdf'),
-    ('中文 (简体)', '🇨🇳', '#d97706', '/static/manuals/chn.pdf'),
-    ('中文 (繁體)', '🇹🇼', '#059669', '/static/manuals/twn.pdf'),
+    ('한국어', 'kr', '#CC1625', '/static/manuals/kor.pdf'),
+    ('English', 'us', '#1a56db', '/static/manuals/eng.pdf'),
+    ('日本語', 'jp', '#e84393', '/static/manuals/jpn.pdf'),
+    ('中文 (简体)', 'cn', '#d97706', '/static/manuals/chn.pdf'),
+    ('中文 (繁體)', 'tw', '#059669', '/static/manuals/twn.pdf'),
   ] %}
 
   {% for label, flag, color, path in manuals %}
   <div class="col-md-4 col-lg-3">
     <div class="card h-100 shadow-sm" style="border-top: 3px solid {{ color }}">
       <div class="card-body d-flex flex-column align-items-center text-center py-4">
-        <div class="mb-3" style="font-size:3rem;line-height:1">{{ flag }}</div>
+        <img src="/static/manuals/flags/{{ flag }}.png" alt="{{ label }}"
+             style="width:80px;height:auto;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.2)" class="mb-3">
         <h6 class="fw-bold mb-3">{{ label }}</h6>
         <a href="{{ path }}" target="_blank"
            class="btn btn-outline-secondary btn-sm w-100 mb-2">
