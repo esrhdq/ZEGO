@@ -5899,11 +5899,14 @@ def form_supply_admin_requests():
         items = conn.execute(
             'SELECT i.id AS item_id, i.form_type_id, i.quantity, '
             'i.item_status, i.item_reject_reason, '
-            'f.name AS form_name, f.unit, f.unit_detail '
+            'f.name AS form_name, f.unit, f.unit_detail, '
+            'COALESCE(inv.quantity, 0) AS stock_qty, '
+            'COALESCE(inv.min_threshold, f.min_threshold, 2) AS stock_threshold '
             'FROM form_supply_request_items i '
             'JOIN form_types f ON f.id = i.form_type_id '
+            'LEFT JOIN inventory inv ON inv.branch_id = %s AND inv.form_type_id = i.form_type_id '
             'WHERE i.request_id=%s ORDER BY f.name',
-            (r['id'],)
+            (r['branch_id'], r['id'],)
         ).fetchall()
         d = dict(r)
         d['items'] = [dict(x) for x in items]

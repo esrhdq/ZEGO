@@ -55,6 +55,13 @@
   .item-status-dot.approved { background:#22c55e; }
   .item-status-dot.rejected { background:#ef4444; }
   .item-status-dot.pending  { background:#f59e0b; }
+
+  /* 재고 표시 */
+  .stock-badge { display:inline-flex; align-items:center; gap:4px; font-size:.72rem; font-weight:700;
+                 padding:2px 8px; border-radius:12px; white-space:nowrap; }
+  .stock-ok      { background:#dcfce7; color:#15803d; }
+  .stock-low     { background:#fef9c3; color:#854d0e; }
+  .stock-empty   { background:#fee2e2; color:#b91c1c; }
 </style>
 
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -178,6 +185,7 @@
                     <th class="text-center" style="width:100px">{{ T('fsadmin.col_unit') }}</th>
                     <th class="text-center" style="width:120px">{{ T('fsadmin.col_unit_detail') }}</th>
                     <th class="text-center" style="width:80px">{{ T('fsadmin.col_qty') }}</th>
+                    <th class="text-center" style="width:100px">현재 재고</th>
                     <th class="text-center" style="width:90px">{{ T('fsadmin_req.col_item_status') }}</th>
                     <th style="width:180px">{{ T('fsadmin_req.col_item_reject_reason') }}</th>
                   </tr>
@@ -189,6 +197,17 @@
                     <td class="text-center text-muted">{{ it.unit | unit_i18n if it.unit else '—' }}</td>
                     <td class="text-center text-muted">{{ it.unit_detail | unit_i18n if it.unit_detail else '—' }}</td>
                     <td class="text-center fw-bold">{{ it.quantity }}</td>
+                    <td class="text-center">
+                      {% set sq = it.get('stock_qty', 0) %}
+                      {% set st = it.get('stock_threshold', 2) %}
+                      {% if sq == 0 %}
+                        <span class="stock-badge stock-empty"><i class="fa-solid fa-triangle-exclamation"></i>{{ sq }}</span>
+                      {% elif sq <= st %}
+                        <span class="stock-badge stock-low"><i class="fa-solid fa-circle-exclamation"></i>{{ sq }}</span>
+                      {% else %}
+                        <span class="stock-badge stock-ok"><i class="fa-solid fa-box"></i>{{ sq }}</span>
+                      {% endif %}
+                    </td>
                     <td class="text-center">
                       {% set ist = it.get('item_status', 'pending') %}
                       <span class="item-status-dot {{ ist }}"></span>
