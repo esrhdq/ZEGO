@@ -266,12 +266,38 @@ def _get_pg_pool():
     """모듈 단위 ThreadedConnectionPool을 지연 생성해 반환."""
     global _PG_POOL
     if _PG_POOL is None and _PG:
-        _PG_POOL = psycopg2.pool.ThreadedConnectionPool(1, 5, **_PG)
+        # max=3: Vercel 인스턴스당 최대 3연결 → 인스턴스 5개 동시에도 15 한도 이내
+        _PG_POOL = psycopg2.pool.ThreadedConnectionPool(1, 3, **_PG)
     return _PG_POOL
 
 
 def _acquire_pg_db():
-    """직접 연결 + 재시도."""
+    """Pool에서 연결 획득. 실패 시 직접 연결로 fallback."""
+    pool = _get_pg_pool()
+    if pool:
+        for wait in (0, 1, 2):
+            try:
+                if wait:
+                    _time.sleep(wait)
+                conn = pool.getconn()
+                # 연결이 살아있는지 확인
+                try:
+                    with conn.cursor() as _cur:
+                        _cur.execute('SELECT 1')
+                    conn.rollback()
+                except Exception:
+                    try: pool.putconn(conn, close=True)
+                    except Exception: pass
+                    continue
+                return _DB(conn, pool=pool)
+            except psycopg2.pool.PoolError:
+                # 풀 고갈 시 직접 연결로 fallback
+                break
+            except Exception:
+                if wait == 2:
+                    raise
+
+    # fallback: 직접 연결
     last_err = None
     for wait in (0, 1, 2):
         conn = None
