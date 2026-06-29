@@ -548,18 +548,20 @@ def handle_exception(e):
     # DB 연결 한도 초과 시 친절한 메시지
     if 'max clients reached' in str(e) or 'EMAXCONNSESSION' in str(e) or 'connection' in str(e).lower():
         return '''<!doctype html><html lang="ko"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="5;url=javascript:history.back()">
 <title>잠시 후 다시 시도해주세요</title>
 <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff8f8}
 .box{text-align:center;padding:40px;border-radius:16px;border:1px solid #fca5a5;background:#fff}
-h2{color:#b91c1c;margin-bottom:8px}p{color:#555;margin:4px 0}.spinner{font-size:2rem;margin-bottom:16px}</style>
+h2{color:#b91c1c;margin-bottom:8px}p{color:#555;margin:4px 0}.spinner{font-size:2rem;margin-bottom:16px}
+#cnt{font-weight:700;color:#b91c1c}</style>
 </head><body><div class="box">
 <div class="spinner">⏳</div>
 <h2>서버가 잠시 혼잡합니다</h2>
 <p>DB 연결이 일시적으로 초과되었습니다.</p>
-<p>5초 후 자동으로 이전 페이지로 돌아갑니다.</p>
-<p style="margin-top:16px"><a href="javascript:history.back()" style="color:#b91c1c">지금 돌아가기</a></p>
-</div></body></html>''', 503
+<p><span id="cnt">5</span>초 후 자동으로 이전 페이지로 돌아갑니다.</p>
+<p style="margin-top:16px"><a href="#" onclick="history.back();return false;" style="color:#b91c1c">지금 돌아가기</a></p>
+</div>
+<script>var n=5;var t=setInterval(function(){n--;document.getElementById('cnt').textContent=n;if(n<=0){clearInterval(t);history.back();}},1000);</script>
+</body></html>''', 503
     return f"<pre style='color:red'>{tb}</pre>", 500
 
 
