@@ -1531,19 +1531,6 @@ def init_db():
                 FROM form_types ft WHERE ft.id = i.form_type_id
                   AND (i.min_threshold IS NULL OR i.min_threshold = 2)
             ''')
-            conn.execute('''
-                INSERT INTO inventory (branch_id, form_type_id, quantity)
-                SELECT b.id, ft.id, 0
-                FROM branches b
-                CROSS JOIN form_types ft
-                WHERE ft.name IN (%s,%s,%s,%s)
-                ON CONFLICT (branch_id, form_type_id) DO NOTHING
-            ''', (
-                '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
-                '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
-                '총기인수인계서 (Firearm handover form)',
-                'NOTOC',
-            ))
             # 신규 지점 추가 (이미 있으면 무시) — KOJ는 아래 KOR 병합에서 처리
             for _bc, _bn, _bt in [('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
                 conn.execute(
