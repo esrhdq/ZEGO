@@ -5726,7 +5726,14 @@ def form_supply_request():
         return redirect(url_for('form_supply_my_requests'))
 
     # GET — 폼 렌더
-    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+    bid = session.get('branch_id')
+    form_types = conn.execute(
+        'SELECT f.*, COALESCE(inv.quantity, -1) AS stock_qty '
+        'FROM form_types f '
+        'LEFT JOIN inventory inv ON inv.form_type_id = f.id AND inv.branch_id = %s '
+        'WHERE f.is_active ORDER BY f.sort_order',
+        (bid,)
+    ).fetchall()
     conn.close()
     return render_template('form_supply_request.html',
                            period=period_ctx,

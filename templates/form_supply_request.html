@@ -115,6 +115,7 @@
               <th>{{ T('fsreq.col_form') }}</th>
               <th class="text-center" style="width:90px">{{ T('fsreq.col_unit') }}</th>
               <th class="text-center" style="width:120px">{{ T('fsreq.col_unit_detail') }}</th>
+              <th class="text-center" style="width:90px;white-space:nowrap">현재 재고</th>
               <th class="text-center" style="width:160px;white-space:nowrap">{{ T('fsreq.col_qty') }}</th>
             </tr>
           </thead>
@@ -138,6 +139,16 @@
               </td>
               <td class="text-center small text-muted">{{ f.unit | unit_i18n if f.unit else '—' }}</td>
               <td class="text-center small text-muted">{{ f.unit_detail | unit_i18n if f.unit_detail else '—' }}</td>
+              <td class="text-center">
+                {% set sq = f.get('stock_qty', -1) %}
+                {% if sq < 0 %}
+                  <span style="color:#aaa;font-size:.78rem">—</span>
+                {% elif sq == 0 %}
+                  <span style="background:#fee2e2;color:#b91c1c;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:12px">0 소진</span>
+                {% else %}
+                  <span style="background:#dcfce7;color:#15803d;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:12px">{{ sq }}</span>
+                {% endif %}
+              </td>
               <td class="text-center">
                 <input type="number" name="qty_{{ f.id }}" class="row-qty"
                        data-id="{{ f.id }}" min="1" max="300" value="" readonly tabindex="-1">
