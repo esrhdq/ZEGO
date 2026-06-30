@@ -509,11 +509,24 @@ def _build_catalog_period_ctx():
 
 # ── Jinja2 필터 ──────────────────────────────────────────────────────────────
 
+_KST = timezone(timedelta(hours=9))
+
 @app.template_filter('dt')
 def dt_filter(value):
     if value is None:
         return '—'
-    return str(value)[:16]
+    try:
+        if isinstance(value, str):
+            dt = datetime.fromisoformat(value.replace(' ', 'T'))
+        elif isinstance(value, datetime):
+            dt = value
+        else:
+            return str(value)[:16]
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(_KST).strftime('%Y-%m-%d %H:%M')
+    except Exception:
+        return str(value)[:16]
 
 
 _UNIT_KO_EN = [
