@@ -108,6 +108,17 @@
   }
   .cat-card.is-owned .cat-owned-badge { display:flex; }
 
+  .cat-qty-badge {
+    position:absolute; bottom:44px; right:8px; z-index:5;
+    background:#16a34a; color:#fff; border-radius:20px;
+    min-width:26px; height:26px; padding:0 6px;
+    font-size:.78rem; font-weight:700;
+    display:none; align-items:center; justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  .cat-card.is-owned .cat-qty-badge { display:flex; }
+  .edit-mode .cat-qty-badge { display:none !important; }
+
   /* 관리자 카드 수정/삭제 버튼 */
   .admin-card-edit,
   .admin-card-del {
@@ -618,6 +629,7 @@
 {% set owned = item.code in my_items %}
 <div class="cat-card {% if owned %}is-owned{% endif %}" id="card-{{ item.code }}">
   <div class="cat-owned-badge"><i class="fa-solid fa-check" style="font-size:.6rem"></i></div>
+  <div class="cat-qty-badge" data-code="{{ item.code }}">{{ my_items.get(item.code, 0) }}</div>
   {% if session.role == 'admin' %}
   <button class="admin-card-edit"
           data-code="{{ item.code }}"
@@ -654,7 +666,7 @@
     <input type="number" class="cat-qty" data-code="{{ item.code }}"
            min="0" max="999" value="{{ my_items.get(item.code, 1) }}"
            {% if not owned %}disabled{% endif %}
-           oninput="catMarkDirty()">
+           oninput="catMarkDirty(); catUpdateBadge(this.dataset.code)">
   </div>
   <button class="cat-req-btn" id="reqbtn-{{ item.code }}"
           data-code="{{ item.code }}" data-name="{{ item.name|e }}"
@@ -821,11 +833,18 @@ function catCheckChange(cb) {
     qty.disabled = false;
     if (!qty.value || qty.value == 0) qty.value = 1;
     card.classList.add('is-owned');
+    catUpdateBadge(code);
   } else {
     qty.disabled = true;
     card.classList.remove('is-owned');
   }
   catMarkDirty();
+}
+
+function catUpdateBadge(code) {
+  const qty   = document.querySelector(`.cat-qty[data-code="${code}"]`);
+  const badge = document.querySelector(`.cat-qty-badge[data-code="${code}"]`);
+  if (badge && qty) badge.textContent = qty.value || 0;
 }
 
 function catMarkDirty() {
@@ -892,8 +911,12 @@ async function catSave() {
       document.getElementById('catSaveBar').classList.remove('show');
       catToast(_toastSaved, 'success');
       document.querySelectorAll('.cat-check').forEach(cb => {
-        const card = document.getElementById('card-' + cb.dataset.code);
+        const code  = cb.dataset.code;
+        const card  = document.getElementById('card-' + code);
+        const qtyEl = document.querySelector(`.cat-qty[data-code="${code}"]`);
+        const badge = document.querySelector(`.cat-qty-badge[data-code="${code}"]`);
         if (card) card.classList.toggle('is-owned', cb.checked);
+        if (badge) badge.textContent = cb.checked ? (qtyEl ? (qtyEl.value || 0) : 0) : 0;
       });
     } else {
       catToast(json.msg || _toastSaveFail, 'danger');
