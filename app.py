@@ -2710,7 +2710,8 @@ def report():
         SELECT TO_CHAR(t.created_at, 'YYYY-MM') mo, t.type,
                COUNT(*) tx_count, COALESCE(SUM(t.quantity),0) total_qty
         FROM transactions t
-        WHERE t.created_at >= CURRENT_DATE - INTERVAL '6 months' {t_cond}
+        WHERE t.created_at >= CURRENT_DATE - INTERVAL '6 months'
+          AND COALESCE(t.is_cancelled, FALSE) = FALSE {t_cond}
         GROUP BY TO_CHAR(t.created_at, 'YYYY-MM'), t.type ORDER BY TO_CHAR(t.created_at, 'YYYY-MM') ASC
     ''').fetchall()
 
@@ -2767,7 +2768,8 @@ def report():
         SELECT f.name label, COALESCE(SUM(t.quantity),0) qty
         FROM transactions t
         JOIN form_types f ON t.form_type_id=f.id
-        WHERE t.type='OUT' AND t.created_at >= CURRENT_DATE - INTERVAL '30 days' {t_cond}
+        WHERE t.type='OUT' AND COALESCE(t.is_cancelled, FALSE) = FALSE
+          AND t.created_at >= CURRENT_DATE - INTERVAL '30 days' {t_cond}
         GROUP BY f.id, f.name ORDER BY qty DESC LIMIT 10
     ''').fetchall()
 
