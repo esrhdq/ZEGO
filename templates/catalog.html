@@ -794,6 +794,10 @@ let editMode = false;
 let dirty = false;
 
 function catToggleEdit() {
+  if (editMode && dirty) {
+    catSave();  // 변경사항 있으면 저장 후 편집 모드 종료 (catSave가 성공 시 catToggleEdit 재호출)
+    return;
+  }
   editMode = !editMode;
   document.body.classList.toggle('edit-mode', editMode);
   const btn = document.getElementById('catEditBtn');
