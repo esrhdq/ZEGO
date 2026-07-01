@@ -3560,16 +3560,28 @@ def catalog():
     my_items = {}
     cart_cnt = 0
     if bid:
-        # cart_cnt + my_items 단일 쿼리 — 2 round-trip → 1 round-trip
-        combined = conn.execute(
-            'SELECT cbi.item_code, cbi.quantity, cc.cart_cnt'
-            ' FROM (SELECT COUNT(*) AS cart_cnt'
-            '       FROM catalog_request_items ri'
-            '       JOIN catalog_requests r ON r.id=ri.request_id'
-            '       WHERE r.branch_id=%s AND r.status=%s) cc'
-            ' LEFT JOIN catalog_branch_items cbi ON cbi.branch_id=%s',
-            (bid, 'draft', bid)
-        ).fetchall()
+        # 데드락 발생 시 최대 2회 재시도
+        for _attempt in range(3):
+            try:
+                combined = conn.execute(
+                    'SELECT cbi.item_code, cbi.quantity, cc.cart_cnt'
+                    ' FROM (SELECT COUNT(*) AS cart_cnt'
+                    '       FROM catalog_request_items ri'
+                    '       JOIN catalog_requests r ON r.id=ri.request_id'
+                    '       WHERE r.branch_id=%s AND r.status=%s) cc'
+                    ' LEFT JOIN catalog_branch_items cbi ON cbi.branch_id=%s',
+                    (bid, 'draft', bid)
+                ).fetchall()
+                break
+            except Exception as _e:
+                if 'deadlock' in str(_e).lower() and _attempt < 2:
+                    try: conn.rollback()
+                    except Exception: pass
+                    _time.sleep(0.3 * (_attempt + 1))
+                    continue
+                raise
+        else:
+            combined = []
         cart_cnt = combined[0]['cart_cnt'] if combined else 0
         my_items = {r['item_code']: r['quantity'] for r in combined if r['item_code'] is not None}
 
@@ -3993,7 +4005,6 @@ def catalog_request_action(req_id):
 @login_required
 def catalog_save():
     T = _get_T()
-    _ensure_catalog_table()
     data     = request.get_json(silent=True) or {}
     bid      = session.get('branch_id')
     role     = session.get('role')
