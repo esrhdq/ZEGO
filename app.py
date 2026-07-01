@@ -2872,6 +2872,7 @@ def forecast():
         FROM transactions t
         JOIN form_types f ON t.form_type_id = f.id
         WHERE t.type = 'OUT'
+          AND COALESCE(t.is_cancelled, FALSE) = FALSE
           AND t.from_branch_id IN ({id_str})
           AND COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
               BETWEEN TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
@@ -3036,7 +3037,8 @@ def forecast_download():
                COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM')) mo,
                SUM(t.quantity) qty
         FROM transactions t JOIN form_types f ON t.form_type_id=f.id
-        WHERE t.type='OUT' AND t.from_branch_id IN ({id_str})
+        WHERE t.type='OUT' AND COALESCE(t.is_cancelled, FALSE) = FALSE
+          AND t.from_branch_id IN ({id_str})
           AND COALESCE(t.period_month, TO_CHAR(t.created_at, 'YYYY-MM'))
               BETWEEN TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
                   AND TO_CHAR(CURRENT_DATE, 'YYYY-MM')
