@@ -605,6 +605,18 @@ def inject_globals():
             notif_transfer    = session.get('_notif_transfer', 0)
             notif_form_supply = session.get('_notif_form_supply', 0)
             notif_catalog     = session.get('_notif_catalog', 0)
+            # notif_list은 캐시하지 않고 항상 fresh하게 조회 (드롭다운 정합성)
+            if bid and role != 'admin':
+                try:
+                    _c = get_db()
+                    notif_list = _c.execute(
+                        'SELECT id, message, created_at FROM notifications '
+                        'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
+                        (bid,)
+                    ).fetchall()
+                    _c.close()
+                except Exception:
+                    pass
         else:
             try:
                 conn = get_db()
