@@ -605,7 +605,7 @@ def inject_globals():
             notif_transfer    = session.get('_notif_transfer', 0)
             notif_form_supply = session.get('_notif_form_supply', 0)
             notif_catalog     = session.get('_notif_catalog', 0)
-            # notif_list은 캐시하지 않고 항상 fresh하게 조회 (드롭다운 정합성)
+            # notif_list + unread count는 캐시하지 않고 항상 fresh하게 조회
             if bid and role != 'admin':
                 try:
                     _c = get_db()
@@ -615,6 +615,8 @@ def inject_globals():
                         (bid,)
                     ).fetchall()
                     _c.close()
+                    # 배지 카운트도 실제 미읽은 수로 재계산 (캐시 불일치 방지)
+                    notif_count = notif_pending_tr + len(notif_list)
                 except Exception:
                     pass
         else:
