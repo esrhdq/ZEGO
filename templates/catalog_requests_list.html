@@ -22,6 +22,7 @@
   .status-approved  { background:var(--success-bg); color:var(--success); }
   .status-rejected  { background:var(--danger-bg);  color:var(--danger); }
   .status-on_hold   { background:var(--info-bg);    color:var(--info); }
+  .status-partial   { background:#ede9fe; color:#6d28d9; }
 
   .filter-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
   .filter-btn { font-size:.72rem; padding:3px 12px; border-radius:20px; border:1.5px solid var(--border-md);
@@ -33,9 +34,6 @@
   <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
     <i class="fa-solid fa-arrow-left me-1"></i>{{ T('catreqlist.back') }}
   </a>
-  <a href="{{ url_for('catalog_cart') }}" class="btn btn-sm btn-outline-danger ms-auto">
-    <i class="fa-solid fa-cart-shopping me-1"></i>{{ T('catreqlist.cart_btn') }}
-  </a>
 </div>
 
 <div class="filter-bar">
@@ -44,6 +42,7 @@
   <button class="filter-btn" onclick="filterReqs('approved',this)">{{ T('catreqlist.filter_approved') }}</button>
   <button class="filter-btn" onclick="filterReqs('rejected',this)">{{ T('catreqlist.filter_rejected') }}</button>
   <button class="filter-btn" onclick="filterReqs('on_hold',this)">{{ T('catreqlist.filter_on_hold') }}</button>
+  <button class="filter-btn" onclick="filterReqs('partial',this)">{{ T('catreqlist.filter_partial') }}</button>
 </div>
 
 <div class="req-list-wrap">
@@ -82,6 +81,8 @@
             <span class="status-badge status-rejected"><i class="fa-solid fa-xmark me-1"></i>{{ T('catreqlist.status_rejected') }}</span>
             {% elif r.status == 'on_hold' %}
             <span class="status-badge status-on_hold"><i class="fa-solid fa-pause me-1"></i>{{ T('catreqlist.status_on_hold') }}</span>
+            {% elif r.status == 'partial' %}
+            <span class="status-badge status-partial"><i class="fa-solid fa-sliders me-1"></i>{{ T('catreqlist.status_partial') }}</span>
             {% endif %}
           </td>
           <td style="font-size:.78rem;color:#666">{{ r.created_at|string|truncate(16,true,'') }}</td>
@@ -91,11 +92,15 @@
           </td>
           {% if session.role == 'admin' %}
           <td style="text-align:center" onclick="event.stopPropagation()">
+            {% if r.status in ('pending', 'partial') %}
             {% if r.status == 'pending' %}
             <button class="btn btn-xs btn-success me-1" style="font-size:.68rem;padding:2px 7px"
                     onclick="adminAction({{ r.id }},'approved','')">{{ T('catreqlist.btn_approve') }}</button>
-            <button class="btn btn-xs btn-danger" style="font-size:.68rem;padding:2px 7px"
+            <button class="btn btn-xs btn-danger me-1" style="font-size:.68rem;padding:2px 7px"
                     onclick="openReject({{ r.id }})">{{ T('catreqlist.btn_reject') }}</button>
+            {% endif %}
+            <button class="btn btn-xs" style="font-size:.68rem;padding:2px 7px;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd"
+                    onclick="location.href='{{ url_for('catalog_request_detail', req_id=r.id) }}'">{{ T('catreqlist.btn_partial') }}</button>
             {% else %}—{% endif %}
           </td>
           {% endif %}

@@ -16,6 +16,7 @@
   .status-pending   { background:var(--warning-bg); color:var(--warning); }
   .status-approved  { background:var(--success-bg); color:var(--success); }
   .status-rejected  { background:var(--danger-bg);  color:var(--danger); }
+  .status-partial   { background:#ede9fe; color:#6d28d9; }
   .status-on_hold   { background:var(--info-bg);    color:var(--info); }
 
   .items-table { width:100%; border-collapse:collapse; font-size:.82rem; }
@@ -28,6 +29,29 @@
   .custom-img-preview { max-width:120px; max-height:80px; object-fit:contain; border:1px solid var(--border); border-radius:4px; cursor:zoom-in; }
 
   .reject-box { background:var(--danger-bg); border:1px solid var(--danger-bg); border-radius:8px; padding:12px 16px; }
+
+  .item-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+  .item-status-dot.approved { background:#16a34a; }
+  .item-status-dot.rejected { background:#dc2626; }
+  .item-status-dot.pending  { background:#d97706; }
+
+  /* 부분승인 모달 */
+  .partial-item-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+  .partial-item-row:last-child { border-bottom:none; }
+  .partial-item-name { flex:1; font-weight:600; color:var(--text); }
+  .partial-item-qty  { font-size:.75rem; color:#888; white-space:nowrap; }
+  .partial-toggle { display:flex; gap:4px; }
+  .partial-toggle label { cursor:pointer; }
+  .partial-toggle input[type=radio] { display:none; }
+  .partial-toggle .tog-btn {
+    font-size:.68rem; padding:2px 9px; border-radius:12px; border:1.5px solid var(--border-md);
+    background:var(--bg); color:var(--text-secondary); transition:all .12s; user-select:none;
+  }
+  .partial-toggle input[value=approved]:checked + .tog-btn { background:#dcfce7; color:#15803d; border-color:#86efac; }
+  .partial-toggle input[value=rejected]:checked + .tog-btn { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
+  .partial-reason-input { font-size:.75rem; margin-top:4px; border-radius:6px; padding:3px 7px;
+                          border:1px solid var(--border-md); width:100%; display:none; }
+  .partial-reason-input.show { display:block; }
 </style>
 
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -39,10 +63,12 @@
     {% if req.status=='pending' %}status-badge status-pending
     {% elif req.status=='approved' %}status-badge status-approved
     {% elif req.status=='rejected' %}status-badge status-rejected
+    {% elif req.status=='partial' %}status-badge status-partial
     {% else %}status-badge status-on_hold{% endif %}">
     {% if req.status=='pending' %}<i class="fa-solid fa-clock me-1"></i>{{ T('catreqdet.status_pending') }}
     {% elif req.status=='approved' %}<i class="fa-solid fa-check me-1"></i>{{ T('catreqdet.status_approved') }}
     {% elif req.status=='rejected' %}<i class="fa-solid fa-xmark me-1"></i>{{ T('catreqdet.status_rejected') }}
+    {% elif req.status=='partial' %}<i class="fa-solid fa-sliders me-1"></i>{{ T('catreqdet.status_partial') }}
     {% else %}<i class="fa-solid fa-pause me-1"></i>{{ T('catreqdet.status_on_hold') }}{% endif %}
   </span>
 </div>
@@ -86,6 +112,16 @@
     </div>
   </div>
   {% endif %}
+  {% if req.status == 'partial' and req.reject_reason %}
+  <div class="px-4 pb-3">
+    <div style="background:#ede9fe;border-radius:8px;padding:10px 14px">
+      <div style="font-size:.78rem;color:#6d28d9;font-weight:700;margin-bottom:4px">
+        <i class="fa-solid fa-sliders me-1"></i>전달사항
+      </div>
+      <div style="font-size:.85rem">{{ req.reject_reason }}</div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- 아이템 목록 -->
@@ -100,6 +136,9 @@
           <th>{{ T('catreqdet.col_name') }}</th>
           <th>{{ T('catreqdet.col_qty') }}</th>
           <th>{{ T('catreqdet.col_custom') }}</th>
+          {% if req.status in ('approved','rejected','partial') %}
+          <th>{{ T('catreqdet.col_item_status') }}</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -123,6 +162,19 @@
             <span style="color:#ccc;font-size:.8rem">{{ T('catreqdet.default_design') }}</span>
             {% endif %}
           </td>
+          {% if req.status in ('approved','rejected','partial') %}
+          <td>
+            {% set ist = it.get('item_status', 'pending') %}
+            <span class="item-status-dot {{ ist }}"></span>
+            {% if ist == 'approved' %}<span style="color:#15803d;font-size:.75rem">{{ T('catreqdet.item_status_approved') }}</span>
+            {% elif ist == 'rejected' %}
+              <span style="color:#b91c1c;font-size:.75rem">{{ T('catreqdet.item_status_rejected') }}</span>
+              {% if it.get('item_reject_reason') %}
+              <div style="font-size:.72rem;color:#888;margin-top:2px">{{ it.item_reject_reason }}</div>
+              {% endif %}
+            {% else %}<span style="color:#b45309;font-size:.75rem">{{ T('catreqdet.item_status_pending') }}</span>{% endif %}
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -130,7 +182,7 @@
   </div>
 </div>
 
-{% if session.role == 'admin' and req.status == 'pending' %}
+{% if session.role == 'admin' and req.status in ('pending', 'partial') %}
 <!-- 관리자 액션 버튼 -->
 <div class="d-flex gap-2 justify-content-end mt-2">
   <button class="btn btn-sm btn-outline-secondary" onclick="doAction('on_hold','')">
@@ -138,6 +190,9 @@
   </button>
   <button class="btn btn-sm btn-danger" onclick="openReject()">
     <i class="fa-solid fa-xmark me-1"></i>{{ T('catreqdet.btn_reject') }}
+  </button>
+  <button class="btn btn-sm" style="background:#6d28d9;color:#fff" onclick="openPartial()">
+    <i class="fa-solid fa-sliders me-1"></i>{{ T('catreqdet.btn_partial') }}
   </button>
   <button class="btn btn-sm btn-success px-4" onclick="doAction('approved','')">
     <i class="fa-solid fa-check me-1"></i>{{ T('catreqdet.btn_approve') }}
@@ -161,6 +216,40 @@
         <button type="button" class="btn btn-danger btn-sm" onclick="submitReject()">
           <i class="fa-solid fa-xmark me-1"></i>{{ T('catreqdet.reject_btn') }}
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 부분승인 모달 -->
+<div class="modal fade" id="partialModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#6d28d9;color:#fff;padding:10px 16px">
+        <h6 class="modal-title m-0">
+          <i class="fa-solid fa-sliders me-1"></i>{{ T('catreqdet.partial_modal_title') }}
+          <span style="font-size:.8rem;opacity:.8"> #{{ req.id }}</span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="max-height:65vh;overflow-y:auto">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">{{ T('catreqdet.partial_message_label') }}</label>
+          <textarea id="partialApproveReason" class="form-control form-control-sm" rows="2"
+                    placeholder="{{ T('catreqdet.partial_message_placeholder') }}"></textarea>
+        </div>
+        <div class="small fw-semibold text-muted mb-2">
+          <i class="fa-solid fa-list me-1"></i>{{ T('catreqdet.partial_item_settings') }}
+        </div>
+        <div id="partialItemList"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+        <button type="button" class="btn btn-sm" style="background:#dcfce7;color:#15803d;border:1px solid #86efac"
+                onclick="setAllPartial('approved')">{{ T('catreqdet.partial_approve_all') }}</button>
+        <button type="button" class="btn btn-sm ms-1" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5"
+                onclick="setAllPartial('rejected')">{{ T('catreqdet.partial_reject_all') }}</button>
+        <button type="button" class="btn btn-sm btn-primary ms-2" onclick="submitPartial()">{{ T('catreqdet.partial_save_btn') }}</button>
       </div>
     </div>
   </div>
@@ -206,7 +295,19 @@
   });
 })();
 
-{% if session.role == 'admin' and req.status == 'pending' %}
+{% if session.role == 'admin' and req.status in ('pending', 'partial') %}
+var PARTIAL_ITEMS = [
+  {% for it in items %}
+  { id: {{ it.id }}, name: {{ it.item_name | tojson }}, qty: {{ it.quantity }},
+    status: {{ (it.get('item_status') or 'pending') | tojson }},
+    reason: {{ (it.get('item_reject_reason') or '') | tojson }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function openReject() {
   document.getElementById('rejectReason').value = '';
   bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).show();
@@ -225,6 +326,87 @@ async function doAction(action, reason) {
   const json = await res.json();
   if (json.ok) location.reload();
   else alert(json.msg || '{{ T("catreqdet.err_generic") }}');
+}
+
+function openPartial() {
+  document.getElementById('partialApproveReason').value = '';
+  const list = document.getElementById('partialItemList');
+  list.innerHTML = '';
+  PARTIAL_ITEMS.forEach(function(it) {
+    const initStatus = it.status === 'rejected' ? 'rejected' : 'approved';
+    const initReason = it.reason || '';
+    const showReason = initStatus === 'rejected' ? 'show' : '';
+    const div = document.createElement('div');
+    div.className = 'partial-item-row';
+    div.dataset.itemId = it.id;
+    div.innerHTML =
+      '<div class="partial-item-name">' + escHtml(it.name) +
+        '<span class="partial-item-qty ms-2">' + it.qty + '개</span>' +
+      '</div>' +
+      '<div>' +
+        '<div class="partial-toggle">' +
+          '<label>' +
+            '<input type="radio" name="pi_' + it.id + '" value="approved" ' + (initStatus==='approved'?'checked':'') + ' onchange="onPartialChange(this)">' +
+            '<span class="tog-btn">✔ 승인</span>' +
+          '</label>' +
+          '<label class="ms-1">' +
+            '<input type="radio" name="pi_' + it.id + '" value="rejected" ' + (initStatus==='rejected'?'checked':'') + ' onchange="onPartialChange(this)">' +
+            '<span class="tog-btn">✘ 반려</span>' +
+          '</label>' +
+        '</div>' +
+        '<input class="partial-reason-input ' + showReason + '" data-item-id="' + it.id + '"' +
+               ' placeholder="반려 사유 (선택)" value="' + escHtml(initReason) + '">' +
+      '</div>';
+    list.appendChild(div);
+  });
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('partialModal')).show();
+}
+
+function onPartialChange(radio) {
+  const row = radio.closest('.partial-item-row');
+  const reasonInput = row.querySelector('.partial-reason-input');
+  if (radio.value === 'rejected') {
+    reasonInput.classList.add('show');
+  } else {
+    reasonInput.classList.remove('show');
+    reasonInput.value = '';
+  }
+}
+
+function setAllPartial(status) {
+  document.querySelectorAll('#partialItemList input[type=radio][value=' + status + ']').forEach(function(r) {
+    r.checked = true;
+    onPartialChange(r);
+  });
+}
+
+async function submitPartial() {
+  const items = [];
+  document.querySelectorAll('#partialItemList .partial-item-row').forEach(function(row) {
+    const iid    = row.dataset.itemId;
+    const radios = row.querySelectorAll('input[type=radio]');
+    let status   = 'approved';
+    radios.forEach(function(r) { if (r.checked) status = r.value; });
+    const reason = (row.querySelector('.partial-reason-input').value || '').trim();
+    items.push({ id: parseInt(iid), status: status, reason: reason });
+  });
+  const approveReason = document.getElementById('partialApproveReason').value.trim();
+  try {
+    const res = await fetch('/catalog/requests/{{ req.id }}/partial', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ items: items, approve_reason: approveReason })
+    });
+    const json = await res.json();
+    if (json.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('partialModal')).hide();
+      location.reload();
+    } else {
+      alert(json.msg || '오류가 발생했습니다.');
+    }
+  } catch(e) {
+    alert('요청 실패: ' + e);
+  }
 }
 {% endif %}
 </script>

@@ -445,10 +445,6 @@
        class="nav-link nav-sub {% if endpoint in ('catalog','catalog_save','catalog_inventory') %}active{% endif %}">
       <i class="fa-solid fa-boxes-stacked"></i>{{ T('nav.catalog') }}
     </a>
-    <a href="{{ url_for('catalog_cart') }}"
-       class="nav-link nav-sub {% if endpoint=='catalog_cart' %}active{% endif %}">
-      <i class="fa-solid fa-cart-shopping"></i>{{ T('nav.request_cart') }}
-    </a>
     <a href="{{ url_for('catalog_requests_branch') }}"
        class="nav-link nav-sub {% if endpoint in ('catalog_requests_branch','catalog_request_detail') %}active{% endif %}"
        style="position:relative">

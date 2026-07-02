@@ -3542,6 +3542,8 @@ def _ensure_catalog_table():
         ''')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_name TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_cat  TEXT DEFAULT \'\'')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_status TEXT DEFAULT \'pending\'')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_reject_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
@@ -4001,6 +4003,12 @@ def catalog_request_action(req_id):
         f"UPDATE catalog_requests SET status={ph}, reject_reason={ph}, updated_at={now_sql} WHERE id={ph}",
         (action, reason if action == 'rejected' else '', req_id)
     )
+    # 전체 승인/반려 시 아이템 상태 동기화
+    if action in ('approved', 'rejected'):
+        conn.execute(
+            f"UPDATE catalog_request_items SET item_status={ph}, item_reject_reason={ph} WHERE request_id={ph}",
+            (action, reason if action == 'rejected' else '', req_id)
+        )
 
     # 지점에 알림
     status_kr = {'approved':'승인','rejected':'반려','on_hold':'보류','pending':'검토중'}
@@ -4017,6 +4025,132 @@ def catalog_request_action(req_id):
     conn.commit()
     conn.close()
     return jsonify({'ok': True, 'status': action})
+
+
+@app.route('/catalog/requests/<int:req_id>/partial', methods=['POST'])
+@login_required
+def catalog_request_partial_action(req_id):
+    """관리자 — 카탈로그 신청 항목별 부분 승인/반려"""
+    T = _get_T()
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'msg': T('flash.no_permission')}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'ok': False, 'msg': T('flash.invalid_request')}), 400
+
+    items_data     = data.get('items', [])
+    approve_reason = data.get('approve_reason', '').strip()
+    if not items_data:
+        return jsonify({'ok': False, 'msg': '항목 데이터가 없습니다.'}), 400
+
+    conn    = get_db()
+    ph      = '%s' if not USE_SQLITE else '?'
+    now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
+
+    req = conn.execute(
+        f'SELECT r.*, b.name AS branch_name, b.email AS branch_email '
+        f'FROM catalog_requests r JOIN branches b ON b.id=r.branch_id '
+        f'WHERE r.id={ph}', (req_id,)
+    ).fetchone()
+    if not req:
+        conn.close()
+        return jsonify({'ok': False, 'msg': T('flash.application_not_found')}), 404
+    if req['status'] not in ('pending', 'partial'):
+        conn.close()
+        return jsonify({'ok': False, 'msg': '이미 처리된 신청입니다.'}), 400
+
+    for it in items_data:
+        iid     = it.get('id')
+        istatus = it.get('status', 'approved')
+        ireason = it.get('reason', '').strip()
+        if istatus not in ('approved', 'rejected') or not iid:
+            continue
+        conn.execute(
+            f"UPDATE catalog_request_items "
+            f"SET item_status={ph}, item_reject_reason={ph} "
+            f"WHERE id={ph} AND request_id={ph}",
+            (istatus, ireason, iid, req_id)
+        )
+
+    all_statuses = [r['item_status'] for r in conn.execute(
+        f'SELECT item_status FROM catalog_request_items WHERE request_id={ph}', (req_id,)
+    ).fetchall()]
+
+    if all(s == 'approved' for s in all_statuses):
+        new_status = 'approved'
+    elif all(s == 'rejected' for s in all_statuses):
+        new_status = 'rejected'
+    elif any(s in ('approved', 'rejected') for s in all_statuses):
+        new_status = 'partial'
+    else:
+        new_status = 'pending'
+
+    conn.execute(
+        f"UPDATE catalog_requests SET status={ph}, reject_reason={ph}, updated_at={now_sql} WHERE id={ph}",
+        (new_status, approve_reason, req_id)
+    )
+
+    approved_cnt = all_statuses.count('approved')
+    rejected_cnt = all_statuses.count('rejected')
+    if new_status == 'partial':
+        notif = (f'[운송아이템 부분승인] 신청 #{req_id} — '
+                 f'승인 {approved_cnt}종 / 반려 {rejected_cnt}종')
+    elif new_status == 'approved':
+        notif = f'[운송아이템 신청 승인] 신청 #{req_id}가 승인되었습니다.'
+    else:
+        notif = f'[운송아이템 신청 반려] 신청 #{req_id}가 반려되었습니다.'
+    if approve_reason:
+        notif += f' 전달사항: {approve_reason}'
+    try:
+        conn.execute(
+            f'INSERT INTO notifications (branch_id, message) VALUES ({ph},{ph})',
+            (req['branch_id'], notif)
+        )
+    except Exception:
+        pass
+    conn.commit()
+
+    branch_email = (req.get('branch_email') or '').strip()
+    if branch_email:
+        approved_items = conn.execute(
+            f"SELECT ri.quantity, COALESCE(cd.name, ri.item_name) AS item_name "
+            f"FROM catalog_request_items ri "
+            f"LEFT JOIN catalog_defs cd ON cd.code=ri.item_code "
+            f"WHERE ri.request_id={ph} AND ri.item_status='approved'",
+            (req_id,)
+        ).fetchall()
+        rejected_items = conn.execute(
+            f"SELECT ri.quantity, ri.item_reject_reason, COALESCE(cd.name, ri.item_name) AS item_name "
+            f"FROM catalog_request_items ri "
+            f"LEFT JOIN catalog_defs cd ON cd.code=ri.item_code "
+            f"WHERE ri.request_id={ph} AND ri.item_status='rejected'",
+            (req_id,)
+        ).fetchall()
+        subj_map = {'approved': '승인', 'rejected': '반려', 'partial': '부분승인'}
+        mail_subject = f"[이스타항공] 운송아이템 신청 #{req_id} {subj_map[new_status]} 안내"
+        lines = [f"{req['branch_name']} 지점 운송아이템 신청 #{req_id} 처리 결과입니다.\n"]
+        if approve_reason:
+            lines.append(f"전달사항: {approve_reason}\n")
+        if approved_items:
+            lines.append("[✔ 승인 항목]")
+            for it in approved_items:
+                lines.append(f"  {it['item_name']} / {it['quantity']}개")
+            lines.append("")
+        if rejected_items:
+            lines.append("[✘ 반려 항목]")
+            for it in rejected_items:
+                rsn = f" — {it['item_reject_reason']}" if it['item_reject_reason'] else ''
+                lines.append(f"  {it['item_name']} / {it['quantity']}개{rsn}")
+            lines.append("")
+        lines.append("ZEGO에 로그인하여 신청 내역에서 확인해 주세요.")
+        mail_ok = send_mail([branch_email], mail_subject, '\n'.join(lines))
+        if not mail_ok:
+            app.logger.warning(f'[카탈로그 부분승인] 메일 발송 실패: req_id={req_id}, to={branch_email}')
+
+    log_action('카탈로그_부분승인', f'#{req_id} → {new_status}')
+    conn.close()
+    return jsonify({'ok': True, 'status': new_status})
 
 
 @app.route('/catalog/save', methods=['POST'])

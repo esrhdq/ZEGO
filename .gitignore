@@ -4,6 +4,7 @@ __pycache__/
 .env
 venv/
 run_local.bat
+test_mail.py
 node_modules/
 package-lock.json
 *.local_backup
