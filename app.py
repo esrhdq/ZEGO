@@ -5477,6 +5477,52 @@ def notifications_read_all():
     return jsonify({'ok': True})
 
 
+@app.route('/notifications/history')
+@login_required
+def notification_history():
+    conn = get_db()
+    role = session.get('role')
+    bid  = session.get('branch_id')
+    page     = max(1, int(request.args.get('page', 1)))
+    per_page = 30
+    branch_f = request.args.get('branch_id', '') if role == 'admin' else ''
+    branches = []
+
+    if role == 'admin':
+        conditions, params = ['1=1'], []
+        if branch_f:
+            conditions.append('n.branch_id=%s'); params.append(branch_f)
+        where = ' AND '.join(conditions)
+        total = conn.execute(
+            f'SELECT COUNT(*) AS cnt FROM notifications n WHERE {where}', params
+        ).fetchone()['cnt']
+        rows = conn.execute(
+            f'SELECT n.id, n.message, n.is_read, n.created_at, b.name AS branch_name '
+            f'FROM notifications n JOIN branches b ON b.id = n.branch_id '
+            f'WHERE {where} '
+            f'ORDER BY n.id DESC LIMIT {per_page} OFFSET {(page-1)*per_page}',
+            params
+        ).fetchall()
+        branches = conn.execute('SELECT id, name FROM branches ORDER BY type, code').fetchall()
+    elif bid:
+        total = conn.execute(
+            'SELECT COUNT(*) AS cnt FROM notifications WHERE branch_id=%s', (bid,)
+        ).fetchone()['cnt']
+        rows = conn.execute(
+            f'SELECT id, message, is_read, created_at FROM notifications '
+            f'WHERE branch_id=%s ORDER BY id DESC LIMIT {per_page} OFFSET {(page-1)*per_page}',
+            (bid,)
+        ).fetchall()
+    else:
+        total, rows = 0, []
+    conn.close()
+
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    return render_template('notification_history.html', rows=rows, page=page,
+                           total_pages=total_pages, total=total, role=role,
+                           branches=branches, branch_f=branch_f)
+
+
 @app.route('/api/bulk-outbound', methods=['POST'])
 @login_required
 def bulk_outbound():

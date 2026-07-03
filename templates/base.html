@@ -587,7 +587,9 @@
             </div>
             {% endif %}
           </div>
-          <div style="border-top:1px solid var(--border)">
+          <div style="border-top:1px solid var(--border);display:flex">
+            <a href="{{ url_for('notification_history') }}" class="dropdown-item text-center"
+               style="font-size:.78rem;color:var(--brand);padding:8px">{{ T('notif.view_history') }}</a>
             <a href="{{ url_for('transfer') }}" class="dropdown-item text-center"
                style="font-size:.78rem;color:var(--brand);padding:8px">{{ T('notif.view_all_transfers') }}</a>
           </div>
