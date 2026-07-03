@@ -3608,6 +3608,7 @@ def _ensure_catalog_table():
                 custom_text     TEXT DEFAULT '',
                 item_name       TEXT DEFAULT '',
                 item_cat        TEXT DEFAULT '',
+                request_reason  TEXT DEFAULT '',
                 UNIQUE(request_id, item_code)
             )
         ''')
@@ -3615,6 +3616,7 @@ def _ensure_catalog_table():
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_cat  TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_status TEXT DEFAULT \'pending\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_reject_reason TEXT DEFAULT \'\'')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
@@ -3787,17 +3789,23 @@ def catalog_cart_update():
     if not target_bid:
         return jsonify({'ok': False, 'msg': T('flash.no_branch_info')}), 400
 
-    item_code   = (data.get('item_code') or '').strip()
-    qty         = max(0, int(data.get('quantity', 1) or 1))
-    custom_img  = (data.get('custom_img_data') or '').strip()
-    custom_text = (data.get('custom_text') or '').strip()
-    item_name   = (data.get('item_name') or '').strip()
-    item_cat    = (data.get('item_cat') or '').strip()
-    action      = data.get('action', 'add')   # add | remove | clear
+    item_code      = (data.get('item_code') or '').strip()
+    qty            = max(0, int(data.get('quantity', 1) or 1))
+    custom_img     = (data.get('custom_img_data') or '').strip()
+    custom_text    = (data.get('custom_text') or '').strip()
+    item_name      = (data.get('item_name') or '').strip()
+    item_cat       = (data.get('item_cat') or '').strip()
+    request_reason = (data.get('request_reason') or '').strip()
+    action         = data.get('action', 'add')   # add | remove | clear
 
     # 신청 기간 외 장바구니 추가 차단 (remove/clear는 허용, admin 제외)
     if action == 'add' and role != 'admin' and not _get_active_catalog_period():
         return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아닙니다.'}), 403
+
+    # 커스텀 제작 아이템(X-Banner/스탠션/신규추가)은 요청사유 필수
+    if action not in ('remove', 'clear') and qty > 0 and \
+       (item_cat in ('X-Banner', '스탠션') or item_code.startswith('_new_')) and not request_reason:
+        return jsonify({'ok': False, 'msg': '요청사유를 입력해주세요.'}), 400
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
@@ -3834,23 +3842,23 @@ def catalog_cart_update():
         if USE_SQLITE:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat)
-                VALUES (?,?,?,?,?,?,?)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason)
+                VALUES (?,?,?,?,?,?,?,?)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=excluded.quantity, custom_img_data=excluded.custom_img_data,
                     custom_text=excluded.custom_text, item_name=excluded.item_name,
-                    item_cat=excluded.item_cat
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat))
+                    item_cat=excluded.item_cat, request_reason=excluded.request_reason
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason))
         else:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat)
-                VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=EXCLUDED.quantity, custom_img_data=EXCLUDED.custom_img_data,
                     custom_text=EXCLUDED.custom_text, item_name=EXCLUDED.item_name,
-                    item_cat=EXCLUDED.item_cat
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat))
+                    item_cat=EXCLUDED.item_cat, request_reason=EXCLUDED.request_reason
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason))
         conn.commit()
 
     cnt = _cart_count(conn, target_bid)

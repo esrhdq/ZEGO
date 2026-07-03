@@ -149,6 +149,11 @@
           <td><strong>{{ it.item_name }}</strong></td>
           <td><strong>{{ it.quantity }}</strong>{{ T('catreqdet.qty_unit') }}</td>
           <td>
+            {% if it.request_reason %}
+            <div style="font-size:.78rem;color:#6d28d9;margin-bottom:4px;background:#f5f0ff;border-radius:6px;padding:6px 10px;max-width:300px">
+              <strong>{{ T('catreqdet.request_reason_label') }}</strong> {{ it.request_reason }}
+            </div>
+            {% endif %}
             {% if it.custom_img_data %}
             <img class="custom-img-preview" src="{{ it.custom_img_data }}" alt="{{ T('catreqdet.img_modal_title') }}" loading="lazy"
                  onclick="document.getElementById('fullImg').src=this.src; bootstrap.Modal.getOrCreateInstance(document.getElementById('imgModal')).show()">

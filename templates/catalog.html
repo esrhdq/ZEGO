@@ -431,6 +431,13 @@
         </div>
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            {{ T('catalog.label_request_reason') }} <span class="text-danger">*</span>
+          </label>
+          <textarea id="rcm-reason" class="form-control form-control-sm" rows="2"
+                    placeholder="{{ T('catalog.placeholder_request_reason') }}"></textarea>
+        </div>
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
             {{ T('catalog.label_custom_image') }} <span style="font-size:.75rem;font-weight:400;color:#888">{{ T('catalog.label_custom_image_hint') }}</span>
           </label>
           <div class="d-flex align-items-center flex-wrap gap-2">
@@ -508,6 +515,13 @@
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">{{ T('catalog.label_quantity') }}</label>
           <input type="number" id="rnm-qty" class="form-control form-control-sm"
                  min="1" max="99" value="1" style="width:100px">
+        </div>
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            {{ T('catalog.label_request_reason') }} <span class="text-danger">*</span>
+          </label>
+          <textarea id="rnm-reason" class="form-control form-control-sm" rows="2"
+                    placeholder="{{ T('catalog.placeholder_request_reason') }}"></textarea>
         </div>
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:4px;display:block">
@@ -954,6 +968,8 @@ function reqAddItem(code, name, cat) {
     document.getElementById('rcm-code').value = code;
     document.getElementById('rcm-title').textContent = name;
     document.getElementById('rcm-qty').value = 1;
+    document.getElementById('rcm-reason').value = '';
+    document.getElementById('rcm-reason').classList.remove('is-invalid');
     document.getElementById('rcm-text').value = '';
     document.getElementById('rcm-image').value = '';
     document.getElementById('rcm-img-name').textContent = '';
@@ -984,6 +1000,14 @@ function rcmImgChange(input) {
 }
 
 async function rcmSubmit() {
+  const reasonEl = document.getElementById('rcm-reason');
+  const reason   = reasonEl.value.trim();
+  if (!reason) {
+    reasonEl.classList.add('is-invalid');
+    reasonEl.focus();
+    return;
+  }
+  reasonEl.classList.remove('is-invalid');
   const code = document.getElementById('rcm-code').value;
   const qty  = parseInt(document.getElementById('rcm-qty').value) || 1;
   const text = document.getElementById('rcm-text').value.trim();
@@ -995,7 +1019,7 @@ async function rcmSubmit() {
     });
   }
   bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).hide();
-  reqCartUpdate(code, qty, imgData, text);
+  reqCartUpdate(code, qty, imgData, text, '', '', reason);
 }
 
 let rcmEditorImgData = '';
@@ -1039,7 +1063,10 @@ function reqOpenNew(cat) {
   document.getElementById('rnm-cat').value = cat;
   document.getElementById('rnm-cat-badge').textContent = cat;
   document.getElementById('rnm-name').value = '';
+  document.getElementById('rnm-name').classList.remove('is-invalid');
   document.getElementById('rnm-qty').value = 1;
+  document.getElementById('rnm-reason').value = '';
+  document.getElementById('rnm-reason').classList.remove('is-invalid');
   document.getElementById('rnm-text').value = '';
   document.getElementById('rnm-image').value = '';
   document.getElementById('rnm-file-label').textContent = _fileUpload;
@@ -1100,12 +1127,20 @@ async function rnmSubmit() {
     return;
   }
   document.getElementById('rnm-name').classList.remove('is-invalid');
+  const reasonEl = document.getElementById('rnm-reason');
+  const reason   = reasonEl.value.trim();
+  if (!reason) {
+    reasonEl.classList.add('is-invalid');
+    reasonEl.focus();
+    return;
+  }
+  reasonEl.classList.remove('is-invalid');
   const cat  = document.getElementById('rnm-cat').value;
   const qty  = parseInt(document.getElementById('rnm-qty').value) || 1;
   const text = document.getElementById('rnm-text').value.trim();
   const code = '_new_' + Date.now();
   bootstrap.Modal.getOrCreateInstance(document.getElementById('reqNewModal')).hide();
-  await reqCartUpdate(code, qty, rnmImgData, text, name, cat);
+  await reqCartUpdate(code, qty, rnmImgData, text, name, cat, reason);
 }
 
 // storage 이벤트: 신규 모달과 기존 커스텀 모달 공통 수신
@@ -1134,7 +1169,7 @@ window.addEventListener('message', e => {
   }
 });
 
-async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat) {
+async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat, requestReason) {
   if (!IS_PERIOD_ACTIVE) {
     catToast('현재 운송아이템 신청 기간이 아닙니다.', 'danger');
     return;
@@ -1146,7 +1181,8 @@ async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat
       body: JSON.stringify({
         item_code: code, quantity: qty,
         custom_img_data: customImg, custom_text: customText,
-        item_name: itemName || '', item_cat: itemCat || ''
+        item_name: itemName || '', item_cat: itemCat || '',
+        request_reason: requestReason || ''
       })
     });
     const json = await res.json();
