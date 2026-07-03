@@ -169,7 +169,7 @@
   <span class="filter-label">{{ T('cat.inv_filter_category_label') }}</span>
   <button class="inv-ftag active" onclick="invFilter('all', this)">{{ T('cat.inv_filter_all') }}</button>
   {% for c in cats %}
-  <button class="inv-ftag" onclick="invFilter('{{ c }}', this)">{{ c }}</button>
+  <button class="inv-ftag" onclick="invFilter({{ c | tojson }}, this)">{{ c }}</button>
   {% endfor %}
 </div>
 
@@ -198,7 +198,7 @@
           <td class="item-cat">{{ item.cat }}</td>
           <td class="item-name">
             <span class="item-name-link"
-              onclick="invOpenLB('{{ cat_img_url(item.img) }}','{{ item.name }}')">
+              onclick="invOpenLB({{ cat_img_url(item.img) | tojson }}, {{ item.name | tojson }})">
               {{ item.name }}
             </span>
           </td>

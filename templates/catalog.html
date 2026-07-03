@@ -671,7 +671,7 @@
   <button class="cat-req-btn" id="reqbtn-{{ item.code }}"
           data-code="{{ item.code }}" data-name="{{ item.name|e }}"
           data-cat="{{ item.cat|e }}"
-          onclick="reqAddItem('{{ item.code }}','{{ item.name|e }}','{{ item.cat|e }}')">
+          onclick="reqAddItem({{ item.code | tojson }}, {{ item.name | tojson }}, {{ item.cat | tojson }})">
     <i class="fa-solid fa-cart-plus"></i> {{ T('catalog.btn_add_item') }}
   </button>
 </div>
@@ -686,13 +686,13 @@
     <span class="cat-count">{{ items|length }}{{ T('common.count_type') }}</span>
     {% if session.role == 'admin' %}
     <button class="cat-add-btn ms-2"
-            onclick="catOpenAdd('{{ cat | e }}')"
+            onclick="catOpenAdd({{ cat | tojson }})"
             title="{{ cat }} {{ T('catalog.btn_add_item_title') }}">+</button>
     {% endif %}
   </div>
   <div class="cat-grid">
     {% for item in items %}{{ cat_card(item) }}{% endfor %}
-    <div class="cat-new-card" onclick="reqOpenNew('{{ cat|e }}')">
+    <div class="cat-new-card" onclick="reqOpenNew({{ cat | tojson }})">
       <div class="new-icon">+</div>
       <span>{{ T('catalog.btn_new_add') }}</span>
       <span style="font-size:.68rem;font-weight:400;color:inherit;opacity:.7">{{ T('catalog.btn_new_add_hint') }}</span>
