@@ -879,19 +879,29 @@ function catCancelEdit() {
   dirty = false;
 }
 
+let _catToastStack = [];
 function catToast(msg, type) {
   const t = document.createElement('div');
   t.className = `alert alert-${type} alert-dismissible fade show`;
+  const topOffset = 84 + _catToastStack.length * 56;
   t.style.cssText = [
-    'position:fixed','top:50%','left:50%','transform:translate(-50%,-50%)',
-    'z-index:99999','font-size:1rem','font-weight:600','min-width:280px',
-    'max-width:90vw','text-align:center','padding:20px 28px',
-    'border-radius:14px','box-shadow:0 8px 40px rgba(0,0,0,.35)',
+    'position:fixed', `top:${topOffset}px`, 'left:50%', 'transform:translateX(-50%)',
+    'z-index:100000', 'font-size:.95rem', 'font-weight:600', 'min-width:280px',
+    'max-width:90vw', 'text-align:center', 'padding:14px 20px',
+    'border-radius:12px', 'box-shadow:0 8px 30px rgba(0,0,0,.3)',
+    'transition:top .2s ease',
   ].join(';');
   const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
-  t.innerHTML = `<i class="fa-solid ${icon} me-2"></i>${msg}<button type="button" class="btn-close ms-3" data-bs-dismiss="alert"></button>`;
+  t.innerHTML = `<i class="fa-solid ${icon} me-2"></i>${msg}<button type="button" class="btn-close ms-3"></button>`;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  _catToastStack.push(t);
+  const remove = () => {
+    t.remove();
+    _catToastStack = _catToastStack.filter(el => el !== t);
+    _catToastStack.forEach((el, i) => { el.style.top = (84 + i * 56) + 'px'; });
+  };
+  t.querySelector('.btn-close').addEventListener('click', remove);
+  setTimeout(remove, 3000);
 }
 
 async function catSave() {
