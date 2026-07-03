@@ -580,6 +580,95 @@ h2{color:#b91c1c;margin-bottom:8px}p{color:#555;margin:4px 0}.spinner{font-size:
 
 # ── 템플릿 전역 컨텍스트 ────────────────────────────────────────────────────────
 
+def _transfer_pending_notifs(conn, from_branch_id=None):
+    """대기 중인 지점 간 이전 신청을 알림 항목(message/created_at) 형태로 조회."""
+    if from_branch_id is not None:
+        rows = conn.execute(
+            'SELECT tr.id, b1.name AS from_name, b2.name AS to_name, tr.created_at '
+            'FROM transfer_requests tr '
+            'JOIN branches b1 ON b1.id = tr.from_branch_id '
+            'JOIN branches b2 ON b2.id = tr.to_branch_id '
+            "WHERE tr.from_branch_id=%s AND tr.status='PENDING' "
+            'ORDER BY tr.id DESC LIMIT 10',
+            (from_branch_id,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            'SELECT tr.id, b1.name AS from_name, b2.name AS to_name, tr.created_at '
+            'FROM transfer_requests tr '
+            'JOIN branches b1 ON b1.id = tr.from_branch_id '
+            'JOIN branches b2 ON b2.id = tr.to_branch_id '
+            "WHERE tr.status='PENDING' "
+            'ORDER BY tr.id DESC LIMIT 10'
+        ).fetchall()
+    return [
+        {'message': f"[지점 간 이전 승인 대기] {r['from_name']} → {r['to_name']} — 신청 #{r['id']}",
+         'created_at': r['created_at']}
+        for r in rows
+    ]
+
+
+def _merge_notifs(*lists, limit=10):
+    combined = []
+    for lst in lists:
+        combined.extend(lst)
+    try:
+        combined.sort(key=lambda n: n['created_at'], reverse=True)
+    except TypeError:
+        pass
+    return combined[:limit]
+
+
+def _fetch_admin_pending_notifs(conn):
+    """관리자용 대기 알림(이관/운송양식/운송아이템) 카운트 + 최신 목록을 조회."""
+    tr_row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status='PENDING'"
+    ).fetchone()
+    notif_transfer = int(tr_row['cnt']) if tr_row else 0
+    transfer_notifs = _transfer_pending_notifs(conn)
+
+    fs_rows = conn.execute(
+        'SELECT fsr.id, b.name AS branch_name, fsr.created_at '
+        'FROM form_supply_requests fsr '
+        'JOIN branches b ON b.id = fsr.branch_id '
+        'WHERE fsr.status=%s '
+        'ORDER BY fsr.id DESC LIMIT 10',
+        ('pending',)
+    ).fetchall()
+    notif_form_supply = len(fs_rows)
+    form_supply_notifs = [
+        {'message': f"[운송양식 신청] {r['branch_name']} — 신청 #{r['id']}",
+         'created_at': r['created_at']}
+        for r in fs_rows
+    ]
+
+    notif_catalog = 0
+    catalog_notifs = []
+    try:
+        cat_row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM catalog_requests WHERE status='pending'"
+        ).fetchone()
+        notif_catalog = int(cat_row['cnt']) if cat_row else 0
+        cat_rows = conn.execute(
+            'SELECT cr.id, b.name AS branch_name, cr.created_at '
+            'FROM catalog_requests cr '
+            'JOIN branches b ON b.id = cr.branch_id '
+            "WHERE cr.status='pending' "
+            'ORDER BY cr.id DESC LIMIT 10'
+        ).fetchall()
+        catalog_notifs = [
+            {'message': f"[운송아이템 신청] {r['branch_name']} — 신청 #{r['id']}",
+             'created_at': r['created_at']}
+            for r in cat_rows
+        ]
+    except Exception:
+        pass
+
+    notif_count = notif_transfer + notif_form_supply + notif_catalog
+    notif_list = _merge_notifs(transfer_notifs, form_supply_notifs, catalog_notifs)
+    return notif_count, notif_list, notif_transfer, notif_form_supply, notif_catalog
+
+
 @app.context_processor
 def inject_globals():
     notif_count       = 0
@@ -606,55 +695,35 @@ def inject_globals():
             notif_form_supply = session.get('_notif_form_supply', 0)
             notif_catalog     = session.get('_notif_catalog', 0)
             # notif_list + unread count는 캐시하지 않고 항상 fresh하게 조회
-            if bid and role != 'admin':
+            if role == 'admin':
                 try:
                     _c = get_db()
-                    notif_list = _c.execute(
+                    notif_count, notif_list, notif_transfer, notif_form_supply, notif_catalog = \
+                        _fetch_admin_pending_notifs(_c)
+                    _c.close()
+                except Exception:
+                    pass
+            elif bid:
+                try:
+                    _c = get_db()
+                    real_notifs = _c.execute(
                         'SELECT id, message, created_at FROM notifications '
                         'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
                         (bid,)
                     ).fetchall()
+                    transfer_notifs = _transfer_pending_notifs(_c, from_branch_id=bid)
+                    notif_list = _merge_notifs(transfer_notifs, real_notifs)
                     _c.close()
                     # 배지 카운트도 실제 미읽은 수로 재계산 (캐시 불일치 방지)
-                    notif_count = notif_pending_tr + len(notif_list)
+                    notif_count = notif_pending_tr + len(real_notifs)
                 except Exception:
                     pass
         else:
             try:
                 conn = get_db()
                 if role == 'admin':
-                    # 지점 간 이전 대기 (전체)
-                    tr_row = conn.execute(
-                        "SELECT COUNT(*) AS cnt FROM transfer_requests WHERE status='PENDING'"
-                    ).fetchone()
-                    notif_transfer = int(tr_row['cnt']) if tr_row else 0
-
-                    # 운송양식 신청 대기
-                    fs_rows = conn.execute(
-                        'SELECT fsr.id, b.name AS branch_name, fsr.created_at '
-                        'FROM form_supply_requests fsr '
-                        'JOIN branches b ON b.id = fsr.branch_id '
-                        'WHERE fsr.status=%s '
-                        'ORDER BY fsr.id DESC LIMIT 10',
-                        ('pending',)
-                    ).fetchall()
-                    notif_form_supply = len(fs_rows)
-                    notif_list = [
-                        {'message': f"[운송양식 신청] {r['branch_name']} — 신청 #{r['id']}",
-                         'created_at': r['created_at']}
-                        for r in fs_rows
-                    ]
-
-                    # 운송아이템 신청 대기
-                    try:
-                        cat_row = conn.execute(
-                            "SELECT COUNT(*) AS cnt FROM catalog_requests WHERE status='pending'"
-                        ).fetchone()
-                        notif_catalog = int(cat_row['cnt']) if cat_row else 0
-                    except Exception:
-                        notif_catalog = 0
-
-                    notif_count = notif_transfer + notif_form_supply + notif_catalog
+                    notif_count, notif_list, notif_transfer, notif_form_supply, notif_catalog = \
+                        _fetch_admin_pending_notifs(conn)
 
                 elif bid:
                     r = conn.execute(
@@ -666,11 +735,13 @@ def inject_globals():
                     notif_pending_tr = int(r['pending']) if r else 0
                     notif_transfer   = notif_pending_tr
                     notif_count      = (notif_pending_tr + int(r['unread'])) if r else 0
-                    notif_list       = conn.execute(
+                    real_notifs      = conn.execute(
                         'SELECT id, message, created_at FROM notifications '
                         'WHERE branch_id=%s AND is_read=0 ORDER BY id DESC LIMIT 10',
                         (bid,)
                     ).fetchall()
+                    transfer_notifs = _transfer_pending_notifs(conn, from_branch_id=bid)
+                    notif_list = _merge_notifs(transfer_notifs, real_notifs)
                 conn.close()
             except Exception:
                 pass
