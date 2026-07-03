@@ -4063,7 +4063,9 @@ def catalog_request_action(req_id):
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
     req  = conn.execute(
-        f'SELECT * FROM catalog_requests WHERE id={ph}', (req_id,)
+        f'SELECT r.*, b.name AS branch_name, b.email AS branch_email '
+        f'FROM catalog_requests r JOIN branches b ON b.id=r.branch_id '
+        f'WHERE r.id={ph}', (req_id,)
     ).fetchone()
     if not req:
         conn.close()
@@ -4094,6 +4096,40 @@ def catalog_request_action(req_id):
     except Exception:
         pass
     conn.commit()
+
+    # ── 승인/반려 시 이메일 발송 (부분승인과 동일한 방식) ──────────────
+    if action in ('approved', 'rejected'):
+        branch_email = (req['branch_email'] or '').strip()
+        if branch_email:
+            items = conn.execute(
+                f"SELECT ri.quantity, COALESCE(cd.name, ri.item_name) AS item_name "
+                f"FROM catalog_request_items ri "
+                f"LEFT JOIN catalog_defs cd ON cd.code=ri.item_code "
+                f"WHERE ri.request_id={ph}", (req_id,)
+            ).fetchall()
+            item_lines = '\n'.join(
+                f"  - {it['item_name']} / {it['quantity']}개" for it in items
+            )
+            subj_map = {'approved': '승인', 'rejected': '반려'}
+            mail_subject = f"[이스타항공] 운송아이템 신청 #{req_id} {subj_map[action]} 안내"
+            if action == 'approved':
+                mail_body = (
+                    f"{req['branch_name']} 지점의 운송아이템 신청 #{req_id}이 승인되었습니다.\n\n"
+                    f"[신청 항목]\n{item_lines}\n\n"
+                    f"ZEGO에 로그인하여 신청 내역에서 확인해 주세요."
+                )
+            else:
+                mail_body = (
+                    f"{req['branch_name']} 지점의 운송아이템 신청 #{req_id}이 반려되었습니다.\n\n"
+                    f"반려 사유: {reason}\n\n"
+                    f"[신청 항목]\n{item_lines}\n\n"
+                    f"ZEGO에 로그인하여 신청 내역에서 확인해 주세요."
+                )
+            mail_ok = send_mail([branch_email], mail_subject, mail_body)
+            if not mail_ok:
+                app.logger.warning(f'[카탈로그 승인/반려] 메일 발송 실패: req_id={req_id}, to={branch_email}')
+    # ─────────────────────────────────────────────────────────────────
+
     conn.close()
     return jsonify({'ok': True, 'status': action})
 
