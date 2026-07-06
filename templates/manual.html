@@ -7,26 +7,24 @@
 <div class="row g-3">
 
   {% set manuals = [
-    ('한국어', 'kr', '#CC1625', '/static/manuals/kor.html', 'kor'),
-    ('English', 'us', '#1a56db', '/static/manuals/eng.html', 'eng'),
-    ('日本語', 'jp', '#e84393', '/static/manuals/jpn.html', 'jpn'),
-    ('中文 (简体)', 'cn', '#d97706', '/static/manuals/chn.html', 'chn'),
-    ('中文 (繁體)', 'tw', '#059669', '/static/manuals/twn.html', 'twn'),
+    ('한국어', '#CC1625', '/static/manuals/kor.html', 'kor'),
+    ('English', '#1a56db', '/static/manuals/eng.html', 'eng'),
+    ('日本語', '#e84393', '/static/manuals/jpn.html', 'jpn'),
+    ('中文 (简体)', '#d97706', '/static/manuals/chn.html', 'chn'),
+    ('中文 (繁體)', '#059669', '/static/manuals/twn.html', 'twn'),
   ] %}
 
-  {% for label, flag, color, path, lang in manuals %}
-  <div class="col-md-4 col-lg-3">
-    <div class="card h-100 shadow-sm" style="border-top: 3px solid {{ color }}">
-      <div class="card-body d-flex flex-column align-items-center text-center py-4">
-        <img src="/static/manuals/flags/{{ flag }}.png" alt="{{ label }}"
-             style="width:80px;height:auto;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.2)" class="mb-3">
-        <h6 class="fw-bold mb-3">{{ label }}</h6>
+  {% for label, color, path, lang in manuals %}
+  <div class="col-12">
+    <div class="card shadow-sm" style="border-left: 3px solid {{ color }}">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <h6 class="fw-bold mb-0 flex-grow-1">{{ label }}</h6>
         <a href="{{ path }}" target="_blank"
-           class="btn btn-outline-secondary btn-sm w-100 mb-2">
+           class="btn btn-outline-secondary btn-sm">
           <i class="fa-solid fa-eye me-1"></i>미리보기
         </a>
         <a href="/manual/download/{{ lang }}"
-           class="btn btn-sm w-100"
+           class="btn btn-sm"
            style="background:{{ color }};color:#fff;border:none">
           <i class="fa-solid fa-download me-1"></i>다운로드
         </a>
