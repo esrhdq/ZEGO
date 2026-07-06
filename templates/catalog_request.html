@@ -83,12 +83,20 @@
     <table class="req-table">
       <thead>
         <tr>
+          <th style="width:34px;text-align:center">
+            <input type="checkbox" id="selectAllCb" class="form-check-input" checked
+                   title="{{ T('catreq.select_all_title') }}" onchange="toggleSelectAll(this)">
+          </th>
           <th>{{ T('catreq.col_image') }}</th><th>{{ T('catreq.col_cat') }}</th><th>{{ T('catreq.col_name') }}</th><th>{{ T('catreq.col_qty') }}</th><th>{{ T('catreq.col_custom') }}</th><th style="width:60px;text-align:center">{{ T('catreq.col_delete') }}</th>
         </tr>
       </thead>
       <tbody id="cartBody">
         {% for it in cart_items %}
         <tr id="crow-{{ it.item_code }}">
+          <td style="text-align:center">
+            <input type="checkbox" class="form-check-input row-check" data-code="{{ it.item_code }}"
+                   checked onchange="onRowCheckChange()">
+          </td>
           <td>
             <img class="req-thumb" data-img="{{ it.img }}" src="" alt="{{ it.item_name }}">
           </td>
@@ -147,13 +155,17 @@
   </div>
 </div>
 
-<div class="d-flex gap-2 justify-content-end">
+<div class="d-flex align-items-center gap-2 justify-content-end">
   {% if session.role == 'admin' or is_period_active %}
+  <span id="selCountLabel" class="text-muted small me-auto"></span>
+  <button class="btn btn-outline-danger btn-sm" id="btnDeleteSelected" onclick="deleteSelected()">
+    <i class="fa-solid fa-trash-can me-1"></i>{{ T('catreq.btn_delete_selected') }}
+  </button>
   <button class="btn btn-outline-danger btn-sm" onclick="clearCart()">
     <i class="fa-solid fa-trash me-1"></i>{{ T('catreq.clear_cart') }}
   </button>
-  <button class="btn btn-danger btn-sm px-4" onclick="submitRequest()">
-    <i class="fa-solid fa-paper-plane me-1"></i>{{ T('catreq.submit') }}
+  <button class="btn btn-danger btn-sm px-4" id="btnSubmit" onclick="submitRequest()">
+    <i class="fa-solid fa-paper-plane me-1"></i><span id="btnSubmitLabel">{{ T('catreq.submit') }}</span>
   </button>
   {% else %}
   <button class="btn btn-outline-secondary btn-sm" disabled style="opacity:.5">
@@ -187,6 +199,14 @@ document.querySelectorAll('img[data-img]').forEach(img => {
 });
 
 const TARGET_BID = {{ target_bid or 'null' }};
+const T_ERR_GENERIC             = {{ T('catreq.err_generic') | tojson }};
+const T_CONFIRM_CLEAR           = {{ T('catreq.confirm_clear') | tojson }};
+const T_SUBMITTED               = {{ T('catreq.submitted') | tojson }};
+const T_SELECTED_PREFIX         = {{ T('catreq.selected_count_prefix') | tojson }};
+const T_SUBMIT_SELECTED         = {{ T('catreq.btn_submit_selected') | tojson }};
+const T_SUBMIT                  = {{ T('catreq.submit') | tojson }};
+const T_CONFIRM_DELETE_SELECTED = {{ T('catreq.confirm_delete_selected') | tojson }};
+const T_SELECT_NONE_ALERT       = {{ T('catreq.select_none_alert') | tojson }};
 
 async function cartApi(payload) {
   if (TARGET_BID) payload.branch_id = TARGET_BID;
@@ -201,6 +221,53 @@ async function updateQty(code, val) {
   await cartApi({item_code: code, quantity: qty});
 }
 
+/* ── 선택(체크박스) 관리 ── */
+function getRowChecks() {
+  return Array.from(document.querySelectorAll('.row-check'));
+}
+function getSelectedCodes() {
+  return getRowChecks().filter(cb => cb.checked).map(cb => cb.dataset.code);
+}
+function toggleSelectAll(cb) {
+  getRowChecks().forEach(rc => rc.checked = cb.checked);
+  updateSelectionUI();
+}
+function onRowCheckChange() {
+  updateSelectionUI();
+}
+function updateSelectionUI() {
+  const total    = getRowChecks().length;
+  const selected = getSelectedCodes().length;
+  const selectAllCb = document.getElementById('selectAllCb');
+  if (selectAllCb) {
+    selectAllCb.checked       = total > 0 && selected === total;
+    selectAllCb.indeterminate = selected > 0 && selected < total;
+  }
+  const label = document.getElementById('selCountLabel');
+  if (label) label.textContent = `${T_SELECTED_PREFIX} ${selected} / ${total}`;
+  const delBtn = document.getElementById('btnDeleteSelected');
+  if (delBtn) delBtn.disabled = selected === 0;
+  const submitBtn = document.getElementById('btnSubmit');
+  const submitLbl = document.getElementById('btnSubmitLabel');
+  if (submitBtn && submitLbl) {
+    submitBtn.disabled = selected === 0;
+    submitLbl.textContent = (selected > 0 && selected < total)
+      ? `${T_SUBMIT_SELECTED} (${selected})`
+      : T_SUBMIT;
+  }
+}
+updateSelectionUI();
+
+async function deleteSelected() {
+  const codes = getSelectedCodes();
+  if (!codes.length) return;
+  if (!confirm(T_CONFIRM_DELETE_SELECTED)) return;
+  const btn = document.getElementById('btnDeleteSelected');
+  if (btn) btn.disabled = true;
+  await Promise.all(codes.map(code => cartApi({item_code: code, action: 'remove'})));
+  location.reload();
+}
+
 async function removeItem(code) {
   const row = document.getElementById('crow-' + code);
   if (row) row.style.opacity = '.4';
@@ -208,31 +275,34 @@ async function removeItem(code) {
   if (json.ok) {
     if (row) row.remove();
     if (!document.querySelector('#cartBody tr')) location.reload();
+    else updateSelectionUI();
   } else {
     if (row) row.style.opacity = '';
-    alert(json.msg || '{{ T("catreq.err_generic") }}');
+    alert(json.msg || T_ERR_GENERIC);
   }
 }
 
 async function clearCart() {
-  if (!confirm('{{ T("catreq.confirm_clear") }}')) return;
+  if (!confirm(T_CONFIRM_CLEAR)) return;
   const json = await cartApi({action: 'clear'});
   if (json.ok) location.reload();
 }
 
 async function submitRequest() {
+  const codes = getSelectedCodes();
+  if (!codes.length) { alert(T_SELECT_NONE_ALERT); return; }
   const notes = document.getElementById('reqNotes')?.value.trim() || '';
-  const payload = {notes};
+  const payload = {notes, item_codes: codes};
   if (TARGET_BID) payload.branch_id = TARGET_BID;
   const res = await fetch('{{ url_for("catalog_request_submit") }}', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
   });
   const json = await res.json();
   if (json.ok) {
-    alert('{{ T("catreq.submitted") }}');
+    alert(T_SUBMITTED);
     location.href = '{{ url_for("catalog_requests_branch") }}';
   } else {
-    alert(json.msg || '{{ T("catreq.err_generic") }}');
+    alert(json.msg || T_ERR_GENERIC);
   }
 }
 </script>

@@ -3946,19 +3946,49 @@ def catalog_request_submit():
         conn.close()
         return jsonify({'ok': False, 'msg': T('flash.cart_empty')}), 400
 
-    cnt = conn.execute(
-        f'SELECT COUNT(*) AS cnt FROM catalog_request_items WHERE request_id={ph}',
+    all_codes = [r['item_code'] for r in conn.execute(
+        f'SELECT item_code FROM catalog_request_items WHERE request_id={ph}',
         (req_row['id'],)
-    ).fetchone()['cnt']
-    if cnt == 0:
+    ).fetchall()]
+    if not all_codes:
+        conn.close()
+        return jsonify({'ok': False, 'msg': T('flash.cart_no_items')}), 400
+
+    item_codes = data.get('item_codes')
+    selected = [c for c in item_codes if c in all_codes] if item_codes else all_codes
+    if not selected:
         conn.close()
         return jsonify({'ok': False, 'msg': T('flash.cart_no_items')}), 400
 
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
-    conn.execute(
-        f"UPDATE catalog_requests SET status={ph}, notes={ph}, updated_at={now_sql} WHERE id={ph}",
-        ('pending', notes, req_row['id'])
-    )
+
+    if len(selected) == len(all_codes):
+        # 전체 제출 — 기존 draft를 그대로 pending으로 전환
+        submit_req_id = req_row['id']
+        conn.execute(
+            f"UPDATE catalog_requests SET status={ph}, notes={ph}, updated_at={now_sql} WHERE id={ph}",
+            ('pending', notes, submit_req_id)
+        )
+    else:
+        # 부분 제출 — 선택 항목만 새 신청서로 분리, 나머지는 장바구니(draft)에 유지
+        if USE_SQLITE:
+            cur = conn.execute(
+                f"INSERT INTO catalog_requests (branch_id, status, notes) VALUES ({ph},'pending',{ph})",
+                (target_bid, notes)
+            )
+            submit_req_id = cur.lastrowid
+        else:
+            submit_req_id = conn.execute(
+                "INSERT INTO catalog_requests (branch_id, status, notes) VALUES (%s,'pending',%s) RETURNING id",
+                (target_bid, notes)
+            ).fetchone()['id']
+        placeholders = ','.join([ph] * len(selected))
+        conn.execute(
+            f"UPDATE catalog_request_items SET request_id={ph} "
+            f"WHERE request_id={ph} AND item_code IN ({placeholders})",
+            (submit_req_id, req_row['id'], *selected)
+        )
+
     # 관리자에게 알림
     admin_rows = conn.execute(
         f"SELECT id FROM branches WHERE code='관리자' UNION "
