@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% block title %}{{ T('catmatrix.title') }}{% endblock %}
+{% block title_icon %}<i class="fa-solid fa-table-cells"></i>{% endblock %}
+{% block page_title %}{{ T('catmatrix.title') }}{% endblock %}
+
+{% block content %}
+<style>
+  .matrix-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+  }
+  .matrix-table {
+    border-collapse: collapse;
+    font-size: 11px;
+    white-space: nowrap;
+    min-width: max-content;
+  }
+  /* 고정 첫 번째 열 */
+  .matrix-table th.col-form,
+  .matrix-table td.col-form {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #f8fafc;
+    min-width: 160px;
+    max-width: 180px;
+    white-space: normal;
+    border-right: 2px solid #cbd5e1;
+  }
+  .matrix-table thead th.col-form {
+    z-index: 5;
+    background: #1e293b;
+  }
+  /* 헤더 */
+  .matrix-table thead tr.row-group th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: 5px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .matrix-table thead tr.row-branch th {
+    position: sticky;
+    top: 25px;
+    z-index: 4;
+    padding: 4px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.15);
+    min-width: 52px;
+  }
+  th.hd-dom  { background: #1d4ed8; }
+  th.hd-intl { background: #6d28d9; }
+  th.hd-branch-dom  { background: #2563eb; }
+  th.hd-branch-intl { background: #7c3aed; }
+  th.hd-formname { background: #1e293b; color: #fff; text-align: left; padding: 4px 10px; }
+
+  /* 분기 구분 행 */
+  .period-divider-row td {
+    background: #1e293b !important;
+    color: #fff !important;
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 6px 12px !important;
+    text-align: left !important;
+    border: none !important;
+    letter-spacing: .03em;
+  }
+  .period-divider-row td.col-form {
+    background: #1e293b !important;
+    border-right: 2px solid #334155 !important;
+  }
+
+  /* 데이터 행 */
+  .matrix-table tbody td {
+    border: 1px solid #e5e7eb;
+    padding: 3px 5px;
+    text-align: center;
+    vertical-align: top;
+    min-width: 52px;
+  }
+  .matrix-table tbody tr:hover td { background: #f0f9ff !important; }
+  .matrix-table tbody tr:hover td.col-form { background: #e0f2fe !important; }
+  .matrix-table tbody td.col-form {
+    text-align: left;
+    padding: 4px 8px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 11px;
+    border-right: 2px solid #cbd5e1;
+    vertical-align: middle;
+  }
+
+  /* 셀 항목 */
+  .cell-entry {
+    display: block;
+    line-height: 1.3;
+    padding: 1px 0;
+  }
+  .cell-entry .qty   { font-weight: 700; font-size: 12px; }
+  .cell-pending  .qty { color: #b45309; }
+  .cell-approved .qty { color: #15803d; }
+  .cell-rejected .qty { color: #b91c1c; text-decoration: line-through; opacity:.6; }
+
+  /* 합계 열 */
+  td.col-total { background: #f8fafc; font-weight: 700; color: #1e293b; }
+  th.col-total { background: #334155 !important; }
+</style>
+
+<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+  <a href="{{ url_for('catalog_requests_branch') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-list me-1"></i>{{ T('catmatrix.request_list') }}
+  </a>
+  <a href="{{ url_for('catalog_item_settings') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-gear me-1"></i>{{ T('catmatrix.settings') }}
+  </a>
+</div>
+
+{% if period_titles %}
+<div class="d-flex gap-1 flex-wrap mb-3" id="periodTabs">
+  <button class="btn btn-sm btn-primary active" data-period="ALL" onclick="switchPeriod(this)">{{ T('catmatrix.all_periods') }}</button>
+  {% for t in period_titles %}
+  <button class="btn btn-sm btn-outline-primary" data-period="{{ t | e }}" onclick="switchPeriod(this)">{{ t }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+  <h5 class="mb-0 fw-bold" id="matrixTitle" style="font-size:1.05rem">
+    <i class="fa-solid fa-table-cells me-2" style="color:var(--brand)"></i>
+    <span id="matrixTitleText">{{ T('catmatrix.all_periods') }}</span>
+    <span class="ms-2 text-muted fw-normal" style="font-size:.82rem">{{ T('catmatrix.title') }}</span>
+  </h5>
+  <span class="badge rounded-pill" style="background:#d1fae5;color:#065f46;font-size:.78rem;padding:5px 12px">
+    <i class="fa-solid fa-check me-1"></i>{{ T('catmatrix.approved_only') }}
+  </span>
+  <a id="excelDownloadBtn"
+     href="{{ url_for('catalog_matrix_export') }}"
+     class="btn btn-sm ms-auto"
+     style="background:#16a34a;color:#fff;border:none;font-size:.78rem;padding:5px 13px">
+    <i class="fa-solid fa-file-excel me-1"></i>{{ T('common.excel_download') }}
+  </a>
+</div>
+
+{# ── 컬럼 수 계산 (분기 구분 행 colspan용) ── #}
+{% set total_cols = (branches_dom|length) + (branches_intl|length) + 3 %}
+
+{# ── 데이터 행 렌더 매크로 ── #}
+{% macro render_rows(pv) %}
+{% for it in matrix_items %}
+{% set it_pivot = pv.get(it.code, {}) %}
+<tr>
+  <td class="col-form">{{ it.name }}</td>
+  {% set dom_total = namespace(v=0) %}
+  {% for b in branches_dom %}
+    {% set entries = it_pivot.get(b.id, []) %}
+    <td>
+      {% for e in entries %}
+        {% set dom_total.v = dom_total.v + e.qty %}
+        <span class="cell-entry cell-{{ e.status }}">
+          <span class="qty">{{ e.qty }}</span>
+        </span>
+      {% endfor %}
+    </td>
+  {% endfor %}
+  <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
+  {% set intl_total = namespace(v=0) %}
+  {% for b in branches_intl %}
+    {% set entries = it_pivot.get(b.id, []) %}
+    <td>
+      {% for e in entries %}
+        {% set intl_total.v = intl_total.v + e.qty %}
+        <span class="cell-entry cell-{{ e.status }}">
+          <span class="qty">{{ e.qty }}</span>
+        </span>
+      {% endfor %}
+    </td>
+  {% endfor %}
+  <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
+</tr>
+{% endfor %}
+{% endmacro %}
+
+<div class="matrix-wrap">
+  <table class="matrix-table" id="matrixTable">
+    <thead>
+      <tr class="row-group">
+        <th class="col-form hd-formname" rowspan="2">{{ T('catreq.col_name') }}</th>
+        {% if branches_dom %}
+        <th class="hd-dom" colspan="{{ branches_dom|length + 1 }}">{{ T('common.domestic') }}</th>
+        {% endif %}
+        {% if branches_intl %}
+        <th class="hd-intl" colspan="{{ branches_intl|length + 1 }}">{{ T('common.international') }}</th>
+        {% endif %}
+      </tr>
+      <tr class="row-branch">
+        {% for b in branches_dom %}
+        <th class="hd-branch-dom" title="{{ b.name }}">{{ b.code }}</th>
+        {% endfor %}
+        <th class="hd-branch-dom col-total">{{ T('catmatrix.subtotal') }}</th>
+        {% for b in branches_intl %}
+        <th class="hd-branch-intl" title="{{ b.name }}">{{ b.code }}</th>
+        {% endfor %}
+        <th class="hd-branch-intl col-total">{{ T('catmatrix.subtotal') }}</th>
+      </tr>
+    </thead>
+
+    {# ── 전체 기간: 신청 기간별 구분선 포함 ── #}
+    <tbody class="matrix-body" data-period="ALL">
+      {% if period_titles %}
+        {% for t in period_titles %}
+        <tr class="period-divider-row">
+          <td class="col-form">
+            <i class="fa-solid fa-calendar-days me-1" style="color:#60a5fa"></i>{{ t }}
+          </td>
+          <td colspan="{{ total_cols - 1 }}"></td>
+        </tr>
+        {{ render_rows(pivot_by_title[t]) }}
+        {% endfor %}
+      {% else %}
+        {{ render_rows(pivot_all) }}
+      {% endif %}
+    </tbody>
+
+    {# ── 개별 기간 탭 — 상단에 기간 제목 행 포함 ── #}
+    {% for t in period_titles %}
+    <tbody class="matrix-body d-none" data-period="{{ t | e }}">
+      <tr class="period-divider-row">
+        <td class="col-form">
+          <i class="fa-solid fa-calendar-days me-1" style="color:#60a5fa"></i>{{ t }}
+        </td>
+        <td colspan="{{ total_cols - 1 }}"></td>
+      </tr>
+      {{ render_rows(pivot_by_title[t]) }}
+    </tbody>
+    {% endfor %}
+
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var _baseExportUrl = {{ url_for('catalog_matrix_export') | tojson }};
+var _allPeriodsLabel = {{ T('catmatrix.all_periods') | tojson }};
+
+// 기간 탭 전환
+function switchPeriod(btn) {
+  document.querySelectorAll('#periodTabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  var p = btn.dataset.period;
+  document.querySelectorAll('.matrix-body').forEach(tb => {
+    tb.classList.toggle('d-none', tb.dataset.period !== p);
+  });
+  var label = p === 'ALL' ? _allPeriodsLabel : p;
+  document.getElementById('matrixTitleText').textContent = label;
+
+  // 엑셀 다운로드 URL 업데이트
+  var dlBtn = document.getElementById('excelDownloadBtn');
+  if (dlBtn) {
+    dlBtn.href = p === 'ALL'
+      ? _baseExportUrl
+      : _baseExportUrl + '?period=' + encodeURIComponent(p);
+  }
+}
+</script>
+{% endblock %}

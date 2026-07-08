@@ -6062,6 +6062,319 @@ def catalog_item_setting_delete(setting_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+def _catalog_matrix_data(conn):
+    """카탈로그(운송아이템) 승인 건 전 지점 매트릭스용 데이터 조회 + 가공.
+    페이지 렌더와 엑셀 내보내기에서 공통으로 사용."""
+    catalog_items = conn.execute(
+        "SELECT code, name FROM catalog_defs WHERE user_deleted IS NOT TRUE ORDER BY sort_order"
+    ).fetchall()
+    known_codes = {c['code'] for c in catalog_items}
+
+    branches_dom  = conn.execute(
+        "SELECT id, code, name FROM branches WHERE type='DOM' ORDER BY code"
+    ).fetchall()
+    branches_intl = conn.execute(
+        "SELECT id, code, name FROM branches WHERE type='INTL' ORDER BY code"
+    ).fetchall()
+
+    rows = conn.execute(
+        "SELECT ri.item_code, COALESCE(cd.name, ri.item_name) AS item_name, "
+        "r.branch_id, ri.quantity, r.created_at, r.status, ri.item_status "
+        "FROM catalog_request_items ri "
+        "JOIN catalog_requests r ON r.id = ri.request_id "
+        "LEFT JOIN catalog_defs cd ON cd.code = ri.item_code "
+        "WHERE (r.status = 'approved' OR (r.status = 'partial' AND ri.item_status = 'approved')) "
+        "ORDER BY r.created_at"
+    ).fetchall()
+
+    # 삭제되었거나 카탈로그에 없는(커스텀 신규 항목 등) 코드는 목록 끝에 추가
+    matrix_items = [dict(c) for c in catalog_items]
+    for row in rows:
+        if row['item_code'] not in known_codes:
+            known_codes.add(row['item_code'])
+            matrix_items.append({'code': row['item_code'], 'name': row['item_name']})
+
+    # 신청 기간 이력 — catalog_requests엔 기간 제목 컬럼이 없어 신청일 기준으로 소급 추론
+    settings_hist = conn.execute(
+        "SELECT title, period_start, period_end FROM catalog_settings "
+        "WHERE title IS NOT NULL AND title != '' ORDER BY period_start"
+    ).fetchall()
+    settings_list = [dict(s) for s in settings_hist]
+
+    def resolve_period(row):
+        date_str = str(row['created_at'] or '')[:10]
+        if not date_str:
+            return ''
+        for s in settings_list:
+            ps = str(s['period_start'])[:10]
+            pe = str(s['period_end'])[:10]
+            if ps <= date_str <= pe and s['title']:
+                return s['title']
+        return ''
+
+    seen_t: set = set()
+    period_titles: list = []
+    resolved_rows = []
+    for row in rows:
+        t = resolve_period(row)
+        resolved_rows.append((row, t))
+        if t and t not in seen_t:
+            seen_t.add(t)
+            period_titles.append(t)
+
+    return matrix_items, branches_dom, branches_intl, resolved_rows, period_titles
+
+
+@app.route('/admin/catalog/matrix')
+@login_required
+def catalog_matrix():
+    """관리자 — 전 지점 운송아이템 신청 현황 매트릭스"""
+    T = _get_T()
+    if session.get('role') != 'admin':
+        flash(T('flash.admin_only'), 'danger')
+        return redirect(url_for('dashboard'))
+
+    conn = get_db()
+    matrix_items, branches_dom, branches_intl, resolved_rows, period_titles = _catalog_matrix_data(conn)
+    conn.close()
+
+    def build_pivot(filtered_pairs):
+        p = {it['code']: {} for it in matrix_items}
+        for row, _ in filtered_pairs:
+            code = row['item_code']
+            bid  = row['branch_id']
+            if code not in p:
+                continue
+            if bid not in p[code]:
+                p[code][bid] = []
+            raw = str(row['created_at'] or '')
+            date_label = raw[5:10].replace('-', '.')
+            p[code][bid].append({'qty': row['quantity'], 'date': date_label, 'status': row['status']})
+        return p
+
+    pivot_all      = build_pivot(resolved_rows)
+    pivot_by_title = {
+        t: build_pivot([(r, rt) for r, rt in resolved_rows if rt == t])
+        for t in period_titles
+    }
+
+    return render_template('catalog_matrix.html',
+                           matrix_items=matrix_items,
+                           branches_dom=branches_dom,
+                           branches_intl=branches_intl,
+                           pivot_all=pivot_all,
+                           pivot_by_title=pivot_by_title,
+                           period_titles=period_titles)
+
+
+@app.route('/admin/catalog/matrix/export')
+@login_required
+def catalog_matrix_export():
+    """카탈로그 매트릭스 엑셀 다운로드"""
+    T = _get_T()
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    if session.get('role') != 'admin':
+        flash(T('flash.admin_only'), 'danger')
+        return redirect(url_for('dashboard'))
+
+    period_param = request.args.get('period', 'ALL').strip()
+
+    conn = get_db()
+    matrix_items, branches_dom, branches_intl, resolved_rows, period_titles = _catalog_matrix_data(conn)
+    conn.close()
+
+    def build_pivot(filtered_pairs):
+        p = {it['code']: {} for it in matrix_items}
+        for row, _ in filtered_pairs:
+            code = row['item_code']
+            bid  = row['branch_id']
+            if code not in p:
+                continue
+            if bid not in p[code]:
+                p[code][bid] = 0
+            p[code][bid] += row['quantity']
+        return p
+
+    if period_param == 'ALL':
+        pivot = build_pivot(resolved_rows)
+        export_periods = period_titles
+    else:
+        pivot = build_pivot([(r, rt) for r, rt in resolved_rows if rt == period_param])
+        export_periods = [period_param] if period_param in period_titles else []
+
+    # ── 스타일 정의 ──────────────────────────────────────────────
+    def _fill(hex_color):
+        return PatternFill('solid', fgColor=hex_color.lstrip('#'))
+
+    def _font(bold=False, color='000000', size=9):
+        return Font(bold=bold, color=color, size=size)
+
+    def _center():
+        return Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    def _left():
+        return Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+    thin = Side(style='thin', color='D1D5DB')
+    border_thin = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    NAVY  = '1E293B'; WHITE = 'FFFFFF'
+    BLUE  = '1D4ED8'; BLUE2 = '2563EB'
+    PURP  = '6D28D9'; PURP2 = '7C3AED'
+    GRAY  = 'F8FAFC'; GRAY2 = '334155'
+    DIVBG = '1E293B'
+
+    # ── 워크북 생성 ──────────────────────────────────────────────
+    wb = Workbook()
+    ws = wb.active
+    sheet_title = period_param if period_param != 'ALL' else '전체 기간'
+    ws.title = sheet_title[:31]
+
+    dom_cnt  = len(branches_dom)
+    intl_cnt = len(branches_intl)
+    total_data_cols = dom_cnt + 1 + intl_cnt + 1  # 소계 포함
+
+    # 열 너비
+    ws.column_dimensions['A'].width = 30
+    for col_idx in range(2, 2 + total_data_cols):
+        ws.column_dimensions[get_column_letter(col_idx)].width = 9
+
+    # ── 행 1: 그룹 헤더 (아이템명 | 국내 | 국제) ─────────────────
+    ws.row_dimensions[1].height = 20
+    cell = ws.cell(1, 1, '아이템명')
+    cell.fill = _fill(NAVY); cell.font = _font(True, WHITE, 9)
+    cell.alignment = _center(); cell.border = border_thin
+
+    dom_start_col = 2
+    if dom_cnt > 0:
+        dom_end_col = dom_start_col + dom_cnt  # 소계 포함
+        ws.merge_cells(start_row=1, start_column=dom_start_col,
+                       end_row=1,   end_column=dom_end_col)
+        c = ws.cell(1, dom_start_col, '국내')
+        c.fill = _fill(BLUE); c.font = _font(True, WHITE, 9)
+        c.alignment = _center(); c.border = border_thin
+
+    intl_start_col = dom_start_col + dom_cnt + 1
+    if intl_cnt > 0:
+        intl_end_col = intl_start_col + intl_cnt  # 소계 포함
+        ws.merge_cells(start_row=1, start_column=intl_start_col,
+                       end_row=1,   end_column=intl_end_col)
+        c = ws.cell(1, intl_start_col, '국제')
+        c.fill = _fill(PURP); c.font = _font(True, WHITE, 9)
+        c.alignment = _center(); c.border = border_thin
+
+    # ── 행 2: 지점 코드 헤더 ────────────────────────────────────
+    ws.row_dimensions[2].height = 18
+    cell = ws.cell(2, 1, '')
+    cell.fill = _fill(NAVY); cell.border = border_thin
+
+    col = dom_start_col
+    for b in branches_dom:
+        c = ws.cell(2, col, b['code'])
+        c.fill = _fill(BLUE2); c.font = _font(True, WHITE, 8)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    c = ws.cell(2, col, '소계')
+    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
+    c.alignment = _center(); c.border = border_thin
+    col += 1
+
+    for b in branches_intl:
+        c = ws.cell(2, col, b['code'])
+        c.fill = _fill(PURP2); c.font = _font(True, WHITE, 8)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    c = ws.cell(2, col, '소계')
+    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
+    c.alignment = _center(); c.border = border_thin
+
+    # ── 데이터 행 ────────────────────────────────────────────────
+    cur_row = 3
+    bid_dom  = [b['id'] for b in branches_dom]
+    bid_intl = [b['id'] for b in branches_intl]
+
+    def write_data_rows(ws_ref, pv, start_row):
+        r = start_row
+        for it in matrix_items:
+            ws_ref.row_dimensions[r].height = 15
+            it_data = pv.get(it['code'], {})
+
+            c = ws_ref.cell(r, 1, it['name'])
+            c.font = _font(False, '374151', 9); c.alignment = _left()
+            c.border = border_thin
+
+            col = dom_start_col
+            dom_total = 0
+            for bid in bid_dom:
+                qty = it_data.get(bid, 0)
+                dom_total += qty
+                c = ws_ref.cell(r, col, qty if qty else '')
+                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
+                c.alignment = _center(); c.border = border_thin
+                col += 1
+            c = ws_ref.cell(r, col, dom_total if dom_total else '')
+            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
+            c.alignment = _center(); c.border = border_thin
+            col += 1
+
+            intl_total = 0
+            for bid in bid_intl:
+                qty = it_data.get(bid, 0)
+                intl_total += qty
+                c = ws_ref.cell(r, col, qty if qty else '')
+                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
+                c.alignment = _center(); c.border = border_thin
+                col += 1
+            c = ws_ref.cell(r, col, intl_total if intl_total else '')
+            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
+            c.alignment = _center(); c.border = border_thin
+
+            r += 1
+        return r
+
+    if period_param == 'ALL' and export_periods:
+        for t in export_periods:
+            ws.row_dimensions[cur_row].height = 16
+            ws.merge_cells(start_row=cur_row, start_column=1,
+                           end_row=cur_row,   end_column=1 + total_data_cols)
+            c = ws.cell(cur_row, 1, f'  {t}')
+            c.fill = _fill(DIVBG); c.font = _font(True, WHITE, 9)
+            c.alignment = _left(); c.border = border_thin
+            cur_row += 1
+
+            period_pairs = [(r, rt) for r, rt in resolved_rows if rt == t]
+            period_pivot = build_pivot(period_pairs)
+            cur_row = write_data_rows(ws, period_pivot, cur_row)
+    elif period_param == 'ALL':
+        cur_row = write_data_rows(ws, pivot, cur_row)
+    else:
+        if export_periods:
+            ws.row_dimensions[cur_row].height = 16
+            ws.merge_cells(start_row=cur_row, start_column=1,
+                           end_row=cur_row,   end_column=1 + total_data_cols)
+            c = ws.cell(cur_row, 1, f'  {export_periods[0]}')
+            c.fill = _fill(DIVBG); c.font = _font(True, WHITE, 9)
+            c.alignment = _left(); c.border = border_thin
+            cur_row += 1
+        cur_row = write_data_rows(ws, pivot, cur_row)
+
+    ws.freeze_panes = 'B3'
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'운송아이템신청현황_{sheet_title}.xlsx'
+    )
+
+
 @app.route('/admin/form-type/<int:form_id>/memo', methods=['POST'])
 @login_required
 def admin_form_type_memo(form_id):

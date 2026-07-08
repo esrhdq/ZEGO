@@ -34,6 +34,14 @@
   <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-secondary">
     <i class="fa-solid fa-arrow-left me-1"></i>{{ T('catreqlist.back') }}
   </a>
+  {% if session.role == 'admin' %}
+  <a href="{{ url_for('catalog_item_settings') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-gear me-1"></i>{{ T('fsadmin_req.period_settings') }}
+  </a>
+  <a href="{{ url_for('catalog_matrix') }}" class="btn btn-sm btn-outline-primary">
+    <i class="fa-solid fa-table-cells me-1"></i>{{ T('catreqlist.all_branches_matrix') }}
+  </a>
+  {% endif %}
 </div>
 
 <div class="filter-bar">
