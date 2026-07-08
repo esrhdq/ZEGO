@@ -270,6 +270,39 @@ def _get_pg_pool():
     return _PG_POOL
 
 
+class _RequestScopedDB:
+    """g.db에 저장되는 래퍼 — 요청 처리 중 라우트가 부르는 close()는 no-op으로
+    무시하고, 실제 커넥션 종료는 teardown_appcontext에서 한 번만 수행한다.
+    (라우트가 render_template 전에 conn.close()를 부르면, 알림 배지를 채우는
+    컨텍스트 프로세서가 뒤늦게 DB에 접근할 때 매번 새 커넥션을 여는 문제가 있었음 —
+    페이지 하나당 커넥션 핸드셰이크가 2회 이상 발생해 로딩이 느려지는 주 원인이었음)"""
+    def __init__(self, real_db):
+        self._real = real_db
+
+    def execute(self, sql, params=()):
+        return self._real.execute(sql, params)
+
+    def commit(self):
+        self._real.commit()
+
+    def rollback(self):
+        self._real.rollback()
+
+    def close(self):
+        pass
+
+    def _teardown_close(self):
+        self._real.close()
+
+    @property
+    def _returned(self):
+        return getattr(self._real, '_returned', False)
+
+    @property
+    def _conn(self):
+        return getattr(self._real, '_conn', None)
+
+
 def _acquire_pg_db():
     """직접 연결 + 재시도 (연결 한도 초과 시 최대 10초 대기)."""
     import random
@@ -297,17 +330,18 @@ def get_db():
         if USE_SQLITE:
             conn = sqlite3.connect(SQLITE_DB)
             conn.row_factory = sqlite3.Row
-            g.db = _SQLiteDB(conn)
+            g.db = _RequestScopedDB(_SQLiteDB(conn))
         else:
-            g.db = _acquire_pg_db()
+            g.db = _RequestScopedDB(_acquire_pg_db())
     else:
         db = g.db
-        # 연결이 닫힌 경우 새 연결 획득
+        # 연결이 죽은 경우(네트워크 문제 등)에만 새 연결 획득 —
+        # 라우트가 부른 close()는 이제 no-op이라 _returned는 항상 False
         if not USE_SQLITE and (
             getattr(db, '_returned', False) or
-            (hasattr(db, '_conn') and db._conn.closed)
+            (hasattr(db, '_conn') and db._conn and db._conn.closed)
         ):
-            g.db = _acquire_pg_db()
+            g.db = _RequestScopedDB(_acquire_pg_db())
     return g.db
 
 @app.teardown_appcontext
@@ -315,7 +349,7 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db is not None:
         try:
-            db.close()
+            db._teardown_close()
         except Exception:
             pass
 
