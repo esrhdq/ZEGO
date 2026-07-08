@@ -308,6 +308,10 @@ LANGS = {
                 ("step", (3, "'신청 장바구니'에서 최종 확인 후 신청 완료")),
                 ("step", (4, "'신청 내역'에서 진행 상황 확인")),
                 ("info", "관리자가 설정한 신청 기간 내에만 신청 가능합니다."),
+                ("h3", "장바구니에서 확인 · 조정하기"),
+                ("p", "• 부분 선택 신청 — 담긴 항목 앞 체크박스로 일부만 선택해 신청할 수 있습니다. 선택 해제한 항목은 장바구니에 남아 나중에 이어서 신청할 수 있습니다."),
+                ("p", "• 요청사유 필수 입력 — X-배너, 스탠션 등 커스텀 제작 항목은 신청 사유를 입력해야 장바구니에 담을 수 있습니다."),
+                ("p", "• 커스텀 이미지 미리보기 — 직접 편집한 이미지가 담긴 항목은 '커스텀 이미지' 배지를 클릭하면 크게 확인할 수 있습니다."),
              ]},
             {"title": "11. 양식 비품 신청",
              "body": [
@@ -440,6 +444,10 @@ LANGS = {
                 ("step", (3, "Review in Request Cart and click Submit Request")),
                 ("step", (4, "Check progress in Request History")),
                 ("info", "Requests are only possible during the request period set by the administrator."),
+                ("h3", "Review & Adjust in the Cart"),
+                ("p", "• Submit a partial selection — use the checkbox next to each cart item to submit only some of them. Unchecked items stay in the cart for later."),
+                ("p", "• Request reason required — custom-made items (X-banner, stanchion) require a request reason before they can be added to the cart."),
+                ("p", "• Preview custom images — items with an edited custom image show a 'Custom Image' badge; click it to view the image enlarged."),
              ]},
             {"title": "11. Form Supply Request",
              "body": [
@@ -565,6 +573,10 @@ LANGS = {
                 ("step", (3, "「申請カート」で確認し「申請完了」")),
                 ("step", (4, "「申請履歴」で進捗確認")),
                 ("info", "管理者が設定した申請期間内のみ申請可能です。"),
+                ("h3", "カートでの確認・調整"),
+                ("p", "• 一部選択して申請 — カート内各項目のチェックボックスで一部だけ選択して申請できます。チェックを外した項目はカートに残り、後で続けて申請できます。"),
+                ("p", "• 依頼理由の入力必須 — X-バナー・スタンションなどのカスタム制作品目は、依頼理由を入力しないとカートに追加できません。"),
+                ("p", "• カスタム画像のプレビュー — 編集したカスタム画像が含まれる項目は「カスタム画像」バッジをクリックすると拡大確認できます。"),
              ]},
             {"title": "11. 様式備品申請",
              "body": [
@@ -803,6 +815,10 @@ LANGS = {
                 ("step", (3, "在「申請購物車」中確認後點擊「完成申請」")),
                 ("step", (4, "在「申請紀錄」中查看進度")),
                 ("info", "僅在管理員設定的申請期間內可進行申請。"),
+                ("h3", "在購物車中確認．調整"),
+                ("p", "• 部分選擇申請 — 可用購物車內各項目前的核取方塊，只選擇部分項目送出申請。取消勾選的項目會留在購物車中，之後可以再繼續申請。"),
+                ("p", "• 必填申請原因 — X-Banner、立牌等客製化項目，必須填寫申請原因才能加入購物車。"),
+                ("p", "• 客製化圖片預覽 — 含有已編輯客製化圖片的項目會顯示「客製化圖片」標籤，點擊即可放大確認。"),
              ]},
             {"title": "11. 表單耗材申請",
              "body": [
