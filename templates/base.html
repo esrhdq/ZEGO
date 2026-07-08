@@ -498,10 +498,10 @@
     </a>
     {% endif %}
 
-    <div class="section-label">안내</div>
+    <div class="section-label">{{ T('nav.guide_section') }}</div>
     <a href="{{ url_for('manual_page') }}"
        class="nav-link {% if endpoint=='manual_page' %}active{% endif %}">
-      <i class="fa-solid fa-book-open"></i>매뉴얼
+      <i class="fa-solid fa-book-open"></i>{{ T('nav.manual') }}
     </a>
   </nav>
 
