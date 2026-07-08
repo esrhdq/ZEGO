@@ -18,7 +18,8 @@
   .req-table tbody td { padding:8px 12px; vertical-align:middle; }
   .req-thumb { width:48px; height:38px; object-fit:contain; border:1px solid var(--border-md); border-radius:4px; background:var(--bg); }
   .cat-badge-sm { font-size:.68rem; padding:2px 7px; border-radius:10px; font-weight:600; background:var(--warning-bg); color:var(--warning); }
-  .custom-flag { font-size:.68rem; background:var(--success-bg); color:var(--success); padding:2px 6px; border-radius:8px; font-weight:600; }
+  .custom-flag { font-size:.68rem; background:var(--success-bg); color:var(--success); padding:2px 6px; border-radius:8px; font-weight:600; cursor:pointer; }
+  .custom-flag:hover { filter:brightness(0.95); }
   .qty-input { width:64px; border:1px solid var(--border-md); border-radius:6px; padding:3px 6px; font-size:.82rem; text-align:center; }
   .empty-cart { text-align:center; padding:60px 20px; color:var(--text-faint); }
   .empty-cart i { font-size:2.5rem; opacity:.3; display:block; margin-bottom:12px; }
@@ -114,7 +115,9 @@
             </div>
             {% endif %}
             {% if it.custom_img_data %}
-            <span class="custom-flag ms-1"><i class="fa-solid fa-image me-1"></i>{{ T('catreq.custom_img_badge') }}</span>
+            <span class="custom-flag ms-1" data-full-img="{{ it.custom_img_data }}" onclick="showCustomImg(this)">
+              <i class="fa-solid fa-image me-1"></i>{{ T('catreq.custom_img_badge') }}
+            </span>
             {% endif %}
           </td>
           <td>
@@ -143,6 +146,21 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- 커스텀 이미지 전체보기 모달 -->
+<div class="modal fade" id="customImgModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title" style="font-size:.88rem">{{ T('catreqdet.img_modal_title') }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center p-2">
+        <img id="fullCustomImg" src="" alt="" style="max-width:100%;max-height:80vh;object-fit:contain">
+      </div>
+    </div>
   </div>
 </div>
 
@@ -219,6 +237,11 @@ async function cartApi(payload) {
 async function updateQty(code, val) {
   const qty = parseInt(val) || 1;
   await cartApi({item_code: code, quantity: qty});
+}
+
+function showCustomImg(el) {
+  document.getElementById('fullCustomImg').src = el.dataset.fullImg;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('customImgModal')).show();
 }
 
 /* ── 선택(체크박스) 관리 ── */
