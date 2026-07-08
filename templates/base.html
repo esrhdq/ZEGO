@@ -576,7 +576,7 @@
               <div class="px-3 py-2" style="border-bottom:1px solid var(--border);font-size:.8rem;line-height:1.4">
                 <div style="color:var(--text)">{{ n.message }}</div>
                 {% if n.created_at %}
-                <div style="color:var(--text-muted);font-size:.72rem;margin-top:2px">{{ n.created_at.strftime('%m/%d %H:%M') if n.created_at else '' }}</div>
+                <div style="color:var(--text-muted);font-size:.72rem;margin-top:2px">{{ n.created_at | dt('%m/%d %H:%M') }}</div>
                 {% endif %}
               </div>
               {% endfor %}

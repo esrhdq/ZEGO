@@ -537,7 +537,7 @@ def _get_active_supply_period():
     """현재 활성화된 신청 기간 반환. 없으면 None."""
     conn = get_db()
     ph = '%s' if not USE_SQLITE else '?'
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now(_KST).strftime('%Y-%m-%d')
     row = conn.execute(
         f"SELECT * FROM form_supply_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
         (today, today)
@@ -549,7 +549,7 @@ def _get_active_catalog_period():
     """운송아이템 신청 활성 기간 반환. 없으면 None."""
     conn = get_db()
     ph = '%s' if not USE_SQLITE else '?'
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now(_KST).strftime('%Y-%m-%d')
     try:
         row = conn.execute(
             f"SELECT * FROM catalog_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
@@ -563,7 +563,7 @@ def _get_active_catalog_period():
 def _build_catalog_period_ctx():
     """catalog_settings 최신 행 + in_range 플래그를 dict로 반환."""
     conn = get_db()
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now(_KST).strftime('%Y-%m-%d')
     try:
         latest = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 1').fetchone()
     except Exception:
@@ -580,7 +580,7 @@ def _build_catalog_period_ctx():
 _KST = timezone(timedelta(hours=9))
 
 @app.template_filter('dt')
-def dt_filter(value):
+def dt_filter(value, fmt='%Y-%m-%d %H:%M'):
     if value is None:
         return '—'
     try:
@@ -592,7 +592,7 @@ def dt_filter(value):
             return str(value)[:16]
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(_KST).strftime('%Y-%m-%d %H:%M')
+        return dt.astimezone(_KST).strftime(fmt)
     except Exception:
         return str(value)[:16]
 
@@ -833,7 +833,7 @@ def inject_globals():
             'notif_form_supply': notif_form_supply,
             'notif_catalog': notif_catalog,
             'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days,
-            'now_dt': datetime.now(timezone.utc).astimezone()}
+            'now_dt': datetime.now(_KST)}
 
 
 # ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
