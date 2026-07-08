@@ -4013,26 +4013,42 @@ def catalog_request_submit():
             (submit_req_id, req_row['id'], *selected)
         )
 
-    # 관리자에게 알림
-    admin_rows = conn.execute(
-        f"SELECT id FROM branches WHERE code='관리자' UNION "
-        f"SELECT DISTINCT branch_id FROM users WHERE role='admin'"
-    ).fetchall() if not USE_SQLITE else conn.execute(
-        "SELECT DISTINCT branch_id id FROM users WHERE role='admin'"
-    ).fetchall()
-    branch_name_row = conn.execute(
-        f'SELECT name FROM branches WHERE id={ph}', (target_bid,)
-    ).fetchone()
-    branch_name = branch_name_row['name'] if branch_name_row else str(target_bid)
-    for ar in admin_rows:
-        try:
-            conn.execute(
-                f'INSERT INTO notifications (branch_id, message) VALUES ({ph},{ph})',
-                (ar['id'], f'[카탈로그 신청] {branch_name} 지점에서 신청서가 접수되었습니다.')
-            )
-        except Exception:
-            pass
+    # 핵심 제출 처리(신청서 상태 전환)를 알림 로직과 별도로 즉시 커밋 —
+    # 알림 조회/삽입에서 예외가 나더라도 이미 접수된 신청이 롤백되지 않도록 함.
     conn.commit()
+
+    # 커밋 직후 재조회로 실제 반영 여부 확인 (원인불명의 무반응 신고 대응용 안전장치)
+    verify_row = conn.execute(
+        f"SELECT status FROM catalog_requests WHERE id={ph}", (submit_req_id,)
+    ).fetchone()
+    if not verify_row or verify_row['status'] != 'pending':
+        print(f"[catalog_request_submit] 커밋 후 검증 실패: req_id={submit_req_id}, row={verify_row}")
+        conn.close()
+        return jsonify({'ok': False, 'msg': '신청 처리 중 문제가 발생했습니다. 다시 시도해주세요.'}), 500
+
+    # 관리자에게 알림 (실패해도 이미 접수된 신청에는 영향 없음)
+    try:
+        admin_rows = conn.execute(
+            f"SELECT id FROM branches WHERE code='관리자' UNION "
+            f"SELECT DISTINCT branch_id FROM users WHERE role='admin'"
+        ).fetchall() if not USE_SQLITE else conn.execute(
+            "SELECT DISTINCT branch_id id FROM users WHERE role='admin'"
+        ).fetchall()
+        branch_name_row = conn.execute(
+            f'SELECT name FROM branches WHERE id={ph}', (target_bid,)
+        ).fetchone()
+        branch_name = branch_name_row['name'] if branch_name_row else str(target_bid)
+        for ar in admin_rows:
+            try:
+                conn.execute(
+                    f'INSERT INTO notifications (branch_id, message) VALUES ({ph},{ph})',
+                    (ar['id'], f'[카탈로그 신청] {branch_name} 지점에서 신청서가 접수되었습니다.')
+                )
+            except Exception:
+                pass
+        conn.commit()
+    except Exception as _e:
+        print(f"[catalog_request_submit] 관리자 알림 처리 실패(신청 자체는 정상 접수됨): {_e}")
     conn.close()
     return jsonify({'ok': True, 'msg': T('flash.request_submitted')})
 
