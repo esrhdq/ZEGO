@@ -408,10 +408,21 @@ def _to_dt(val):
     return val
 
 
+def _wants_json():
+    """fetch()로 보낸 JSON API 호출인지 판별 (세션 만료 시 HTML 리다이렉트 대신 401 JSON 응답용)."""
+    return request.is_json or request.path.startswith('/api/')
+
+
+def _session_expired_response():
+    return jsonify({'ok': False, 'session_expired': True, 'msg': '세션이 만료되었습니다. 다시 로그인해주세요.'}), 401
+
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
+            if _wants_json():
+                return _session_expired_response()
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated
@@ -787,6 +798,8 @@ def check_ip_and_session():
     if 'user_id' in session and session.get('role') != 'admin' and \
             request.endpoint not in ('change_password', 'logout', 'set_lang', None):
         if not session.get('_pwd_changed_at'):
+            if _wants_json():
+                return _session_expired_response()
             flash('초기 비밀번호를 변경해 주세요.', 'warning')
             return redirect(url_for('change_password'))
 
@@ -797,6 +810,8 @@ def check_ip_and_session():
             elapsed = datetime.now(timezone.utc).timestamp() - changed_ts
             days_left = int(180 - elapsed / 86400)
             if days_left <= 0:
+                if _wants_json():
+                    return _session_expired_response()
                 _t = make_T(session.get('lang', 'ko'))
                 flash(_t('chpw.pw_expired_flash'), 'danger')
                 return redirect(url_for('change_password'))
@@ -820,6 +835,8 @@ def check_ip_and_session():
                 conn.close()
             except Exception:
                 pass
+            if _wants_json():
+                return _session_expired_response()
             flash('30분간 활동이 없어 자동 로그아웃 되었습니다.', 'warning')
             return redirect(url_for('login'))
         session['_last_activity'] = now_ts
