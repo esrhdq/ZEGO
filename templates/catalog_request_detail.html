@@ -280,25 +280,9 @@
 
 {% block scripts %}
 <script>
-(function() {
-  function apply(data) {
-    document.querySelectorAll('img[data-img]').forEach(img => {
-      const s = data[img.dataset.img]; if (s) img.src = s;
-    });
-  }
-  try {
-    const ver = JSON.parse(localStorage.getItem('ci_imgs_meta') || 'null');
-    if (ver !== null) {
-      const c = localStorage.getItem('ci_imgs_v' + ver);
-      if (c) { apply(JSON.parse(c)); return; }
-    }
-  } catch(e) {}
-  fetch('{{ url_for("catalog_imgs") }}').then(r=>r.json()).then(d=>{
-    apply(d);
-  }).catch(()=>{
-    document.querySelectorAll('img[data-img]').forEach(img=>{ img.src='/ci/'+img.dataset.img+'.png'; });
-  });
-})();
+document.querySelectorAll('img[data-img]').forEach(img => {
+  img.src = '/ci/' + img.dataset.img + '.png';
+});
 
 {% if session.role == 'admin' and req.status in ('pending', 'partial') %}
 var PARTIAL_ITEMS = [
