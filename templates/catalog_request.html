@@ -228,10 +228,14 @@ const T_SELECT_NONE_ALERT       = {{ T('catreq.select_none_alert') | tojson }};
 
 async function cartApi(payload) {
   if (TARGET_BID) payload.branch_id = TARGET_BID;
-  const res = await fetch('{{ url_for("catalog_cart_update") }}', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-  });
-  return res.json();
+  try {
+    const res = await fetch('{{ url_for("catalog_cart_update") }}', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (e) {
+    return {ok: false, msg: T_ERR_GENERIC};
+  }
 }
 
 async function updateQty(code, val) {
@@ -317,16 +321,23 @@ async function submitRequest() {
   const notes = document.getElementById('reqNotes')?.value.trim() || '';
   const payload = {notes, item_codes: codes};
   if (TARGET_BID) payload.branch_id = TARGET_BID;
-  const res = await fetch('{{ url_for("catalog_request_submit") }}', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
-  });
-  const json = await res.json();
-  if (json.ok) {
-    alert(T_SUBMITTED);
-    location.href = '{{ url_for("catalog_requests_branch") }}';
-  } else {
+  const btn = document.getElementById('btnSubmit');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('{{ url_for("catalog_request_submit") }}', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.ok) {
+      alert(T_SUBMITTED);
+      location.href = '{{ url_for("catalog_requests_branch") }}';
+      return;
+    }
     alert(json.msg || T_ERR_GENERIC);
+  } catch (e) {
+    alert(T_ERR_GENERIC);
   }
+  if (btn) btn.disabled = false;
 }
 </script>
 {% endblock %}
