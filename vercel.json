@@ -26,7 +26,7 @@
   "crons": [
     {
       "path": "/ping",
-      "schedule": "0 0 * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }

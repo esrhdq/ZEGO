@@ -304,8 +304,31 @@ class _RequestScopedDB:
 
 
 def _acquire_pg_db():
-    """직접 연결 + 재시도 (연결 한도 초과 시 최대 10초 대기)."""
+    """커넥션 풀에서 재사용 우선 시도(warm 인스턴스에서 매 요청 새 핸드셰이크를
+    피함) — 풀이 없거나 풀 커넥션이 죽어있으면 직접 연결 + 재시도로 폴백
+    (연결 한도 초과 시 최대 10초 대기)."""
     import random
+    pool = None
+    try:
+        pool = _get_pg_pool()
+    except Exception as e:
+        print(f'[_acquire_pg_db] pool init 실패: {e}')
+    if pool:
+        conn = None
+        try:
+            conn = pool.getconn()
+            with conn.cursor() as _cur:
+                _cur.execute('SELECT 1')
+            conn.rollback()
+            return _DB(conn, pool=pool)
+        except Exception as e:
+            print(f'[_acquire_pg_db] 풀 커넥션 불량, 폐기 후 직접 연결로 폴백: {e}')
+            if conn is not None:
+                try:
+                    pool.putconn(conn, close=True)
+                except Exception:
+                    pass
+
     last_err = None
     for wait in (0, 1, 2, 4):
         conn = None
