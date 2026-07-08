@@ -569,8 +569,15 @@ def handle_exception(e):
     import traceback
     tb = traceback.format_exc()
     print(f"[UNHANDLED ERROR] {tb}")
+    is_conn_error = 'max clients reached' in str(e) or 'EMAXCONNSESSION' in str(e) or 'connection' in str(e).lower()
+    # AJAX(JSON) 요청은 HTML 페이지를 반환하면 res.json() 파싱이 깨져 버튼이
+    # "Unexpected token '<'" 오류로 조용히 실패하므로, 항상 JSON으로 응답한다.
+    if _wants_json():
+        if is_conn_error:
+            return jsonify({'ok': False, 'msg': '서버가 잠시 혼잡합니다. 잠시 후 다시 시도해주세요.'}), 503
+        return jsonify({'ok': False, 'msg': '처리 중 오류가 발생했습니다.'}), 500
     # DB 연결 한도 초과 시 친절한 메시지
-    if 'max clients reached' in str(e) or 'EMAXCONNSESSION' in str(e) or 'connection' in str(e).lower():
+    if is_conn_error:
         return '''<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <title>잠시 후 다시 시도해주세요</title>
 <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff8f8}
