@@ -676,7 +676,7 @@
       if (res.status === 401) {
         return res.clone().json().then(function(data) {
           if (data && data.session_expired) {
-            alert(data.msg || '세션이 만료되었습니다. 다시 로그인해주세요.');
+            alert(data.msg || {{ T('flash.session_expired') | tojson }});
             window.location.href = '{{ url_for("login") }}';
             return new Promise(function() {});
           }

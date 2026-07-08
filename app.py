@@ -471,7 +471,7 @@ def _wants_json():
 
 
 def _session_expired_response():
-    return jsonify({'ok': False, 'session_expired': True, 'msg': '세션이 만료되었습니다. 다시 로그인해주세요.'}), 401
+    return jsonify({'ok': False, 'session_expired': True, 'msg': _get_T()('flash.session_expired')}), 401
 
 
 def login_required(f):
@@ -630,9 +630,10 @@ def handle_exception(e):
     # AJAX(JSON) 요청은 HTML 페이지를 반환하면 res.json() 파싱이 깨져 버튼이
     # "Unexpected token '<'" 오류로 조용히 실패하므로, 항상 JSON으로 응답한다.
     if _wants_json():
+        T = _get_T()
         if is_conn_error:
-            return jsonify({'ok': False, 'msg': '서버가 잠시 혼잡합니다. 잠시 후 다시 시도해주세요.'}), 503
-        return jsonify({'ok': False, 'msg': '처리 중 오류가 발생했습니다.'}), 500
+            return jsonify({'ok': False, 'msg': T('flash.server_busy')}), 503
+        return jsonify({'ok': False, 'msg': T('flash.processing_error')}), 500
     # DB 연결 한도 초과 시 친절한 메시지
     if is_conn_error:
         return '''<!doctype html><html lang="ko"><head><meta charset="utf-8">
@@ -4081,7 +4082,7 @@ def catalog_request_submit():
     if not verify_row or verify_row['status'] != 'pending':
         print(f"[catalog_request_submit] 커밋 후 검증 실패: req_id={submit_req_id}, row={verify_row}")
         conn.close()
-        return jsonify({'ok': False, 'msg': '신청 처리 중 문제가 발생했습니다. 다시 시도해주세요.'}), 500
+        return jsonify({'ok': False, 'msg': T('flash.catalog_submit_verify_failed')}), 500
 
     # 관리자에게 알림 (실패해도 이미 접수된 신청에는 영향 없음)
     try:
