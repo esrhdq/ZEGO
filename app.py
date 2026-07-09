@@ -4491,6 +4491,183 @@ def catalog_inventory():
     )
 
 
+@app.route('/catalog/inventory/export')
+@login_required
+def catalog_inventory_export():
+    """지점별 운송아이템 보유현황 엑셀 다운로드"""
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from datetime import date
+
+    _ensure_catalog_table()
+    conn = get_db()
+    bid  = session.get('branch_id')
+    role = session.get('role')
+
+    if role == 'admin':
+        rows = conn.execute('''
+            SELECT b.id, b.code, b.name, b.type,
+                   cbi.item_code, cbi.quantity
+            FROM branches b
+            LEFT JOIN catalog_branch_items cbi ON b.id = cbi.branch_id
+            ORDER BY b.type, b.code, cbi.item_code
+        ''').fetchall()
+    else:
+        rows = conn.execute('''
+            SELECT b.id, b.code, b.name, b.type,
+                   cbi.item_code, cbi.quantity
+            FROM branches b
+            LEFT JOIN catalog_branch_items cbi ON b.id = cbi.branch_id
+            WHERE b.id=%s
+            ORDER BY cbi.item_code
+        ''', (bid,)).fetchall()
+
+    branch_map  = {}
+    branch_order = []
+    for r in rows:
+        bc = r['code']
+        if bc not in branch_map:
+            branch_map[bc] = {'name': r['name'], 'type': r['type'], 'items': {}}
+            branch_order.append(bc)
+        if r['item_code']:
+            branch_map[bc]['items'][r['item_code']] = r['quantity']
+
+    catalog_items = _get_catalog_items(conn)
+    conn.close()
+
+    _CATALOG_ORDER = [
+        'GMP','CJU','CJJ','PUS','ICN',
+        'NRT','KIX','FUK','CTS','OKA','KMJ','TKS',
+        'BKK','CNX','DAD','CXR','PQC','MDC',
+        'TSA','TPE','PVG','YNJ','CGO','YNT','HKG','ALA',
+    ]
+    _exclude = {'광명역', '서울역', '이지드랍', 'CARGO'}
+    branch_order = [bc for bc in branch_order if bc not in _exclude]
+    branch_order.sort(key=lambda bc: _CATALOG_ORDER.index(bc) if bc in _CATALOG_ORDER else 999)
+
+    def _fill(hex_color):
+        return PatternFill('solid', fgColor=hex_color.lstrip('#'))
+
+    def _font(bold=False, color='000000', size=9):
+        return Font(bold=bold, color=color, size=size)
+
+    def _center():
+        return Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    def _left():
+        return Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+    thin = Side(style='thin', color='D1D5DB')
+    border_thin = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    RED   = 'CC1625'; WHITE = 'FFFFFF'
+    GRAY  = 'F8FAFC'; GRAY2 = '334155'
+    OWNED_BG = 'F0FDF4'; OWNED_FG = '16A34A'
+    TOTAL_BG = 'FFF7ED'; TOTAL_FG = 'C2410C'
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = '지점별 보유현황'
+
+    branch_cnt = len(branch_order)
+    total_cols = 2 + branch_cnt + 1  # 분류 + 아이템명 + 지점들 + 보유지점수
+
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 30
+    for col_idx in range(3, 2 + branch_cnt):
+        ws.column_dimensions[get_column_letter(col_idx)].width = 7
+    ws.column_dimensions[get_column_letter(2 + branch_cnt + 1)].width = 10
+
+    # ── 행 1: 지점 코드 헤더 ──
+    ws.row_dimensions[1].height = 20
+    for col_idx, header in ((1, '분류'), (2, '아이템')):
+        c = ws.cell(1, col_idx, header)
+        c.fill = _fill(RED); c.font = _font(True, WHITE, 9)
+        c.alignment = _center(); c.border = border_thin
+
+    col = 3
+    for bc in branch_order:
+        c = ws.cell(1, col, bc)
+        c.fill = _fill(RED); c.font = _font(True, WHITE, 9)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    c = ws.cell(1, col, '보유지점수')
+    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 9)
+    c.alignment = _center(); c.border = border_thin
+
+    # ── 행 2: 지점명 ──
+    ws.row_dimensions[2].height = 26
+    ws.cell(2, 1, '').border = border_thin
+    ws.cell(2, 2, '').border = border_thin
+    col = 3
+    for bc in branch_order:
+        c = ws.cell(2, col, branch_map[bc]['name'])
+        c.fill = _fill(GRAY); c.font = _font(False, '555555', 7)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    c = ws.cell(2, col, '')
+    c.fill = _fill(GRAY); c.border = border_thin
+
+    # ── 데이터 행 ──
+    r = 3
+    for item in catalog_items:
+        owned_count = 0
+        c = ws.cell(r, 1, item['cat'])
+        c.font = _font(True, 'CC1625', 8); c.alignment = _left(); c.border = border_thin
+        c = ws.cell(r, 2, item['name'])
+        c.font = _font(False, '374151', 9); c.alignment = _left(); c.border = border_thin
+
+        col = 3
+        for bc in branch_order:
+            qty = branch_map[bc]['items'].get(item['code'])
+            c = ws.cell(r, col, qty if qty else '')
+            if qty:
+                owned_count += 1
+                c.fill = _fill(OWNED_BG); c.font = _font(True, OWNED_FG, 9)
+            else:
+                c.font = _font(False, 'CCCCCC', 9)
+            c.alignment = _center(); c.border = border_thin
+            col += 1
+
+        c = ws.cell(r, col, owned_count)
+        c.fill = _fill(TOTAL_BG); c.font = _font(True, TOTAL_FG, 9)
+        c.alignment = _center(); c.border = border_thin
+        r += 1
+
+    # ── 마지막 행: 지점별 총 보유 아이템 수 ──
+    ws.row_dimensions[r].height = 18
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
+    c = ws.cell(r, 1, '지점별 총 보유 아이템 수')
+    c.fill = _fill(GRAY); c.font = _font(True, '555555', 8)
+    c.alignment = Alignment(horizontal='right', vertical='center')
+    c.border = border_thin
+
+    col = 3
+    for bc in branch_order:
+        bc_count = sum(1 for item in catalog_items if item['code'] in branch_map[bc]['items'])
+        c = ws.cell(r, col, bc_count if bc_count else '')
+        c.fill = _fill(GRAY); c.font = _font(True, RED, 9)
+        c.alignment = _center(); c.border = border_thin
+        col += 1
+    c = ws.cell(r, col, '')
+    c.fill = _fill(GRAY); c.border = border_thin
+
+    ws.freeze_panes = 'C3'
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    fname = f'지점별운송아이템보유현황_{date.today().strftime("%Y%m%d")}.xlsx'
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=fname
+    )
+
+
 # ── 관리자 카탈로그 편집 ───────────────────────────────────────────────────────
 
 _STATIC_IMG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'item_images')

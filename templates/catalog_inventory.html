@@ -155,7 +155,10 @@
   </a>
   <span class="text-muted small ms-2">{{ T('cat.inv_branch_status_title') }}</span>
   <span class="badge bg-secondary ms-1">{{ branch_order|length }}{{ T('cat.inv_branch_count_suffix') }}</span>
-  <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-success ms-auto">
+  <a href="{{ url_for('catalog_inventory_export') }}" class="btn btn-sm btn-outline-primary ms-auto">
+    <i class="fa-solid fa-file-excel me-1"></i>{{ T('common.excel_download') }}
+  </a>
+  <a href="{{ url_for('catalog') }}" class="btn btn-sm btn-outline-success">
     <i class="fa-solid fa-pen-to-square me-1"></i>{{ T('cat.inv_edit_button') }}
   </a>
 </div>
