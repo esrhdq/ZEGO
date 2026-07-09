@@ -263,11 +263,13 @@ class _SQLiteDB:
 
 
 def _get_pg_pool():
-    """모듈 단위 ThreadedConnectionPool을 지연 생성해 반환."""
-    global _PG_POOL
-    if _PG_POOL is None and _PG:
-        _PG_POOL = psycopg2.pool.ThreadedConnectionPool(1, 5, **_PG)
-    return _PG_POOL
+    """모듈 단위 ThreadedConnectionPool 재사용은 비활성화.
+    Vercel처럼 인스턴스가 여러 개 동시에 뜨는 서버리스 환경에서는 각 인스턴스가
+    풀 커넥션을 계속 붙잡고 있어 Supabase 세션 풀러의 최대 클라이언트 수
+    (EMAXCONNSESSION)를 넘기는 원인이 됐음 — 요청마다 새로 연결하고 요청이
+    끝나면 바로 닫는 방식으로 되돌림(_acquire_pg_db 참고).
+    """
+    return None
 
 
 class _RequestScopedDB:
