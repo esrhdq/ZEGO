@@ -5725,7 +5725,8 @@ def bulk_outbound_page():
     conn.close()
     from datetime import date
     return render_template('bulk_outbound.html', inventory_rows=rows, branches=branches,
-                           today=date.today().isoformat())
+                           today=date.today().isoformat(),
+                           selected_branch_id=request.args.get('branch_id', ''))
 
 
 @app.route('/transfer/my-requests')

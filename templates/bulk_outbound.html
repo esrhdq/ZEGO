@@ -17,7 +17,7 @@
         <select id="branchFilter" class="form-select form-select-sm" onchange="loadInventory()">
           <option value="">{{ T('bulkout.filter_branch') }}</option>
           {% for b in branches %}
-          <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+          <option value="{{ b.id }}" {% if selected_branch_id|string == b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -111,6 +111,17 @@ var _res_cnt  = '{{ T("bulkout.result_count") }}';
 var _err_qty  = '{{ T("bulkout.err_qty") }}';
 var _err_none = '{{ T("bulkout.err_none") }}';
 var _err_gen  = '{{ T("bulkout.err_generic") }}';
+
+function loadInventory() {
+  var branchId = document.getElementById('branchFilter').value;
+  var url = new URL(window.location.href);
+  if (branchId) {
+    url.searchParams.set('branch_id', branchId);
+  } else {
+    url.searchParams.delete('branch_id');
+  }
+  window.location.href = url.toString();
+}
 
 function toggleAll(cb) {
   document.querySelectorAll('.row-check').forEach(function(c){ c.checked = cb.checked; });
