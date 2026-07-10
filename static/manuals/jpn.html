@@ -55,7 +55,7 @@
   </div>
   <h1>ユーザーマニュアル</h1>
   <div class="sub">イースター航空 物流・備品管理システム — 全機能ガイド</div>
-  <div class="meta">対象：全支店スタッフ・管理者 &nbsp;|&nbsp; 言語：日本語 &nbsp;|&nbsp; 2026年6月現在</div>
+  <div class="meta">対象：全支店スタッフ・管理者 &nbsp;|&nbsp; 言語：日本語 &nbsp;|&nbsp; 2026年7月現在</div>
 </div>
 
 <div class="toc">
@@ -67,13 +67,12 @@
     <li><a href="#s4">在庫状況</a></li>
     <li><a href="#s5">入庫処理</a></li>
     <li><a href="#s6">出庫処理</a></li>
-    <li><a href="#s7">一括出庫</a></li>
-    <li><a href="#s8">支店間移動</a></li>
-    <li><a href="#s9">取引履歴・レポート</a></li>
-    <li><a href="#s10">カタログ（輸送アイテム）申請</a></li>
-    <li><a href="#s11">様式備品申請</a></li>
-    <li><a href="#s12">管理者機能</a></li>
-    <li><a href="#s13">通知・メニュー案内</a></li>
+    <li><a href="#s7">支店間移動</a></li>
+    <li><a href="#s8">取引履歴・レポート</a></li>
+    <li><a href="#s9">カタログ（輸送アイテム）申請</a></li>
+    <li><a href="#s10">様式備品申請</a></li>
+    <li><a href="#s11">管理者機能</a></li>
+    <li><a href="#s12">通知・メニュー案内</a></li>
   </ol>
 </div>
 
@@ -172,9 +171,17 @@
 
 <div class="section" id="s5">
   <div class="section-title">5. 入庫処理</div>
-  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>入庫処理</strong>をクリック</div></div>
-  <div class="step"><div class="step-num">2</div><div>支店、様式種類、数量、日付、備考を入力</div></div>
-  <div class="step"><div class="step-num">3</div><div><strong>入庫処理</strong>ボタンをクリック</div></div>
+  <p>本社または外部から様式を受け取った際に処理します。左メニュー<strong>入庫</strong>をクリックすると<strong>個別入庫</strong>・<strong>一括入庫</strong>の2つのタブが表示されます。</p>
+
+  <div class="sub-title">個別入庫</div>
+  <div class="step"><div class="step-num">1</div><div>支店（管理者のみ選択、支店アカウントは自動設定）、様式種類、数量、日付、備考を入力</div></div>
+  <div class="step"><div class="step-num">2</div><div><strong>入庫登録</strong>ボタンをクリック</div></div>
+
+  <div class="sub-title">一括入庫</div>
+  <p>複数の様式にチェックを入れ、一度に入庫処理します。</p>
+  <div class="step"><div class="step-num">1</div><div>管理者は上部の支店選択ドロップダウンで対象支店を選択（支店アカウントは自支店が自動表示）</div></div>
+  <div class="step"><div class="step-num">2</div><div>入庫する様式にチェックを入れ、各項目の<strong>入庫数量</strong>・備考を入力</div></div>
+  <div class="step"><div class="step-num">3</div><div>入庫日を選択し<strong>選択品目入庫</strong>ボタンをクリック</div></div>
   <div class="info-box">ℹ 入庫後も最低基準以下の場合、自動的にアラートが生成されます。</div>
 </div>
 
@@ -182,10 +189,19 @@
 
 <div class="section" id="s6">
   <div class="section-title">6. 出庫処理</div>
-  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>出庫処理</strong>をクリック</div></div>
-  <div class="step"><div class="step-num">2</div><div>支店、様式種類、数量、日付、備考を入力</div></div>
-  <div class="step"><div class="step-num">3</div><div><strong>出庫処理</strong>ボタンをクリック</div></div>
+  <p>様式を実際に使用または外部へ送る際に処理します。左メニュー<strong>出庫</strong>をクリックすると<strong>個別出庫</strong>・<strong>一括出庫</strong>の2つのタブが表示されます。</p>
+
+  <div class="sub-title">個別出庫</div>
+  <div class="step"><div class="step-num">1</div><div>支店、様式種類、数量、日付、備考を入力</div></div>
+  <div class="step"><div class="step-num">2</div><div><strong>出庫登録</strong>ボタンをクリック</div></div>
   <div class="warn-box">⚠ 現在庫より多い数量は出庫できません。出庫後に最低基準以下になった場合、自動通知が送信されます。</div>
+
+  <div class="sub-title">一括出庫</div>
+  <p>複数の様式にチェックを入れ、一度に出庫処理します。</p>
+  <div class="step"><div class="step-num">1</div><div>管理者は上部の支店選択ドロップダウンで対象支店を選択（支店アカウントは自支店が自動表示）</div></div>
+  <div class="step"><div class="step-num">2</div><div>出庫する様式にチェックを入れ、各項目の<strong>出庫数量</strong>・備考を入力（0は無視）</div></div>
+  <div class="step"><div class="step-num">3</div><div>出庫期間（月）を選択し<strong>選択品目出庫</strong>ボタンをクリック</div></div>
+  <div class="tip-box">💡 複数の様式を一度に出庫処理でき、時間を節約できます。</div>
 
   <div class="sub-title">出庫取消</div>
   <p>誤って処理した出庫を取り消すと、在庫が自動的に復元されます。</p>
@@ -198,18 +214,7 @@
 <hr>
 
 <div class="section" id="s7">
-  <div class="section-title">7. 一括出庫</div>
-  <div class="step"><div class="step-num">1</div><div>左メニュー<strong>一括出庫</strong>をクリック</div></div>
-  <div class="step"><div class="step-num">2</div><div>支店を選択 — その支店の様式リストが表示</div></div>
-  <div class="step"><div class="step-num">3</div><div>各様式の出庫数量を入力（0は無視）</div></div>
-  <div class="step"><div class="step-num">4</div><div>日付と共通備考を入力し<strong>一括出庫</strong>をクリック</div></div>
-  <div class="tip-box">💡 複数の様式を一度に出庫処理でき、時間を節約できます。</div>
-</div>
-
-<hr>
-
-<div class="section" id="s8">
-  <div class="section-title">8. 支店間移動</div>
+  <div class="section-title">7. 支店間移動</div>
   <p>在庫が不足している支店から、余裕のある支店へ不足分の補充を依頼する際に使用します。</p>
 
   <div class="sub-title">移動申請（支店アカウント）</div>
@@ -231,8 +236,8 @@
 
 <hr>
 
-<div class="section" id="s9">
-  <div class="section-title">9. 取引履歴・レポート</div>
+<div class="section" id="s8">
+  <div class="section-title">8. 取引履歴・レポート</div>
 
   <div class="sub-title">取引履歴</div>
   <p>全ての入庫・出庫・移動履歴を照会。支店、様式、取引タイプ、期間でフィルタリング可能。</p>
@@ -254,8 +259,8 @@
 
 <hr>
 
-<div class="section" id="s10">
-  <div class="section-title">10. カタログ（輸送アイテム）申請</div>
+<div class="section" id="s9">
+  <div class="section-title">9. カタログ（輸送アイテム）申請</div>
   <div class="step"><div class="step-num">1</div><div>左メニュー<strong>カタログ</strong>をクリック</div></div>
   <div class="step"><div class="step-num">2</div><div>各品目の数量を入力し<strong>カートに追加</strong></div></div>
   <div class="step"><div class="step-num">3</div><div><strong>申請カート</strong>で確認し<strong>申請完了</strong></div></div>
@@ -281,8 +286,8 @@
 
 <hr>
 
-<div class="section" id="s11">
-  <div class="section-title">11. 様式備品申請</div>
+<div class="section" id="s10">
+  <div class="section-title">10. 様式備品申請</div>
   <div class="step"><div class="step-num">1</div><div>左メニュー<strong>様式申請</strong>をクリック</div></div>
   <div class="step"><div class="step-num">2</div><div>様式種類、申請数量、備考を入力</div></div>
   <div class="step"><div class="step-num">3</div><div><strong>申請</strong>ボタンをクリック</div></div>
@@ -292,8 +297,8 @@
 
 <hr>
 
-<div class="section" id="s12">
-  <div class="section-title">12. 管理者機能 <span class="badge badge-admin">管理者専用</span></div>
+<div class="section" id="s11">
+  <div class="section-title">11. 管理者機能 <span class="badge badge-admin">管理者専用</span></div>
 
   <div class="sub-title">ユーザー管理</div>
   <ul>
@@ -321,8 +326,8 @@
 
 <hr>
 
-<div class="section" id="s13">
-  <div class="section-title">13. 通知・メニュー案内</div>
+<div class="section" id="s12">
+  <div class="section-title">12. 通知・メニュー案内</div>
 
   <div class="sub-title">通知バッジ</div>
   <table>
@@ -340,9 +345,8 @@
     <div class="item">📊 ダッシュボード</div>
     <div class="item">📦 在庫状況</div>
     <div class="section-name">処理</div>
-    <div class="item">📥 入庫処理</div>
-    <div class="item">📤 出庫処理</div>
-    <div class="item">📋 一括出庫</div>
+    <div class="item">📥 入庫</div>
+    <div class="item">📤 出庫</div>
     <div class="item">🚚 支店間移動</div>
     <div class="item">🕐 私の移動申請</div>
     <div class="section-name">分析</div>

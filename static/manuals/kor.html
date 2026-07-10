@@ -59,7 +59,7 @@
   <h1>사용자 매뉴얼</h1>
   <div class="sub">이스타항공 물류/비품 관리 시스템 — 전 기능 안내서</div>
   <div class="meta">
-    대상: 전 지점 담당자 · 관리자 &nbsp;|&nbsp; 언어: 한국어 &nbsp;|&nbsp; 2026년 6월 기준
+    대상: 전 지점 담당자 · 관리자 &nbsp;|&nbsp; 언어: 한국어 &nbsp;|&nbsp; 2026년 7월 기준
   </div>
 </div>
 
@@ -72,13 +72,12 @@
     <li><a href="#s4">재고현황</a></li>
     <li><a href="#s5">입고 처리</a></li>
     <li><a href="#s6">출고 처리</a></li>
-    <li><a href="#s7">일괄 출고</a></li>
-    <li><a href="#s8">지점 간 이전</a></li>
-    <li><a href="#s9">거래 내역 &amp; 보고서</a></li>
-    <li><a href="#s10">카탈로그 (운송아이템) 신청</a></li>
-    <li><a href="#s11">양식 비품 신청</a></li>
-    <li><a href="#s12">관리자 기능</a></li>
-    <li><a href="#s13">알림 &amp; 메뉴 안내</a></li>
+    <li><a href="#s7">지점 간 이전</a></li>
+    <li><a href="#s8">거래 내역 &amp; 보고서</a></li>
+    <li><a href="#s9">카탈로그 (운송아이템) 신청</a></li>
+    <li><a href="#s10">양식 비품 신청</a></li>
+    <li><a href="#s11">관리자 기능</a></li>
+    <li><a href="#s12">알림 &amp; 메뉴 안내</a></li>
   </ol>
 </div>
 
@@ -209,12 +208,17 @@
 <!-- ⑤ 입고 처리 -->
 <div class="section" id="s5">
   <div class="section-title">5. 입고 처리</div>
-  <p>본사 또는 외부에서 양식을 수령했을 때 처리합니다.</p>
+  <p>본사 또는 외부에서 양식을 수령했을 때 처리합니다. 좌측 메뉴 <strong>입고</strong>를 클릭하면 <strong>개별 입고</strong> / <strong>일괄 입고</strong> 두 개의 탭이 표시됩니다.</p>
 
-  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>입고 처리</strong> 클릭</div></div>
-  <div class="step"><div class="step-num">2</div><div>지점 선택 (관리자만, 지점 계정은 자동 설정)</div></div>
-  <div class="step"><div class="step-num">3</div><div>양식 종류, 수량, 날짜, 비고 입력</div></div>
-  <div class="step"><div class="step-num">4</div><div><strong>입고 처리</strong> 버튼 클릭</div></div>
+  <div class="sub-title">개별 입고</div>
+  <div class="step"><div class="step-num">1</div><div>지점 선택 (관리자만, 지점 계정은 자동 설정), 양식 종류, 수량, 날짜, 비고 입력</div></div>
+  <div class="step"><div class="step-num">2</div><div><strong>입고 등록</strong> 버튼 클릭</div></div>
+
+  <div class="sub-title">일괄 입고</div>
+  <p>여러 양식을 체크박스로 선택해 한 번에 입고 처리합니다.</p>
+  <div class="step"><div class="step-num">1</div><div>관리자는 상단 지점 선택 드롭다운에서 조회할 지점 선택 (지점 계정은 본인 지점이 자동 표시됨)</div></div>
+  <div class="step"><div class="step-num">2</div><div>입고할 양식들의 체크박스를 선택하고, 각 항목의 <strong>입고 수량</strong>·비고 입력</div></div>
+  <div class="step"><div class="step-num">3</div><div>입고일자 선택 후 <strong>선택 항목 입고</strong> 버튼 클릭</div></div>
 
   <div class="info-box">ℹ 입고 후에도 해당 지점의 재고가 최소기준 이하인 경우 자동으로 알림이 생성됩니다.</div>
 </div>
@@ -224,13 +228,20 @@
 <!-- ⑥ 출고 처리 -->
 <div class="section" id="s6">
   <div class="section-title">6. 출고 처리</div>
-  <p>양식을 실제로 사용하거나 외부로 내보낼 때 처리합니다.</p>
+  <p>양식을 실제로 사용하거나 외부로 내보낼 때 처리합니다. 좌측 메뉴 <strong>출고</strong>를 클릭하면 <strong>개별 출고</strong> / <strong>일괄 출고</strong> 두 개의 탭이 표시됩니다.</p>
 
-  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>출고 처리</strong> 클릭</div></div>
-  <div class="step"><div class="step-num">2</div><div>지점, 양식 종류, 수량, 날짜, 비고 입력</div></div>
-  <div class="step"><div class="step-num">3</div><div><strong>출고 처리</strong> 버튼 클릭</div></div>
+  <div class="sub-title">개별 출고</div>
+  <div class="step"><div class="step-num">1</div><div>지점, 양식 종류, 수량, 날짜, 비고 입력</div></div>
+  <div class="step"><div class="step-num">2</div><div><strong>출고 등록</strong> 버튼 클릭</div></div>
 
   <div class="warn-box">⚠ 현재 재고보다 많은 수량은 출고할 수 없습니다. 출고 후 재고가 최소기준 이하로 떨어지면 자동 알림이 발송됩니다.</div>
+
+  <div class="sub-title">일괄 출고</div>
+  <p>여러 양식을 한 번에 출고할 때 사용합니다.</p>
+  <div class="step"><div class="step-num">1</div><div>관리자는 상단 지점 선택 드롭다운에서 조회할 지점 선택 (지점 계정은 본인 지점이 자동 표시됨)</div></div>
+  <div class="step"><div class="step-num">2</div><div>출고할 양식들의 체크박스를 선택하고, 각 항목의 <strong>출고 수량</strong>·비고 입력 (0이면 건너뜀)</div></div>
+  <div class="step"><div class="step-num">3</div><div>출고 기간(월) 선택 후 <strong>선택 항목 출고</strong> 버튼 클릭</div></div>
+  <div class="tip-box">💡 한 번의 작업으로 여러 양식을 동시에 출고 처리하여 시간을 절약할 수 있습니다.</div>
 
   <div class="sub-title">출고 취소</div>
   <p>잘못 처리된 출고 건을 취소하면 재고가 자동으로 복구됩니다.</p>
@@ -242,24 +253,9 @@
 
 <hr>
 
-<!-- ⑦ 일괄 출고 -->
+<!-- ⑦ 지점 간 이전 -->
 <div class="section" id="s7">
-  <div class="section-title">7. 일괄 출고</div>
-  <p>여러 양식을 한 번에 출고할 때 사용합니다.</p>
-
-  <div class="step"><div class="step-num">1</div><div>좌측 메뉴 <strong>일괄 출고</strong> 클릭</div></div>
-  <div class="step"><div class="step-num">2</div><div>지점 선택 후 해당 지점의 양식 목록이 표시됨</div></div>
-  <div class="step"><div class="step-num">3</div><div>각 양식의 출고 수량 입력 (0이면 건너뜀)</div></div>
-  <div class="step"><div class="step-num">4</div><div>날짜, 공통 비고 입력 후 <strong>일괄 출고</strong> 버튼 클릭</div></div>
-
-  <div class="tip-box">💡 한 번의 작업으로 여러 양식을 동시에 출고 처리하여 시간을 절약할 수 있습니다.</div>
-</div>
-
-<hr>
-
-<!-- ⑧ 지점 간 이전 -->
-<div class="section" id="s8">
-  <div class="section-title">8. 지점 간 이전</div>
+  <div class="section-title">7. 지점 간 이전</div>
   <p>재고가 부족한 지점에서 여유가 있는 지점에 이전을 요청할 때 사용합니다.</p>
 
   <div class="sub-title">이전 신청 (지점 계정)</div>
@@ -287,9 +283,9 @@
 
 <hr>
 
-<!-- ⑨ 거래 내역 & 보고서 -->
-<div class="section" id="s9">
-  <div class="section-title">9. 거래 내역 &amp; 보고서</div>
+<!-- ⑧ 거래 내역 & 보고서 -->
+<div class="section" id="s8">
+  <div class="section-title">8. 거래 내역 &amp; 보고서</div>
 
   <div class="sub-title">거래 내역</div>
   <p>모든 입고·출고·이전 내역을 조회합니다. 지점, 양식, 거래 유형, 기간으로 필터링 가능합니다.</p>
@@ -312,9 +308,9 @@
 
 <hr>
 
-<!-- ⑩ 카탈로그 신청 -->
-<div class="section" id="s10">
-  <div class="section-title">10. 카탈로그 (운송아이템) 신청</div>
+<!-- ⑨ 카탈로그 신청 -->
+<div class="section" id="s9">
+  <div class="section-title">9. 카탈로그 (운송아이템) 신청</div>
   <p>X-배너, 스탠션, 안내 도구 등 운송 비품을 온라인으로 신청합니다.</p>
 
   <div class="sub-title">신청 방법</div>
@@ -344,9 +340,9 @@
 
 <hr>
 
-<!-- ⑪ 양식 비품 신청 -->
-<div class="section" id="s11">
-  <div class="section-title">11. 양식 비품 신청</div>
+<!-- ⑩ 양식 비품 신청 -->
+<div class="section" id="s10">
+  <div class="section-title">10. 양식 비품 신청</div>
   <p>지점에서 운송양식 소모품을 본사에 신청할 때 사용합니다.</p>
 
   <div class="sub-title">신청 방법</div>
@@ -360,9 +356,9 @@
 
 <hr>
 
-<!-- ⑫ 관리자 기능 -->
-<div class="section" id="s12">
-  <div class="section-title">12. 관리자 기능 <span class="badge badge-admin">관리자 전용</span></div>
+<!-- ⑪ 관리자 기능 -->
+<div class="section" id="s11">
+  <div class="section-title">11. 관리자 기능 <span class="badge badge-admin">관리자 전용</span></div>
 
   <div class="sub-title">사용자 관리</div>
   <ul>
@@ -395,9 +391,9 @@
 
 <hr>
 
-<!-- ⑬ 알림 & 메뉴 안내 -->
-<div class="section" id="s13">
-  <div class="section-title">13. 알림 &amp; 메뉴 안내</div>
+<!-- ⑫ 알림 & 메뉴 안내 -->
+<div class="section" id="s12">
+  <div class="section-title">12. 알림 &amp; 메뉴 안내</div>
 
   <div class="sub-title">알림 배지</div>
   <table>
@@ -416,9 +412,8 @@
     <div class="item">📊 대시보드</div>
     <div class="item">📦 재고현황</div>
     <div class="section-name">처리</div>
-    <div class="item">📥 입고 처리</div>
-    <div class="item">📤 출고 처리</div>
-    <div class="item">📋 일괄 출고</div>
+    <div class="item">📥 입고</div>
+    <div class="item">📤 출고</div>
     <div class="item">🚚 지점 간 이전</div>
     <div class="item">🕐 나의 이전 신청 (지점 계정)</div>
     <div class="section-name">분석</div>

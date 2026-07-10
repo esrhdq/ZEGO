@@ -58,7 +58,7 @@
   <h1>User Manual</h1>
   <div class="sub">Eastar Jet Logistics &amp; Supply Management System — Complete Feature Guide</div>
   <div class="meta">
-    For: All Branch Staff &amp; Administrators &nbsp;|&nbsp; Language: English &nbsp;|&nbsp; As of June 2026
+    For: All Branch Staff &amp; Administrators &nbsp;|&nbsp; Language: English &nbsp;|&nbsp; As of July 2026
   </div>
 </div>
 
@@ -71,13 +71,12 @@
     <li><a href="#s4">Inventory Status</a></li>
     <li><a href="#s5">Inbound Processing</a></li>
     <li><a href="#s6">Outbound Processing</a></li>
-    <li><a href="#s7">Bulk Outbound</a></li>
-    <li><a href="#s8">Branch-to-Branch Transfer</a></li>
-    <li><a href="#s9">Transaction History &amp; Reports</a></li>
-    <li><a href="#s10">Catalog (Transport Items) Request</a></li>
-    <li><a href="#s11">Form Supply Request</a></li>
-    <li><a href="#s12">Admin Functions</a></li>
-    <li><a href="#s13">Notifications &amp; Menu Guide</a></li>
+    <li><a href="#s7">Branch-to-Branch Transfer</a></li>
+    <li><a href="#s8">Transaction History &amp; Reports</a></li>
+    <li><a href="#s9">Catalog (Transport Items) Request</a></li>
+    <li><a href="#s10">Form Supply Request</a></li>
+    <li><a href="#s11">Admin Functions</a></li>
+    <li><a href="#s12">Notifications &amp; Menu Guide</a></li>
   </ol>
 </div>
 
@@ -203,12 +202,17 @@
 
 <div class="section" id="s5">
   <div class="section-title">5. Inbound Processing</div>
-  <p>Use this when you receive forms from HQ or an external source.</p>
+  <p>Use this when you receive forms from HQ or an external source. Click <strong>Inbound</strong> in the left menu to see two tabs: <strong>Individual Inbound</strong> and <strong>Bulk Inbound</strong>.</p>
 
-  <div class="step"><div class="step-num">1</div><div>Click <strong>Inbound</strong> in the left menu</div></div>
-  <div class="step"><div class="step-num">2</div><div>Select branch (admin only; branch accounts are set automatically)</div></div>
-  <div class="step"><div class="step-num">3</div><div>Enter form type, quantity, date, and notes</div></div>
-  <div class="step"><div class="step-num">4</div><div>Click the <strong>Process Inbound</strong> button</div></div>
+  <div class="sub-title">Individual Inbound</div>
+  <div class="step"><div class="step-num">1</div><div>Select branch (admin only; branch accounts are set automatically), and enter form type, quantity, date, and notes</div></div>
+  <div class="step"><div class="step-num">2</div><div>Click the <strong>Register Inbound</strong> button</div></div>
+
+  <div class="sub-title">Bulk Inbound</div>
+  <p>Check multiple forms and register inbound for them all at once.</p>
+  <div class="step"><div class="step-num">1</div><div>Admins select the branch to view from the branch dropdown at the top (branch accounts show their own branch automatically)</div></div>
+  <div class="step"><div class="step-num">2</div><div>Check the forms to receive and enter the <strong>inbound quantity</strong> and notes for each item</div></div>
+  <div class="step"><div class="step-num">3</div><div>Select the inbound date, then click <strong>Process Selected</strong></div></div>
 
   <div class="info-box">ℹ If stock remains below the minimum threshold after inbound, an alert is automatically generated.</div>
 </div>
@@ -217,13 +221,20 @@
 
 <div class="section" id="s6">
   <div class="section-title">6. Outbound Processing</div>
-  <p>Use this when forms are consumed or sent out.</p>
+  <p>Use this when forms are consumed or sent out. Click <strong>Outbound</strong> in the left menu to see two tabs: <strong>Individual Outbound</strong> and <strong>Bulk Outbound</strong>.</p>
 
-  <div class="step"><div class="step-num">1</div><div>Click <strong>Outbound</strong> in the left menu</div></div>
-  <div class="step"><div class="step-num">2</div><div>Enter branch, form type, quantity, date, and notes</div></div>
-  <div class="step"><div class="step-num">3</div><div>Click the <strong>Process Outbound</strong> button</div></div>
+  <div class="sub-title">Individual Outbound</div>
+  <div class="step"><div class="step-num">1</div><div>Enter branch, form type, quantity, date, and notes</div></div>
+  <div class="step"><div class="step-num">2</div><div>Click the <strong>Register Outbound</strong> button</div></div>
 
   <div class="warn-box">⚠ You cannot process an outbound for more than the current stock quantity. An alert is sent automatically if stock falls to or below the minimum threshold after outbound.</div>
+
+  <div class="sub-title">Bulk Outbound</div>
+  <p>Process multiple forms at once in a single operation.</p>
+  <div class="step"><div class="step-num">1</div><div>Admins select the branch to view from the branch dropdown at the top (branch accounts show their own branch automatically)</div></div>
+  <div class="step"><div class="step-num">2</div><div>Check the forms to ship and enter the <strong>outbound quantity</strong> and notes for each item (leave 0 to skip)</div></div>
+  <div class="step"><div class="step-num">3</div><div>Select the outbound period (month), then click <strong>Process Selected</strong></div></div>
+  <div class="tip-box">💡 Save time by processing multiple forms simultaneously in a single submission.</div>
 
   <div class="sub-title">Cancelling an Outbound</div>
   <p>If an outbound was processed by mistake, you can cancel it to automatically restore the inventory.</p>
@@ -236,21 +247,7 @@
 <hr>
 
 <div class="section" id="s7">
-  <div class="section-title">7. Bulk Outbound</div>
-  <p>Process multiple forms at once in a single operation.</p>
-
-  <div class="step"><div class="step-num">1</div><div>Click <strong>Bulk Outbound</strong> in the left menu</div></div>
-  <div class="step"><div class="step-num">2</div><div>Select branch — the form list for that branch appears</div></div>
-  <div class="step"><div class="step-num">3</div><div>Enter outbound quantity for each form (leave 0 to skip)</div></div>
-  <div class="step"><div class="step-num">4</div><div>Enter date and shared notes, then click <strong>Bulk Outbound</strong></div></div>
-
-  <div class="tip-box">💡 Save time by processing multiple forms simultaneously in a single submission.</div>
-</div>
-
-<hr>
-
-<div class="section" id="s8">
-  <div class="section-title">8. Branch-to-Branch Transfer</div>
+  <div class="section-title">7. Branch-to-Branch Transfer</div>
   <p>Used when a branch with insufficient stock requests forms from a branch that has surplus.</p>
 
   <div class="sub-title">Requesting a Transfer (Branch Account)</div>
@@ -278,8 +275,8 @@
 
 <hr>
 
-<div class="section" id="s9">
-  <div class="section-title">9. Transaction History &amp; Reports</div>
+<div class="section" id="s8">
+  <div class="section-title">8. Transaction History &amp; Reports</div>
 
   <div class="sub-title">Transaction History</div>
   <p>View all inbound, outbound, and transfer records. Filter by branch, form type, transaction type, and date range.</p>
@@ -302,8 +299,8 @@
 
 <hr>
 
-<div class="section" id="s10">
-  <div class="section-title">10. Catalog (Transport Items) Request</div>
+<div class="section" id="s9">
+  <div class="section-title">9. Catalog (Transport Items) Request</div>
   <p>Request transport supplies such as X-banners, stanchions, and guidance tools online.</p>
 
   <div class="sub-title">How to Request</div>
@@ -333,8 +330,8 @@
 
 <hr>
 
-<div class="section" id="s11">
-  <div class="section-title">11. Form Supply Request</div>
+<div class="section" id="s10">
+  <div class="section-title">10. Form Supply Request</div>
   <p>Branches use this to request consumable transport forms from HQ.</p>
 
   <div class="sub-title">How to Request</div>
@@ -348,8 +345,8 @@
 
 <hr>
 
-<div class="section" id="s12">
-  <div class="section-title">12. Admin Functions <span class="badge badge-admin">Admin Only</span></div>
+<div class="section" id="s11">
+  <div class="section-title">11. Admin Functions <span class="badge badge-admin">Admin Only</span></div>
 
   <div class="sub-title">User Management</div>
   <ul>
@@ -382,8 +379,8 @@
 
 <hr>
 
-<div class="section" id="s13">
-  <div class="section-title">13. Notifications &amp; Menu Guide</div>
+<div class="section" id="s12">
+  <div class="section-title">12. Notifications &amp; Menu Guide</div>
 
   <div class="sub-title">Notification Badges</div>
   <table>
@@ -404,7 +401,6 @@
     <div class="section-name">Processing</div>
     <div class="item">📥 Inbound</div>
     <div class="item">📤 Outbound</div>
-    <div class="item">📋 Bulk Outbound</div>
     <div class="item">🚚 Branch Transfer</div>
     <div class="item">🕐 My Transfer Requests (branch accounts)</div>
     <div class="section-name">Analysis</div>

@@ -55,7 +55,7 @@
   </div>
   <h1>用戶手冊</h1>
   <div class="sub">易斯達航空 物流·備品管理系統 — 全功能指南</div>
-  <div class="meta">適用對象：全部據點工作人員·管理員 &nbsp;|&nbsp; 語言：中文（繁體）&nbsp;|&nbsp; 2026年6月版</div>
+  <div class="meta">適用對象：全部據點工作人員·管理員 &nbsp;|&nbsp; 語言：中文（繁體）&nbsp;|&nbsp; 2026年7月版</div>
 </div>
 
 <div class="toc">
@@ -67,13 +67,12 @@
     <li><a href="#s4">庫存狀況</a></li>
     <li><a href="#s5">入庫處理</a></li>
     <li><a href="#s6">出庫處理</a></li>
-    <li><a href="#s7">批量出庫</a></li>
-    <li><a href="#s8">據點間調撥</a></li>
-    <li><a href="#s9">交易紀錄與報表</a></li>
-    <li><a href="#s10">目錄（運輸物品）申請</a></li>
-    <li><a href="#s11">表單耗材申請</a></li>
-    <li><a href="#s12">管理員功能</a></li>
-    <li><a href="#s13">通知與選單說明</a></li>
+    <li><a href="#s7">據點間調撥</a></li>
+    <li><a href="#s8">交易紀錄與報表</a></li>
+    <li><a href="#s9">目錄（運輸物品）申請</a></li>
+    <li><a href="#s10">表單耗材申請</a></li>
+    <li><a href="#s11">管理員功能</a></li>
+    <li><a href="#s12">通知與選單說明</a></li>
   </ol>
 </div>
 
@@ -175,9 +174,17 @@
 
 <div class="section" id="s5">
   <div class="section-title">5. 入庫處理</div>
-  <div class="step"><div class="step-num">1</div><div>點擊左側選單<strong>入庫處理</strong></div></div>
-  <div class="step"><div class="step-num">2</div><div>選擇據點，輸入表單種類、數量、日期、備註</div></div>
-  <div class="step"><div class="step-num">3</div><div>點擊<strong>入庫處理</strong>按鈕</div></div>
+  <p>在從總部或外部收到表單時進行處理。點擊左側選單<strong>入庫</strong>後會顯示<strong>單項入庫</strong>、<strong>批量入庫</strong>兩個標籤頁。</p>
+
+  <div class="sub-title">單項入庫</div>
+  <div class="step"><div class="step-num">1</div><div>輸入據點（僅管理員可選擇，據點帳戶自動設定）、表單種類、數量、日期、備註</div></div>
+  <div class="step"><div class="step-num">2</div><div>點擊<strong>入庫登記</strong>按鈕</div></div>
+
+  <div class="sub-title">批量入庫</div>
+  <p>勾選多個表單，一次性完成入庫處理。</p>
+  <div class="step"><div class="step-num">1</div><div>管理員可在上方據點選擇下拉選單中選擇要查看的據點（據點帳戶自動顯示本據點）</div></div>
+  <div class="step"><div class="step-num">2</div><div>勾選要入庫的表單，輸入各項目的<strong>入庫數量</strong>·備註</div></div>
+  <div class="step"><div class="step-num">3</div><div>選擇入庫日期後點擊<strong>處理選中項</strong></div></div>
   <div class="info-box">ℹ 入庫後若仍低於最低標準，系統將自動產生警報通知。</div>
 </div>
 
@@ -185,10 +192,19 @@
 
 <div class="section" id="s6">
   <div class="section-title">6. 出庫處理</div>
-  <div class="step"><div class="step-num">1</div><div>點擊左側選單<strong>出庫處理</strong></div></div>
-  <div class="step"><div class="step-num">2</div><div>輸入據點、表單種類、數量、日期、備註</div></div>
-  <div class="step"><div class="step-num">3</div><div>點擊<strong>出庫處理</strong>按鈕</div></div>
+  <p>在實際使用表單或送往外部時進行處理。點擊左側選單<strong>出庫</strong>後會顯示<strong>單項出庫</strong>、<strong>批量出庫</strong>兩個標籤頁。</p>
+
+  <div class="sub-title">單項出庫</div>
+  <div class="step"><div class="step-num">1</div><div>輸入據點、表單種類、數量、日期、備註</div></div>
+  <div class="step"><div class="step-num">2</div><div>點擊<strong>出庫登記</strong>按鈕</div></div>
   <div class="warn-box">⚠ 出庫數量不能超過當前庫存。出庫後若庫存降至最低標準以下，將自動發送通知。</div>
+
+  <div class="sub-title">批量出庫</div>
+  <p>勾選多個表單，一次性完成出庫處理。</p>
+  <div class="step"><div class="step-num">1</div><div>管理員可在上方據點選擇下拉選單中選擇要查看的據點（據點帳戶自動顯示本據點）</div></div>
+  <div class="step"><div class="step-num">2</div><div>勾選要出庫的表單，輸入各項目的<strong>出庫數量</strong>·備註（0則略過）</div></div>
+  <div class="step"><div class="step-num">3</div><div>選擇出庫期間（月）後點擊<strong>處理選中項</strong></div></div>
+  <div class="tip-box">💡 一次操作即可同時處理多個表單的出庫，節省時間。</div>
 
   <div class="sub-title">出庫取消</div>
   <p>如果出庫處理有誤，可以取消，庫存將自動恢復。</p>
@@ -201,18 +217,7 @@
 <hr>
 
 <div class="section" id="s7">
-  <div class="section-title">7. 批量出庫</div>
-  <div class="step"><div class="step-num">1</div><div>點擊左側選單<strong>批量出庫</strong></div></div>
-  <div class="step"><div class="step-num">2</div><div>選擇據點後，顯示該據點的表單列表</div></div>
-  <div class="step"><div class="step-num">3</div><div>輸入各表單的出庫數量（0則略過）</div></div>
-  <div class="step"><div class="step-num">4</div><div>輸入日期和共同備註，點擊<strong>批量出庫</strong></div></div>
-  <div class="tip-box">💡 一次操作即可同時處理多個表單的出庫，節省時間。</div>
-</div>
-
-<hr>
-
-<div class="section" id="s8">
-  <div class="section-title">8. 據點間調撥</div>
+  <div class="section-title">7. 據點間調撥</div>
   <p>當本據點庫存不足時，向有餘量的據點發起調撥請求時使用。</p>
 
   <div class="sub-title">申請調撥（據點帳戶）</div>
@@ -234,8 +239,8 @@
 
 <hr>
 
-<div class="section" id="s9">
-  <div class="section-title">9. 交易紀錄與報表</div>
+<div class="section" id="s8">
+  <div class="section-title">8. 交易紀錄與報表</div>
 
   <div class="sub-title">交易紀錄</div>
   <p>查詢所有入庫、出庫、調撥紀錄。可按據點、表單、交易類型、日期範圍篩選。</p>
@@ -257,8 +262,8 @@
 
 <hr>
 
-<div class="section" id="s10">
-  <div class="section-title">10. 目錄（運輸物品）申請</div>
+<div class="section" id="s9">
+  <div class="section-title">9. 目錄（運輸物品）申請</div>
   <div class="step"><div class="step-num">1</div><div>點擊左側選單<strong>目錄</strong></div></div>
   <div class="step"><div class="step-num">2</div><div>輸入各物品數量後點擊<strong>加入購物車</strong></div></div>
   <div class="step"><div class="step-num">3</div><div>在<strong>申請購物車</strong>中確認後點擊<strong>完成申請</strong></div></div>
@@ -275,8 +280,8 @@
 
 <hr>
 
-<div class="section" id="s11">
-  <div class="section-title">11. 表單耗材申請</div>
+<div class="section" id="s10">
+  <div class="section-title">10. 表單耗材申請</div>
   <div class="step"><div class="step-num">1</div><div>點擊左側選單<strong>表單申請</strong></div></div>
   <div class="step"><div class="step-num">2</div><div>選擇表單種類，輸入申請數量和備註</div></div>
   <div class="step"><div class="step-num">3</div><div>點擊<strong>申請</strong>按鈕</div></div>
@@ -286,8 +291,8 @@
 
 <hr>
 
-<div class="section" id="s12">
-  <div class="section-title">12. 管理員功能 <span class="badge badge-admin">僅管理員</span></div>
+<div class="section" id="s11">
+  <div class="section-title">11. 管理員功能 <span class="badge badge-admin">僅管理員</span></div>
 
   <div class="sub-title">用戶管理</div>
   <ul>
@@ -315,8 +320,8 @@
 
 <hr>
 
-<div class="section" id="s13">
-  <div class="section-title">13. 通知與選單說明</div>
+<div class="section" id="s12">
+  <div class="section-title">12. 通知與選單說明</div>
 
   <div class="sub-title">通知徽章</div>
   <table>
@@ -334,9 +339,8 @@
     <div class="item">📊 儀表板</div>
     <div class="item">📦 庫存狀況</div>
     <div class="section-name">處理</div>
-    <div class="item">📥 入庫處理</div>
-    <div class="item">📤 出庫處理</div>
-    <div class="item">📋 批量出庫</div>
+    <div class="item">📥 入庫</div>
+    <div class="item">📤 出庫</div>
     <div class="item">🚚 據點間調撥</div>
     <div class="item">🕐 我的調撥申請</div>
     <div class="section-name">分析</div>

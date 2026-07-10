@@ -55,7 +55,7 @@
   </div>
   <h1>用户手册</h1>
   <div class="sub">易斯达航空 物流·备品管理系统 — 全功能指南</div>
-  <div class="meta">适用对象：全部网点工作人员·管理员 &nbsp;|&nbsp; 语言：中文（简体）&nbsp;|&nbsp; 2026年6月版</div>
+  <div class="meta">适用对象：全部网点工作人员·管理员 &nbsp;|&nbsp; 语言：中文（简体）&nbsp;|&nbsp; 2026年7月版</div>
 </div>
 
 <div class="toc">
@@ -67,13 +67,12 @@
     <li><a href="#s4">库存状况</a></li>
     <li><a href="#s5">入库处理</a></li>
     <li><a href="#s6">出库处理</a></li>
-    <li><a href="#s7">批量出库</a></li>
-    <li><a href="#s8">网点间调拨</a></li>
-    <li><a href="#s9">交易记录与报表</a></li>
-    <li><a href="#s10">目录（运输物品）申请</a></li>
-    <li><a href="#s11">表单耗材申请</a></li>
-    <li><a href="#s12">管理员功能</a></li>
-    <li><a href="#s13">通知与菜单说明</a></li>
+    <li><a href="#s7">网点间调拨</a></li>
+    <li><a href="#s8">交易记录与报表</a></li>
+    <li><a href="#s9">目录（运输物品）申请</a></li>
+    <li><a href="#s10">表单耗材申请</a></li>
+    <li><a href="#s11">管理员功能</a></li>
+    <li><a href="#s12">通知与菜单说明</a></li>
   </ol>
 </div>
 
@@ -175,9 +174,17 @@
 
 <div class="section" id="s5">
   <div class="section-title">5. 入库处理</div>
-  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>入库处理</strong></div></div>
-  <div class="step"><div class="step-num">2</div><div>选择网点，输入表单种类、数量、日期、备注</div></div>
-  <div class="step"><div class="step-num">3</div><div>点击<strong>入库处理</strong>按钮</div></div>
+  <p>在从总部或外部收到表单时进行处理。点击左侧菜单<strong>入库</strong>后会显示<strong>单项入库</strong>、<strong>批量入库</strong>两个标签页。</p>
+
+  <div class="sub-title">单项入库</div>
+  <div class="step"><div class="step-num">1</div><div>输入网点（仅管理员可选择，网点账户自动设定）、表单种类、数量、日期、备注</div></div>
+  <div class="step"><div class="step-num">2</div><div>点击<strong>入库登记</strong>按钮</div></div>
+
+  <div class="sub-title">批量入库</div>
+  <p>勾选多个表单，一次性完成入库处理。</p>
+  <div class="step"><div class="step-num">1</div><div>管理员可在上方网点选择下拉菜单中选择要查看的网点（网点账户自动显示本网点）</div></div>
+  <div class="step"><div class="step-num">2</div><div>勾选要入库的表单，输入各项目的<strong>入库数量</strong>·备注</div></div>
+  <div class="step"><div class="step-num">3</div><div>选择入库日期后点击<strong>处理选中项</strong></div></div>
   <div class="info-box">ℹ 入库后若仍低于最低标准，系统将自动生成警报通知。</div>
 </div>
 
@@ -185,10 +192,19 @@
 
 <div class="section" id="s6">
   <div class="section-title">6. 出库处理</div>
-  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>出库处理</strong></div></div>
-  <div class="step"><div class="step-num">2</div><div>输入网点、表单种类、数量、日期、备注</div></div>
-  <div class="step"><div class="step-num">3</div><div>点击<strong>出库处理</strong>按钮</div></div>
+  <p>在实际使用表单或送往外部时进行处理。点击左侧菜单<strong>出库</strong>后会显示<strong>单项出库</strong>、<strong>批量出库</strong>两个标签页。</p>
+
+  <div class="sub-title">单项出库</div>
+  <div class="step"><div class="step-num">1</div><div>输入网点、表单种类、数量、日期、备注</div></div>
+  <div class="step"><div class="step-num">2</div><div>点击<strong>出库登记</strong>按钮</div></div>
   <div class="warn-box">⚠ 出库数量不能超过当前库存。出库后若库存降至最低标准以下，将自动发送通知。</div>
+
+  <div class="sub-title">批量出库</div>
+  <p>勾选多个表单，一次性完成出库处理。</p>
+  <div class="step"><div class="step-num">1</div><div>管理员可在上方网点选择下拉菜单中选择要查看的网点（网点账户自动显示本网点）</div></div>
+  <div class="step"><div class="step-num">2</div><div>勾选要出库的表单，输入各项目的<strong>出库数量</strong>·备注（0则跳过）</div></div>
+  <div class="step"><div class="step-num">3</div><div>选择出库期间（月）后点击<strong>处理选中项</strong></div></div>
+  <div class="tip-box">💡 一次操作即可同时处理多个表单的出库，节省时间。</div>
 
   <div class="sub-title">出库取消</div>
   <p>如果出库处理有误，可以取消，库存将自动恢复。</p>
@@ -201,18 +217,7 @@
 <hr>
 
 <div class="section" id="s7">
-  <div class="section-title">7. 批量出库</div>
-  <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>批量出库</strong></div></div>
-  <div class="step"><div class="step-num">2</div><div>选择网点后，显示该网点的表单列表</div></div>
-  <div class="step"><div class="step-num">3</div><div>输入各表单的出库数量（0则跳过）</div></div>
-  <div class="step"><div class="step-num">4</div><div>输入日期和公共备注，点击<strong>批量出库</strong></div></div>
-  <div class="tip-box">💡 一次操作即可同时处理多个表单的出库，节省时间。</div>
-</div>
-
-<hr>
-
-<div class="section" id="s8">
-  <div class="section-title">8. 网点间调拨</div>
+  <div class="section-title">7. 网点间调拨</div>
   <p>当本网点库存不足时，向有余量的网点发起调拨请求时使用。</p>
 
   <div class="sub-title">申请调拨（网点账户）</div>
@@ -234,8 +239,8 @@
 
 <hr>
 
-<div class="section" id="s9">
-  <div class="section-title">9. 交易记录与报表</div>
+<div class="section" id="s8">
+  <div class="section-title">8. 交易记录与报表</div>
 
   <div class="sub-title">交易记录</div>
   <p>查询所有入库、出库、调拨记录。可按网点、表单、交易类型、日期范围筛选。</p>
@@ -257,8 +262,8 @@
 
 <hr>
 
-<div class="section" id="s10">
-  <div class="section-title">10. 目录（运输物品）申请</div>
+<div class="section" id="s9">
+  <div class="section-title">9. 目录（运输物品）申请</div>
   <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>目录</strong></div></div>
   <div class="step"><div class="step-num">2</div><div>输入各物品数量后点击<strong>加入购物车</strong></div></div>
   <div class="step"><div class="step-num">3</div><div>在<strong>申请购物车</strong>中确认后点击<strong>完成申请</strong></div></div>
@@ -275,8 +280,8 @@
 
 <hr>
 
-<div class="section" id="s11">
-  <div class="section-title">11. 表单耗材申请</div>
+<div class="section" id="s10">
+  <div class="section-title">10. 表单耗材申请</div>
   <div class="step"><div class="step-num">1</div><div>点击左侧菜单<strong>表单申请</strong></div></div>
   <div class="step"><div class="step-num">2</div><div>选择表单种类，输入申请数量和备注</div></div>
   <div class="step"><div class="step-num">3</div><div>点击<strong>申请</strong>按钮</div></div>
@@ -286,8 +291,8 @@
 
 <hr>
 
-<div class="section" id="s12">
-  <div class="section-title">12. 管理员功能 <span class="badge badge-admin">仅管理员</span></div>
+<div class="section" id="s11">
+  <div class="section-title">11. 管理员功能 <span class="badge badge-admin">仅管理员</span></div>
 
   <div class="sub-title">用户管理</div>
   <ul>
@@ -315,8 +320,8 @@
 
 <hr>
 
-<div class="section" id="s13">
-  <div class="section-title">13. 通知与菜单说明</div>
+<div class="section" id="s12">
+  <div class="section-title">12. 通知与菜单说明</div>
 
   <div class="sub-title">通知徽章</div>
   <table>
@@ -334,9 +339,8 @@
     <div class="item">📊 仪表盘</div>
     <div class="item">📦 库存状况</div>
     <div class="section-name">处理</div>
-    <div class="item">📥 入库处理</div>
-    <div class="item">📤 出库处理</div>
-    <div class="item">📋 批量出库</div>
+    <div class="item">📥 入库</div>
+    <div class="item">📤 出库</div>
     <div class="item">🚚 网点间调拨</div>
     <div class="item">🕐 我的调拨申请</div>
     <div class="section-name">分析</div>
