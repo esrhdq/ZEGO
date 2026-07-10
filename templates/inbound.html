@@ -4,75 +4,24 @@
 {% block page_title %}{{ T('inb.title') }}{% endblock %}
 
 {% block content %}
-<!-- 엑셀 업로드 섹션 -->
-<div class="card mb-4" style="border-left:4px solid #16a34a">
-  <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
-    <i class="fa-solid fa-file-arrow-up text-success fs-5"></i>
-    <strong>{{ T('inb.bulk_upload') }}</strong>
-    <span class="badge bg-success ms-1">{{ T('common.recommended') }}</span>
-    <button class="btn btn-sm btn-outline-secondary ms-auto" type="button"
-            data-bs-toggle="collapse" data-bs-target="#uploadSection">
-      <i class="fa-solid fa-chevron-down"></i> {{ T('inb.expand_btn') }}
+<!-- 탭 네비게이션 -->
+<ul class="nav nav-tabs mb-3" id="inboundTabs">
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='individual' %}active{% endif %}"
+            data-tab="individual" type="button">
+      <i class="fa-solid fa-truck-ramp-box me-1"></i>{{ T('inb.tab_individual') }}
     </button>
-  </div>
-  <div class="collapse" id="uploadSection">
-    <div class="card-body">
-      <div class="row g-4 align-items-start">
+  </li>
+  <li class="nav-item">
+    <button class="nav-link {% if active_tab=='bulk' %}active{% endif %}"
+            data-tab="bulk" type="button">
+      <i class="fa-solid fa-layer-group me-1"></i>{{ T('inb.tab_bulk') }}
+    </button>
+  </li>
+</ul>
 
-        <!-- 안내 + 템플릿 다운로드 -->
-        <div class="col-md-5">
-          <h6 class="fw-semibold mb-3"><i class="fa-solid fa-circle-info text-primary me-1"></i>{{ T('inb.usage') }}</h6>
-          <ol class="small text-muted ps-3 mb-3" style="line-height:2">
-            <li>{{ T('inb.step1_instruction') }}</li>
-            <li>
-              {% if session.role == 'admin' %}
-                {{ T('inb.step2_admin_instruction') }}
-              {% else %}
-                {{ T('inb.step2_user_instruction') }}<br>
-                <span class="text-primary">{{ T('inb.branch_auto_applied') }}</span>
-              {% endif %}
-            </li>
-            <li>{{ T('inb.step3_instruction') }}</li>
-          </ol>
-          <a href="{{ url_for('inbound_template') }}" class="btn btn-outline-success w-100">
-            <i class="fa-solid fa-file-excel me-2"></i>{{ T('inb.template_dl') }}
-          </a>
-          <div class="text-muted small mt-2 text-center">
-            <i class="fa-solid fa-circle-info me-1"></i>
-            {{ T('inb.note') }}
-          </div>
-        </div>
-
-        <!-- 파일 업로드 -->
-        <div class="col-md-7">
-          <h6 class="fw-semibold mb-3"><i class="fa-solid fa-upload text-primary me-1"></i>{{ T('inb.file_upload') }}</h6>
-          <form method="post" action="{{ url_for('inbound_upload') }}" enctype="multipart/form-data" id="uploadForm">
-            <div id="dropZone"
-                 class="border rounded p-4 text-center mb-3"
-                 style="border-style:dashed!important;border-color:#94a3b8;background:#f8fafc;cursor:pointer;transition:.2s"
-                 onclick="document.getElementById('fileInput').click()"
-                 ondragover="event.preventDefault();this.style.background='#eff6ff'"
-                 ondragleave="this.style.background='#f8fafc'"
-                 ondrop="handleDrop(event)">
-              <i class="fa-solid fa-cloud-arrow-up fs-2 text-muted"></i>
-              <div class="mt-2 small text-muted">{{ T('inb.drag_drop') }}</div>
-              <div id="fileName" class="mt-1 small text-primary fw-semibold"></div>
-              <input type="file" id="fileInput" name="file"
-                     accept=".xlsx,.xls" class="d-none"
-                     onchange="showFileName(this)">
-            </div>
-            <button type="submit" id="uploadBtn" class="btn btn-success w-100" disabled>
-              <i class="fa-solid fa-cloud-arrow-up me-2"></i>{{ T('inb.upload_btn') }}
-            </button>
-          </form>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 수기 입고 -->
+<!-- ── 탭 1: 개별 입고 ───────────────────────────────────────────── -->
+<div id="tab-individual" class="tab-pane {% if active_tab=='individual' %}d-block{% else %}d-none{% endif %}">
 <div class="row justify-content-center">
   <div class="col-lg-7">
     <div class="card">
@@ -169,11 +118,105 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- ── 탭 2: 일괄 입고 ───────────────────────────────────────────── -->
+<div id="tab-bulk" class="tab-pane {% if active_tab=='bulk' %}d-block{% else %}d-none{% endif %}">
+<div class="card mb-3">
+  <div class="card-header bg-white border-bottom py-3">
+    <strong>{{ T('bulkin.section_items') }}</strong>
+    <span class="text-muted small ms-2">{{ T('bulkin.hint') }}</span>
+  </div>
+  <div class="card-body">
+    {% if session.role == 'admin' %}
+    <div class="row g-2 mb-3">
+      <div class="col-sm-4">
+        <label class="form-label small fw-semibold mb-1">{{ T('bulkin.filter_branch') }}</label>
+        <select id="branchFilter" class="form-select form-select-sm" onchange="loadInventory()">
+          <option value="">{{ T('bulkin.filter_branch') }}</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if selected_branch_id|string == b.id|string %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="table-scroll">
+      <table class="table table-hover" id="inventoryTable">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
+            {% if session.role == 'admin' %}<th>{{ T('bulkin.col_branch') }}</th>{% endif %}
+            <th>{{ T('bulkin.col_form') }}</th>
+            <th class="text-center">{{ T('bulkin.col_stock') }}</th>
+            <th class="text-center">{{ T('bulkin.col_min') }}</th>
+            <th class="text-center" style="width:130px">{{ T('bulkin.col_qty') }}</th>
+            <th>{{ T('bulkin.col_notes') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in inventory_rows %}
+          <tr data-branch="{{ row.branch_id }}" data-form="{{ row.form_type_id }}"
+              data-stock="{{ row.quantity }}" data-unit="{{ row.unit | unit_i18n }}">
+            <td><input type="checkbox" class="row-check"></td>
+            {% if session.role == 'admin' %}
+            <td><span class="badge bg-secondary">{{ row.branch_code }}</span> {{ row.branch_name }}</td>
+            {% endif %}
+            <td class="small fw-semibold">{{ row.form_name }}</td>
+            <td class="text-center">
+              {% if row.quantity == 0 %}
+                <span class="badge badge-status-empty">{{ T('common.exhausted') }}</span>
+              {% elif row.quantity <= row.min_threshold %}
+                <span class="badge badge-status-low">{{ row.quantity }}</span>
+              {% else %}
+                <span class="badge badge-status-safe">{{ row.quantity }}</span>
+              {% endif %}
+            </td>
+            <td class="text-center text-muted small">{{ row.min_threshold }}</td>
+            <td>
+              <input type="number" class="form-control form-control-sm qty-input text-center"
+                     min="1" value=""
+                     style="width:90px">
+            </td>
+            <td><input type="text" class="form-control form-control-sm note-input" placeholder="{{ T('bulkin.col_notes') }}" style="min-width:120px"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if not inventory_rows %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="fa-solid fa-layer-group"></i></div>
+      <h6>{{ T('bulkin.no_stock') }}</h6>
+      <p>{{ T('bulkin.no_stock_desc') }}</p>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-footer bg-white d-flex align-items-center gap-2">
+    <div class="me-auto">
+      <span id="selectedCount" class="text-muted small">{{ T('bulkin.selected_prefix') }}0{{ T('bulkin.selected_suffix') }}</span>
+    </div>
+    <input type="date" id="bulkInDate" class="form-control form-control-sm"
+           style="width:150px" value="{{ today }}" max="{{ today }}" title="{{ T('bulkin.date_title') }}">
+    <button type="button" class="btn btn-success" id="bulkInboundBtn" onclick="submitBulk()">
+      <i class="fa-solid fa-check me-1"></i>{{ T('bulkin.submit_btn') }}
+    </button>
+  </div>
+</div>
+
+<div id="resultArea" class="d-none">
+  <div class="card">
+    <div class="card-header bg-white border-bottom py-3"><strong>{{ T('bulkin.result_title') }}</strong></div>
+    <div class="card-body" id="resultBody"></div>
+  </div>
+</div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-var _fileSelected = '{{ T("inb.file_selected") }}';
 async function fetchStock() {
   const bidEl = document.getElementById('branchSelect');
   const bid   = bidEl.value || bidEl.getAttribute('value');
@@ -194,31 +237,96 @@ async function fetchStock() {
   document.getElementById('stockInfo').classList.remove('d-none');
 }
 
-// 파일 선택 시 파일명 표시 및 업로드 버튼 활성화
-function showFileName(input) {
-  const name = input.files[0]?.name || '';
-  document.getElementById('fileName').textContent  = name ? _fileSelected + name : '';
-  document.getElementById('uploadBtn').disabled    = !name;
+var _sel_pre  = '{{ T("bulkin.selected_prefix") }}';
+var _sel_suf  = '{{ T("bulkin.selected_suffix") }}';
+var _res_ok   = '{{ T("bulkin.result_success") }}';
+var _res_fail = '{{ T("bulkin.result_fail") }}';
+var _res_br   = '{{ T("bulkin.result_branch") }}';
+var _res_it   = '{{ T("bulkin.result_item") }}';
+var _res_cnt  = '{{ T("bulkin.result_count") }}';
+var _err_qty  = '{{ T("bulkin.err_qty") }}';
+var _err_none = '{{ T("bulkin.err_none") }}';
+var _err_gen  = '{{ T("bulkin.err_generic") }}';
+
+function loadInventory() {
+  var branchId = document.getElementById('branchFilter').value;
+  var url = new URL(window.location.href);
+  url.searchParams.set('tab', 'bulk');
+  if (branchId) {
+    url.searchParams.set('branch_id', branchId);
+  } else {
+    url.searchParams.delete('branch_id');
+  }
+  window.location.href = url.toString();
 }
 
-// 드래그 앤 드롭
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('dropZone').style.background = '#f8fafc';
-  const file = e.dataTransfer.files[0];
-  if (!file) return;
-  const input = document.getElementById('fileInput');
-  const dt    = new DataTransfer();
-  dt.items.add(file);
-  input.files = dt.files;
-  showFileName(input);
+function toggleAll(cb) {
+  document.querySelectorAll('.row-check').forEach(function(c){ c.checked = cb.checked; });
+  updateCount();
+}
+function updateCount() {
+  var n = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('selectedCount').textContent = _sel_pre + n + _sel_suf;
+}
+document.querySelectorAll('.row-check').forEach(function(c){ c.addEventListener('change', updateCount); });
+
+function submitBulk() {
+  var btn = document.getElementById('bulkInboundBtn');
+  var items = [];
+  var txDate = document.getElementById('bulkInDate').value;
+  var hasError = false;
+
+  document.querySelectorAll('#tab-bulk tbody tr').forEach(function(row) {
+    var cb  = row.querySelector('.row-check');
+    if (!cb || !cb.checked) return;
+    var qty = parseInt(row.querySelector('.qty-input').value);
+    if (!qty || qty <= 0) { hasError = true; return; }
+    items.push({
+      branch_id:    parseInt(row.dataset.branch),
+      form_type_id: parseInt(row.dataset.form),
+      quantity:     qty,
+      notes:        row.querySelector('.note-input').value,
+      transaction_date: txDate
+    });
+  });
+
+  if (hasError) { alert(_err_qty); return; }
+  if (!items.length) { alert(_err_none); return; }
+
+  setLoading(btn, true);
+  fetch('{{ url_for("bulk_inbound") }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    setLoading(btn, false);
+    var area = document.getElementById('resultArea');
+    var body = document.getElementById('resultBody');
+    area.classList.remove('d-none');
+    var html = '<p class="text-success mb-1"><i class="fa-solid fa-circle-check me-1"></i>' + _res_ok + ' <strong>' + d.processed + _res_cnt + '</strong></p>';
+    if (d.failed && d.failed.length) {
+      html += '<p class="text-danger mb-2"><i class="fa-solid fa-circle-xmark me-1"></i>' + _res_fail + ' <strong>' + d.failed.length + _res_cnt + '</strong></p>';
+      html += '<ul class="small text-muted mb-0">';
+      d.failed.forEach(function(f){ html += '<li>' + _res_br + f.branch_id + ' ' + _res_it + f.form_type_id + ' — ' + f.reason + '</li>'; });
+      html += '</ul>';
+    }
+    body.innerHTML = html;
+    if (d.processed > 0) setTimeout(function(){ location.reload(); }, 2000);
+  })
+  .catch(function() { setLoading(btn, false); alert(_err_gen); });
 }
 
-// 업로드 중 버튼 상태
-document.getElementById('uploadForm')?.addEventListener('submit', function() {
-  const btn = document.getElementById('uploadBtn');
-  btn.disabled   = true;
-  btn.innerHTML  = '<span class="spinner-border spinner-border-sm me-2"></span>{{ T('common.processing') }}';
+// 탭 전환
+document.querySelectorAll('#inboundTabs [data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#inboundTabs [data-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('d-none'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.remove('d-none');
+    history.replaceState(null, '', '?tab=' + btn.dataset.tab);
+  });
 });
 </script>
 {% endblock %}

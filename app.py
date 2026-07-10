@@ -2237,13 +2237,56 @@ def inbound():
         conn.close()
         return redirect(url_for('inbound'))
 
+    role = session.get('role')
+    bid  = session.get('branch_id')
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
     form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+
+    bulk_branch_filter = request.args.get('branch_id', '')
+    inventory_rows = _bulk_inventory_rows(conn, role, bid, bulk_branch_filter)
     conn.close()
     from datetime import date
     return render_template('inbound.html', branches=branches, form_types=form_types,
                            selected_branch=session.get('branch_id'),
-                           today=date.today().isoformat())
+                           today=date.today().isoformat(),
+                           inventory_rows=inventory_rows,
+                           selected_branch_id=bulk_branch_filter,
+                           active_tab=request.args.get('tab', 'individual'))
+
+
+def _bulk_inventory_rows(conn, role, my_bid, branch_filter):
+    """개별/일괄 입출고 탭의 재고 목록 조회 (관리자는 지점 필터, 직원은 본인 지점 고정)"""
+    if role == 'admin':
+        if branch_filter:
+            return conn.execute('''
+                SELECT i.branch_id, i.form_type_id, i.quantity,
+                       f.name form_name, f.unit, i.min_threshold,
+                       b.name branch_name, b.code branch_code
+                FROM inventory i
+                JOIN form_types f ON i.form_type_id=f.id
+                JOIN branches  b ON i.branch_id=b.id
+                WHERE i.branch_id=%s
+                ORDER BY f.name
+            ''', (branch_filter,)).fetchall()
+        return conn.execute('''
+            SELECT i.branch_id, i.form_type_id, i.quantity,
+                   f.name form_name, f.unit, i.min_threshold,
+                   b.name branch_name, b.code branch_code
+            FROM inventory i
+            JOIN form_types f ON i.form_type_id=f.id
+            JOIN branches  b ON i.branch_id=b.id
+            ORDER BY b.code, f.name
+        ''').fetchall()
+    return conn.execute('''
+        SELECT i.branch_id, i.form_type_id, i.quantity,
+               f.name form_name, f.unit, i.min_threshold,
+               b.name branch_name, b.code branch_code
+        FROM inventory i
+        JOIN form_types f ON i.form_type_id=f.id
+        JOIN branches  b ON i.branch_id=b.id
+        WHERE i.branch_id=%s
+        ORDER BY f.name
+    ''', (my_bid,)).fetchall()
 
 
 @app.route('/outbound', methods=['GET', 'POST'])
@@ -2318,39 +2361,7 @@ def outbound():
     form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
 
     bulk_branch_filter = request.args.get('branch_id', '')
-    if role == 'admin':
-        if bulk_branch_filter:
-            inventory_rows = conn.execute('''
-                SELECT i.branch_id, i.form_type_id, i.quantity,
-                       f.name form_name, f.unit, i.min_threshold,
-                       b.name branch_name, b.code branch_code
-                FROM inventory i
-                JOIN form_types f ON i.form_type_id=f.id
-                JOIN branches  b ON i.branch_id=b.id
-                WHERE i.branch_id=%s
-                ORDER BY f.name
-            ''', (bulk_branch_filter,)).fetchall()
-        else:
-            inventory_rows = conn.execute('''
-                SELECT i.branch_id, i.form_type_id, i.quantity,
-                       f.name form_name, f.unit, i.min_threshold,
-                       b.name branch_name, b.code branch_code
-                FROM inventory i
-                JOIN form_types f ON i.form_type_id=f.id
-                JOIN branches  b ON i.branch_id=b.id
-                ORDER BY b.code, f.name
-            ''').fetchall()
-    else:
-        inventory_rows = conn.execute('''
-            SELECT i.branch_id, i.form_type_id, i.quantity,
-                   f.name form_name, f.unit, i.min_threshold,
-                   b.name branch_name, b.code branch_code
-            FROM inventory i
-            JOIN form_types f ON i.form_type_id=f.id
-            JOIN branches  b ON i.branch_id=b.id
-            WHERE i.branch_id=%s
-            ORDER BY f.name
-        ''', (bid,)).fetchall()
+    inventory_rows = _bulk_inventory_rows(conn, role, bid, bulk_branch_filter)
     conn.close()
     from datetime import date
     return render_template('outbound.html', branches=branches, form_types=form_types,
@@ -5160,237 +5171,78 @@ def change_password():
     return render_template('change_password.html')
 
 
-# ── 입고 엑셀 템플릿 다운로드 ────────────────────────────────────────────────
+# ── 일괄 입고 처리 ─────────────────────────────────────────────────────────
 
-@app.route('/inbound/template')
+@app.route('/api/bulk-inbound', methods=['POST'])
 @login_required
-def inbound_template():
-    conn = get_db()
-    branches   = conn.execute('SELECT code, name, type FROM branches ORDER BY type, code').fetchall()
-    form_types = conn.execute('SELECT name, unit, unit_detail FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
-
-    my_branch_code = ''
-    if session.get('role') != 'admin' and session.get('branch_id'):
-        row = conn.execute('SELECT code FROM branches WHERE id=%s', (session['branch_id'],)).fetchone()
-        my_branch_code = row['code'] if row else ''
-    conn.close()
-
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.utils import get_column_letter
-    from openpyxl.worksheet.datavalidation import DataValidation
-    wb  = openpyxl.Workbook()
-    ws  = wb.active
-    ws.title = '입고업로드'
-    hfill, hfont, halign = _make_header_style()
-    bd  = _border()
-
-    headers    = ['지점코드', '양식명', '수량', '비고']
-    col_widths = [14, 38, 10, 26]
-    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.fill, cell.font, cell.alignment = hfill, hfont, halign
-        ws.column_dimensions[get_column_letter(col)].width = w
-    ws.row_dimensions[1].height = 22
-
-    guide = '※ 지점코드·양식명은 드롭다운 또는 "참고" 시트를 확인하세요. 수량은 BOX/포대/권 단위입니다.'
-    ws.merge_cells('A2:D2')
-    c = ws.cell(row=2, column=1, value=guide)
-    c.font      = Font(color='5A6A8A', size=9, italic=True)
-    c.alignment = Alignment(horizontal='left', vertical='center')
-    c.fill      = PatternFill('solid', fgColor='EEF2FF')
-    ws.row_dimensions[2].height = 18
-
-    is_staff   = session.get('role') != 'admin'
-    gray_fill  = PatternFill('solid', fgColor='F1F5F9')
-    data_start = 3
-
-    for r in range(data_start, data_start + 50):
-        for col in range(1, 5):
-            cell = ws.cell(row=r, column=col)
-            cell.border    = bd
-            cell.alignment = Alignment(vertical='center',
-                                       horizontal='center' if col == 3 else 'left')
-        if is_staff and my_branch_code:
-            c = ws.cell(row=r, column=1, value=my_branch_code)
-            c.fill      = gray_fill
-            c.font      = Font(color='374151', bold=True)
-            c.alignment = Alignment(horizontal='center', vertical='center')
-        ws.row_dimensions[r].height = 17
-
-    last_branch = len(branches) + 1
-    last_form   = len(form_types) + 1
-    sqref       = f'A{data_start}:A{data_start+49}'
-    sqref_form  = f'B{data_start}:B{data_start+49}'
-
-    if not is_staff:
-        dv_b = DataValidation(type='list',
-                              formula1=f"'참고'!$A$2:$A${last_branch}",
-                              allow_blank=True,
-                              showErrorMessage=True,
-                              error='참고 시트의 지점코드 목록에서 선택하세요.',
-                              errorTitle='잘못된 지점코드')
-        dv_b.sqref = sqref
-        ws.add_data_validation(dv_b)
-
-    dv_f = DataValidation(type='list',
-                          formula1=f"'참고'!$C$2:$C${last_form}",
-                          allow_blank=True,
-                          showErrorMessage=True,
-                          error='참고 시트의 양식명 목록에서 선택하세요.',
-                          errorTitle='잘못된 양식명')
-    dv_f.sqref = sqref_form
-    ws.add_data_validation(dv_f)
-
-    ws.freeze_panes = 'A3'
-
-    ws2 = wb.create_sheet('참고')
-    ref_headers = [('A', '지점코드', 12), ('B', '지점명', 16), ('C', '양식명', 38),
-                   ('D', '단위', 10), ('E', '단위상세', 14)]
-    for col_letter, h, w in ref_headers:
-        c = ws2[f'{col_letter}1']
-        c.value, c.fill, c.font, c.alignment = h, hfill, hfont, halign
-        ws2.column_dimensions[col_letter].width = w
-    ws2.row_dimensions[1].height = 22
-
-    type_kr = {'DOM': '국내', 'INTL': '국제', 'CARGO': '화물'}
-    for i, b in enumerate(branches, 2):
-        ws2.cell(row=i, column=1, value=b['code']).alignment = Alignment(horizontal='center')
-        type_label = type_kr.get(b['type'], b['type'])
-        c = ws2.cell(row=i, column=2, value=f"[{type_label}] {b['name']}")
-        c.alignment = Alignment(horizontal='left')
-
-    for i, f in enumerate(form_types, 2):
-        ws2.cell(row=i, column=3, value=f['name'])
-        ws2.cell(row=i, column=4, value=f['unit']).alignment = Alignment(horizontal='center')
-        ws2.cell(row=i, column=5, value=f['unit_detail']).alignment = Alignment(horizontal='center')
-
-    ws2.freeze_panes = 'A2'
-
-    buf = BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    from datetime import date
-    suffix = f'_{my_branch_code}' if my_branch_code else ''
-    fname  = f'입고업로드_템플릿{suffix}_{date.today().strftime("%Y%m%d")}.xlsx'
-    return send_file(buf, as_attachment=True, download_name=fname,
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-
-# ── 입고 엑셀 업로드 처리 ──────────────────────────────────────────────────────
-
-@app.route('/inbound/upload', methods=['POST'])
-@login_required
-def inbound_upload():
+def bulk_inbound():
     T = _get_T()
-    f = request.files.get('file')
-    if not f or not f.filename:
-        flash(T('flash.select_file'), 'danger')
-        return redirect(url_for('inbound'))
-    if not f.filename.lower().endswith(('.xlsx', '.xls')):
-        flash(T('flash.xlsx_only'), 'danger')
-        return redirect(url_for('inbound'))
+    data  = request.get_json(silent=True) or {}
+    items = data.get('items', [])
+    if not items:
+        return jsonify({'ok': False, 'msg': T('flash.no_inbound_items')}), 400
 
-    try:
-        wb = openpyxl.load_workbook(f, data_only=True)
-        ws = wb.active
-    except Exception as e:
-        flash(T('flash.file_read_error').format(error=e), 'danger')
-        return redirect(url_for('inbound'))
+    conn    = get_db()
+    role    = session.get('role')
+    my_bid  = session.get('branch_id')
+    success = []
+    failed  = []
 
-    conn = get_db()
-    branch_map = {r['code'].upper(): r['id']
-                  for r in conn.execute('SELECT code, id FROM branches').fetchall()}
-    form_map   = {r['name']: r['id']
-                  for r in conn.execute('SELECT name, id FROM form_types').fetchall()}
-
-    is_staff    = session.get('role') != 'admin'
-    forced_bid  = None
-    forced_code = ''
-    if is_staff:
-        if not session.get('branch_id'):
-            flash(T('flash.no_branch'), 'danger')
-            conn.close()
-            return redirect(url_for('inbound'))
-        forced_bid  = session['branch_id']
-        row = conn.execute('SELECT code FROM branches WHERE id=%s', (forced_bid,)).fetchone()
-        forced_code = row['code'] if row else ''
-
-    results = []
-    ok_cnt  = 0
-
-    all_rows = list(ws.iter_rows(values_only=True))
-    data_rows = []
-    for i, row in enumerate(all_rows):
-        first = str(row[0]).strip() if row[0] is not None else ''
-        if first in ('지점코드', '※ 지점코드·양식명은 드롭다운') or first.startswith('※'):
-            continue
-        if not any(row[:3]):
-            continue
-        data_rows.append((i + 1, row))
-
-    for row_num, row in data_rows:
-        raw_code = str(row[0]).strip().upper() if row[0] is not None else ''
-        raw_form = str(row[1]).strip()         if row[1] is not None else ''
-        raw_qty  = row[2]
-        notes    = str(row[3]).strip()         if row[3] is not None else ''
-
-        entry = {'row': row_num, 'branch': raw_code or forced_code,
-                 'form': raw_form, 'qty': raw_qty}
-
-        if is_staff:
-            bid        = forced_bid
-            entry['branch'] = forced_code
-        else:
-            if not raw_code:
-                entry.update(status='skip', msg='지점코드 없음'); results.append(entry); continue
-            bid = branch_map.get(raw_code)
-            if not bid:
-                entry.update(status='error', msg=f'지점코드 없음: {raw_code}')
-                results.append(entry); continue
-
-        if not raw_form:
-            entry.update(status='skip', msg='양식명 없음'); results.append(entry); continue
-        fid = form_map.get(raw_form)
-        if not fid:
-            entry.update(status='error', msg=f'양식명 불일치: {raw_form}')
-            results.append(entry); continue
-
+    for item in items:
         try:
-            qty = int(float(str(raw_qty)))
-        except (ValueError, TypeError):
-            entry.update(status='error', msg=f'수량 오류: {raw_qty}')
-            results.append(entry); continue
-        if qty <= 0:
-            entry.update(status='skip', msg=f'수량 0 이하 ({qty})'); results.append(entry); continue
+            bid  = int(item['branch_id'])
+            fid  = int(item['form_type_id'])
+            qty  = int(item['quantity'])
+            note = item.get('notes', '')
+            tx_date = item.get('transaction_date', datetime.now(timezone.utc).strftime('%Y-%m-%d'))
 
-        conn.execute('''
-            INSERT INTO inventory (branch_id, form_type_id, quantity, last_updated)
-            VALUES (%s,%s,%s,NOW())
-            ON CONFLICT(branch_id, form_type_id) DO UPDATE SET
-              quantity     = inventory.quantity + EXCLUDED.quantity,
-              last_updated = NOW()
-        ''', (bid, fid, qty))
-        conn.execute(
-            "INSERT INTO transactions (type, form_type_id, to_branch_id, quantity, notes, created_by) "
-            "VALUES ('IN',%s,%s,%s,%s,%s)",
-            (fid, bid, qty,
-             f'[엑셀업로드] {notes}' if notes else '[엑셀업로드]',
-             session['username'])
-        )
+            if role != 'admin' and bid != my_bid:
+                failed.append({'branch_id': bid, 'form_type_id': fid, 'reason': '권한 없음'})
+                continue
+            if qty <= 0:
+                failed.append({'branch_id': bid, 'form_type_id': fid, 'reason': '수량 오류'})
+                continue
 
-        entry.update(status='ok', qty=qty)
-        results.append(entry)
-        ok_cnt += 1
+            conn.execute('''
+                INSERT INTO inventory (branch_id, form_type_id, quantity, last_updated)
+                VALUES (%s,%s,%s,NOW())
+                ON CONFLICT(branch_id, form_type_id) DO UPDATE SET
+                  quantity     = inventory.quantity + EXCLUDED.quantity,
+                  last_updated = NOW()
+            ''', (bid, fid, qty))
+            conn.execute(
+                "INSERT INTO transactions "
+                "(type, form_type_id, to_branch_id, quantity, notes, created_by, transaction_date) "
+                "VALUES ('IN',%s,%s,%s,%s,%s,%s)",
+                (fid, bid, qty, note, session['username'], tx_date)
+            )
+            # 입고 후에도 여전히 부족한 경우 알림
+            inv_after = conn.execute(
+                'SELECT i.quantity, i.min_threshold, f.name fn, b.name bn '
+                'FROM inventory i JOIN form_types f ON i.form_type_id=f.id '
+                'JOIN branches b ON i.branch_id=b.id '
+                'WHERE i.branch_id=%s AND i.form_type_id=%s', (bid, fid)
+            ).fetchone()
+            if inv_after and inv_after['quantity'] <= inv_after['min_threshold']:
+                dup = conn.execute(
+                    "SELECT id FROM notifications WHERE branch_id=%s AND is_read=0 AND message LIKE %s LIMIT 1",
+                    (bid, f'%{inv_after["fn"]}%')
+                ).fetchone()
+                if not dup:
+                    sl = '소진' if inv_after['quantity'] == 0 else '부족'
+                    conn.execute(
+                        "INSERT INTO notifications (branch_id, message) VALUES (%s,%s)",
+                        (bid, f'[재고{sl}] {inv_after["bn"]} — {inv_after["fn"]} 잔여 {inv_after["quantity"]}개')
+                    )
+            success.append({'branch_id': bid, 'form_type_id': fid, 'quantity': qty})
+        except Exception as e:
+            failed.append({'branch_id': item.get('branch_id'), 'form_type_id': item.get('form_type_id'),
+                           'reason': str(e)})
 
-    conn.commit()
+    if success:
+        conn.commit()
     conn.close()
-
-    err_cnt  = sum(1 for r in results if r['status'] == 'error')
-    skip_cnt = sum(1 for r in results if r['status'] == 'skip')
-    return render_template('upload_result.html',
-                           results=results, ok_cnt=ok_cnt,
-                           err_cnt=err_cnt, skip_cnt=skip_cnt)
+    return jsonify({'ok': True, 'processed': len(success), 'failed': failed})
 
 
 # ── 보유 지점 상세 API ────────────────────────────────────────────────────────
