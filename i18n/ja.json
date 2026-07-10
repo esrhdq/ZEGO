@@ -129,6 +129,8 @@
   "inb.date_helper": "実際に帳票を受け取った日を選択してください。",
   "inb.register": "入庫登録",
   "out.title": "出庫処理",
+  "out.tab_individual": "個別出庫",
+  "out.tab_bulk": "一括出庫",
   "out.form_title": "帳票出庫登録",
   "out.subtitle": "実際の使用数量を差し引きます。",
   "out.outbound_date": "出庫日",

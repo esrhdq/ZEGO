@@ -129,6 +129,8 @@
   "inb.date_helper": "실제 양식을 수령한 날짜를 선택하세요.",
   "inb.register": "입고 등록",
   "out.title": "출고 처리",
+  "out.tab_individual": "개별 출고",
+  "out.tab_bulk": "일괄 출고",
   "out.form_title": "양식 출고 등록",
   "out.subtitle": "실제 사용 수량을 차감합니다.",
   "out.outbound_date": "출고 일자",

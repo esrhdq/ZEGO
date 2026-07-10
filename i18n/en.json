@@ -129,6 +129,8 @@
   "inb.date_helper": "Select the actual date the forms were received.",
   "inb.register": "Register Inbound",
   "out.title": "Outbound",
+  "out.tab_individual": "Individual Outbound",
+  "out.tab_bulk": "Bulk Outbound",
   "out.form_title": "Register Outbound",
   "out.subtitle": "Deducts from current stock.",
   "out.outbound_date": "Outbound Date",

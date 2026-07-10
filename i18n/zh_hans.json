@@ -129,6 +129,8 @@
   "inb.date_helper": "请选择实际收到表单的日期。",
   "inb.register": "入库登记",
   "out.title": "出库处理",
+  "out.tab_individual": "单项出库",
+  "out.tab_bulk": "批量出库",
   "out.form_title": "表单出库登记",
   "out.subtitle": "扣减实际使用数量。",
   "out.outbound_date": "出库日期",

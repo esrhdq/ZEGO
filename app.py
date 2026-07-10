@@ -2312,13 +2312,53 @@ def outbound():
         conn.close()
         return redirect(url_for('outbound'))
 
+    role = session.get('role')
+    bid  = session.get('branch_id')
     branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
     form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+
+    bulk_branch_filter = request.args.get('branch_id', '')
+    if role == 'admin':
+        if bulk_branch_filter:
+            inventory_rows = conn.execute('''
+                SELECT i.branch_id, i.form_type_id, i.quantity,
+                       f.name form_name, f.unit, i.min_threshold,
+                       b.name branch_name, b.code branch_code
+                FROM inventory i
+                JOIN form_types f ON i.form_type_id=f.id
+                JOIN branches  b ON i.branch_id=b.id
+                WHERE i.branch_id=%s
+                ORDER BY f.name
+            ''', (bulk_branch_filter,)).fetchall()
+        else:
+            inventory_rows = conn.execute('''
+                SELECT i.branch_id, i.form_type_id, i.quantity,
+                       f.name form_name, f.unit, i.min_threshold,
+                       b.name branch_name, b.code branch_code
+                FROM inventory i
+                JOIN form_types f ON i.form_type_id=f.id
+                JOIN branches  b ON i.branch_id=b.id
+                ORDER BY b.code, f.name
+            ''').fetchall()
+    else:
+        inventory_rows = conn.execute('''
+            SELECT i.branch_id, i.form_type_id, i.quantity,
+                   f.name form_name, f.unit, i.min_threshold,
+                   b.name branch_name, b.code branch_code
+            FROM inventory i
+            JOIN form_types f ON i.form_type_id=f.id
+            JOIN branches  b ON i.branch_id=b.id
+            WHERE i.branch_id=%s
+            ORDER BY f.name
+        ''', (bid,)).fetchall()
     conn.close()
     from datetime import date
     return render_template('outbound.html', branches=branches, form_types=form_types,
                            selected_branch=session.get('branch_id'),
-                           today=date.today().isoformat())
+                           today=date.today().isoformat(),
+                           inventory_rows=inventory_rows,
+                           selected_branch_id=bulk_branch_filter,
+                           active_tab=request.args.get('tab', 'individual'))
 
 
 _TR_SELECT = '''
@@ -5683,50 +5723,8 @@ with app.app_context():
 @app.route('/bulk-outbound')
 @login_required
 def bulk_outbound_page():
-    conn = get_db()
-    role = session.get('role')
-    bid  = session.get('branch_id')
-    branches = conn.execute('SELECT * FROM branches ORDER BY type, code').fetchall()
-
-    if role == 'admin':
-        bid_filter = request.args.get('branch_id', '')
-        if bid_filter:
-            rows = conn.execute('''
-                SELECT i.branch_id, i.form_type_id, i.quantity,
-                       f.name form_name, f.unit, i.min_threshold,
-                       b.name branch_name, b.code branch_code
-                FROM inventory i
-                JOIN form_types f ON i.form_type_id=f.id
-                JOIN branches  b ON i.branch_id=b.id
-                WHERE i.branch_id=%s
-                ORDER BY f.name
-            ''', (bid_filter,)).fetchall()
-        else:
-            rows = conn.execute('''
-                SELECT i.branch_id, i.form_type_id, i.quantity,
-                       f.name form_name, f.unit, i.min_threshold,
-                       b.name branch_name, b.code branch_code
-                FROM inventory i
-                JOIN form_types f ON i.form_type_id=f.id
-                JOIN branches  b ON i.branch_id=b.id
-                ORDER BY b.code, f.name
-            ''').fetchall()
-    else:
-        rows = conn.execute('''
-            SELECT i.branch_id, i.form_type_id, i.quantity,
-                   f.name form_name, f.unit, i.min_threshold,
-                   b.name branch_name, b.code branch_code
-            FROM inventory i
-            JOIN form_types f ON i.form_type_id=f.id
-            JOIN branches  b ON i.branch_id=b.id
-            WHERE i.branch_id=%s
-            ORDER BY f.name
-        ''', (bid,)).fetchall()
-    conn.close()
-    from datetime import date
-    return render_template('bulk_outbound.html', inventory_rows=rows, branches=branches,
-                           today=date.today().isoformat(),
-                           selected_branch_id=request.args.get('branch_id', ''))
+    # 출고 페이지의 '일괄 출고' 탭으로 통합됨
+    return redirect(url_for('outbound', tab='bulk', branch_id=request.args.get('branch_id', '')))
 
 
 @app.route('/transfer/my-requests')

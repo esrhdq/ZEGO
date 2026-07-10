@@ -398,12 +398,8 @@
       <i class="fa-solid fa-truck-ramp-box"></i>{{ T('nav.inbound') }}
     </a>
     <a href="{{ url_for('outbound') }}"
-       class="nav-link {% if endpoint=='outbound' %}active{% endif %}">
+       class="nav-link {% if endpoint in ('outbound','bulk_outbound_page') %}active{% endif %}">
       <i class="fa-solid fa-dolly"></i>{{ T('nav.outbound') }}
-    </a>
-    <a href="{{ url_for('bulk_outbound_page') }}"
-       class="nav-link {% if endpoint=='bulk_outbound_page' %}active{% endif %}">
-      <i class="fa-solid fa-layer-group"></i>{{ T('nav.bulk_outbound') }}
     </a>
     <a href="{{ url_for('transfer') }}"
        class="nav-link {% if endpoint in ('transfer','approve_transfer','reject_transfer','confirm_transfer') %}active{% endif %}"

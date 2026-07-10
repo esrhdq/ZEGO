@@ -129,6 +129,8 @@
   "inb.date_helper": "請選擇實際收到表單的日期。",
   "inb.register": "入庫登記",
   "out.title": "出庫處理",
+  "out.tab_individual": "單項出庫",
+  "out.tab_bulk": "批量出庫",
   "out.form_title": "表單出庫登記",
   "out.subtitle": "扣減實際使用數量。",
   "out.outbound_date": "出庫日期",
