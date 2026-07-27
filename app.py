@@ -957,6 +957,16 @@ def init_db():
                         pass
                 conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('clear_test_data',))
                 conn.commit()
+            _mig_tae = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_branch_tae',)
+            ).fetchone()
+            if not _mig_tae:
+                conn.execute(
+                    "INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING",
+                    ('TAE', '대구', 'DOM')
+                )
+                conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_branch_tae',))
+                conn.commit()
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
