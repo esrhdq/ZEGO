@@ -1390,6 +1390,7 @@ def init_db():
                 ('YNJ', '연길', 'INTL'), ('CGO', '정저우', 'INTL'), ('YNT', '옌타이', 'INTL'),
                 ('HKG', '홍콩', 'INTL'), ('ALA', '알마티', 'INTL'),
                 ('KOJ', '가고시마', 'INTL'), ('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL'),
+                ('TAE', '대구', 'DOM'),
                 ('CARGO', '화물파트', 'CARGO'),
             ]
             for code, name, btype in branches:
@@ -1732,7 +1733,7 @@ def init_db():
                   AND (i.min_threshold IS NULL OR i.min_threshold = 2)
             ''')
             # 신규 지점 추가 (이미 있으면 무시) — KOJ는 아래 KOR 병합에서 처리
-            for _bc, _bn, _bt in [('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL')]:
+            for _bc, _bn, _bt in [('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL'), ('TAE', '대구', 'DOM')]:
                 conn.execute(
                     'INSERT INTO branches (code, name, type) VALUES (%s,%s,%s) ON CONFLICT(code) DO NOTHING',
                     (_bc, _bn, _bt)
