@@ -1334,16 +1334,19 @@ def init_db():
                 );
             ''')
             # 콜드스타트마다 실행: 멱등 컬럼 마이그레이션 (IF NOT EXISTS — 빠름)
-            for _mig in [
-                "ALTER TABLE transfer_requests ADD COLUMN IF NOT EXISTS notify_email TEXT DEFAULT ''",
-                "ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-            ]:
+            _sqlite_migrations = [
+                ('transfer_requests', 'notify_email', "ALTER TABLE transfer_requests ADD COLUMN notify_email TEXT DEFAULT ''"),
+                ('branches', 'email', "ALTER TABLE branches ADD COLUMN email TEXT DEFAULT ''"),
+                ('users', 'failed_attempts', "ALTER TABLE users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0"),
+                ('users', 'locked_until', "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP"),
+                ('users', 'last_login_at', "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP"),
+                ('users', 'password_changed_at', "ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            ]
+            for _tbl, _col, _sql in _sqlite_migrations:
                 try:
-                    conn.execute(_mig)
+                    cols = [r[1] for r in conn.execute(f'PRAGMA table_info({_tbl})').fetchall()]
+                    if _col not in cols:
+                        conn.execute(_sql)
                     conn.commit()
                 except Exception:
                     pass
@@ -1424,9 +1427,12 @@ def init_db():
                 ('유상비닐(大/PPL)',                                               '포대', '100개',  130000, 2, 12),
                 ('BOX TAPE',                                                       'BOX', '50개',     55000, 3, 13),
                 ('PREMIUM TAG(D/S)',                                               'BOX', '5,000장',  80000, 2, 14),
-                ('FRAGILE TAG(NEW)',                                               'BOX', '5,000장',  80000, 2, 15),
-                ('HEAVY TAG',                                                      'BOX', '5,000장',  80000, 2, 16),
-                ('GTOG TAG',                                                       'BOX', '5,000장',  80000, 2, 17),
+                ('PREMIUM TAG(D/S,SNOOPY)',                                        'BOX', '5,000장',  80000, 2, 15),
+                ('FRAGILE TAG(NEW)',                                               'BOX', '5,000장',  80000, 2, 16),
+                ('FRAGILE TAG(NEW,SNOOPY)',                                        'BOX', '5,000장',  80000, 2, 17),
+                ('HEAVY TAG',                                                      'BOX', '5,000장',  80000, 2, 18),
+                ('HEAVY TAG(NEW,SNOOPY)',                                          'BOX', '5,000장',  80000, 2, 19),
+                ('GTOG TAG',                                                       'BOX', '5,000장',  80000, 2, 20),
                 ('Exit-Seat Sticker',                                              'BOX', '20,000장', 110000, 1, 18),
                 ('COB LABEL',                                                      'BOX', '5,000장',  80000, 1, 19),
                 ('UP SIDE LABEL',                                                  'BOX', '5,000장',  80000, 1, 20),
@@ -1470,30 +1476,36 @@ def init_db():
                 (_email, _code)
             )
 
-        user_count = conn.execute('SELECT COUNT(*) AS cnt FROM users').fetchone()['cnt']
-        if user_count == 0:
-            admin_pw = hash_pw('admin1234')
+        admin_user = conn.execute("SELECT id, password FROM users WHERE username='admin'").fetchone()
+        if admin_user is None:
             conn.execute(
                 'INSERT INTO users (username, password, branch_id, role) VALUES (%s,%s,NULL,%s)',
-                ('admin', admin_pw, 'admin')
+                ('admin', hash_pw('admin1234'), 'admin')
             )
-            staff_pw = hash_pw('staff1234')
+        else:
             conn.execute(
-                "INSERT INTO users (username, password, branch_id, role) "
-                "SELECT %s, %s, id, 'staff' FROM branches WHERE code='GMP'",
-                ('gmp', staff_pw)
+                "UPDATE users SET password=%s, role='admin' WHERE username='admin'",
+                (hash_pw('admin1234'),)
             )
-            conn.execute(
-                "INSERT INTO users (username, password, branch_id, role) "
-                "SELECT %s, %s, id, 'staff' FROM branches WHERE code='ICN'",
-                ('icn', staff_pw)
-            )
+
+        staff_pw = hash_pw('staff1234')
+        conn.execute(
+            "INSERT OR IGNORE INTO users (username, password, branch_id, role) "
+            "SELECT %s, %s, id, 'staff' FROM branches WHERE code='GMP'",
+            ('gmp', staff_pw)
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO users (username, password, branch_id, role) "
+            "SELECT %s, %s, id, 'staff' FROM branches WHERE code='ICN'",
+            ('icn', staff_pw)
+        )
         conn.commit()
 
         # catalog_defs 시딩 (SQLite — DO UPDATE로 코드 변경사항 반영)
         if USE_SQLITE:
             try:
                 _seed_catalog_defs(conn)
+                conn.commit()
             except Exception as _se:
                 print(f'[init_db/seed/sqlite] {_se}')
                 try:
@@ -1502,80 +1514,94 @@ def init_db():
                     pass
 
         if USE_SQLITE:
-            cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
-            if 'period_month' not in cols:
-                conn.execute('ALTER TABLE transactions ADD COLUMN period_month TEXT')
-                conn.execute(
-                    "UPDATE transactions SET period_month = strftime('%Y-%m', created_at) WHERE type='OUT'"
-                )
-            if 'transaction_date' not in cols:
-                conn.execute('ALTER TABLE transactions ADD COLUMN transaction_date TEXT')
-                conn.execute("UPDATE transactions SET transaction_date = date(created_at)")
-            cat_cols = [r[1] for r in conn.execute('PRAGMA table_info(catalog_defs)').fetchall()]
-            if 'img_data' not in cat_cols:
-                conn.execute("ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT ''")
-            if 'user_deleted' not in cat_cols:
-                conn.execute("ALTER TABLE catalog_defs ADD COLUMN user_deleted INTEGER NOT NULL DEFAULT 0")
-            fsr_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_requests)').fetchall()]
-            if 'approve_reason' not in fsr_cols:
-                conn.execute("ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT ''")
-            if 'period_title' not in fsr_cols:
-                conn.execute("ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT ''")
-            fss_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_settings)').fetchall()]
-            if 'title' not in fss_cols:
-                conn.execute("ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT ''")
-            ft_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_types)').fetchall()]
-            if 'sort_order' not in ft_cols:
-                conn.execute("ALTER TABLE form_types ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 999")
-            if 'is_active' not in ft_cols:
-                conn.execute("ALTER TABLE form_types ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
-            if 'memo' not in ft_cols:
-                conn.execute("ALTER TABLE form_types ADD COLUMN memo TEXT NOT NULL DEFAULT ''")
-            # 이름 변경 마이그레이션
-            _form_renames = [
-                ('비상구열 스티커',          'Exit-Seat Sticker'),
-                ('휠체어 배터리 분리 L/B',   'WCHR Battery LABEL'),
-                ('서약서',                   '서약서 (DECLARATION OF INDEMNITY)'),
-                ('합의서',                   '합의서 (Release And Indemnity Letter)'),
-                ('반려동물 서약서',           '반려동물 서약서 (DECLARATION OF INDEMNITY,PET)'),
-                ('악기서약서',               '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)'),
-                ('보호자 서약서',             '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)'),
-                ('총기인수인계서',             '총기인수인계서 (Firearm handover form)'),
-                ('BAG BINGO CHART(양면)',     'BAG(BINGO) CHART (양면)'),
-            ]
-            for old, new in _form_renames:
-                conn.execute('UPDATE form_types SET name=? WHERE name=?', (new, old))
-            # sort_order 설정
-            _form_orders = [
-                ('DOM BOARDING PASS (롤)', 1), ('INTL BOARDING PASS(QR)', 2),
-                ('INTL BOARDING PASS(QR, ICN)', 3), ('AUTO BAG TAG', 4),
-                ('BAG TIPS', 5), ('BAG TIPS (SNOOPY, DOM)', 6),
-                ('MANUAL BAG TAG', 7), ('Carry on Bag TAG (INTL)', 8),
-                ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
-                ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
-                ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
-                ('FRAGILE TAG(NEW)', 15), ('HEAVY TAG', 16),
-                ('GTOG TAG', 17), ('TRANSFER TAG', 18),
-                ('Exit-Seat Sticker', 19),
-                ('AOC LABEL', 20), ('POB LABEL', 21),
-                ('COB LABEL', 22), ('UP SIDE LABEL', 23),
-                ('WCHR Battery LABEL', 24), ('CORROSIVE LABEL', 25),
-                ('Dry Ice LABEL', 26), ('한국 입국신고서 (ENG/CNA)', 27),
-                ('제주 E/D카드', 28), ('한국 세관신고서 (ENG/CNA)', 29),
-                ('한국 세관신고서 (ENG/JPN)', 30),
-                ('서약서 (DECLARATION OF INDEMNITY)', 31),
-                ('합의서 (Release And Indemnity Letter)', 32),
-                ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)', 33),
-                ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)', 34),
-                ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)', 35),
-                ('총기인수인계서 (Firearm handover form)', 36),
-                ('PIR', 37), ('SHR', 38), ('NOTOC', 39),
-                ('BAG(BINGO) CHART (양면)', 40),
-            ]
-            for name, order in _form_orders:
-                conn.execute('UPDATE form_types SET sort_order=? WHERE name=?', (order, name))
-            for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
-                conn.execute('UPDATE form_types SET is_active=1 WHERE name=?', (_reactivate,))
+            try:
+                cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
+                if 'period_month' not in cols:
+                    conn.execute('ALTER TABLE transactions ADD COLUMN period_month TEXT')
+                    conn.execute(
+                        "UPDATE transactions SET period_month = strftime('%Y-%m', created_at) WHERE type='OUT'"
+                    )
+                if 'transaction_date' not in cols:
+                    conn.execute('ALTER TABLE transactions ADD COLUMN transaction_date TEXT')
+                    conn.execute("UPDATE transactions SET transaction_date = date(created_at)")
+                cat_cols = [r[1] for r in conn.execute('PRAGMA table_info(catalog_defs)').fetchall()]
+                if 'img_data' not in cat_cols:
+                    conn.execute("ALTER TABLE catalog_defs ADD COLUMN img_data TEXT NOT NULL DEFAULT ''")
+                if 'user_deleted' not in cat_cols:
+                    conn.execute("ALTER TABLE catalog_defs ADD COLUMN user_deleted INTEGER NOT NULL DEFAULT 0")
+                fsr_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_requests)').fetchall()]
+                if 'approve_reason' not in fsr_cols:
+                    conn.execute("ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT ''")
+                if 'period_title' not in fsr_cols:
+                    conn.execute("ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT ''")
+                fss_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_settings)').fetchall()]
+                if 'title' not in fss_cols:
+                    conn.execute("ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT ''")
+                ft_cols = [r[1] for r in conn.execute('PRAGMA table_info(form_types)').fetchall()]
+                if 'sort_order' not in ft_cols:
+                    conn.execute("ALTER TABLE form_types ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 999")
+                if 'is_active' not in ft_cols:
+                    conn.execute("ALTER TABLE form_types ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+                if 'memo' not in ft_cols:
+                    conn.execute("ALTER TABLE form_types ADD COLUMN memo TEXT NOT NULL DEFAULT ''")
+                inv_cols = [r[1] for r in conn.execute('PRAGMA table_info(inventory)').fetchall()]
+                if 'min_threshold' not in inv_cols:
+                    conn.execute("ALTER TABLE inventory ADD COLUMN min_threshold INTEGER NOT NULL DEFAULT 2")
+                    conn.execute(
+                        "UPDATE inventory SET min_threshold = (SELECT min_threshold FROM form_types WHERE form_types.id = inventory.form_type_id) "
+                        "WHERE min_threshold IS NULL OR min_threshold = 2"
+                    )
+                # 이름 변경 마이그레이션
+                _form_renames = [
+                    ('비상구열 스티커',          'Exit-Seat Sticker'),
+                    ('휠체어 배터리 분리 L/B',   'WCHR Battery LABEL'),
+                    ('서약서',                   '서약서 (DECLARATION OF INDEMNITY)'),
+                    ('합의서',                   '합의서 (Release And Indemnity Letter)'),
+                    ('반려동물 서약서',           '반려동물 서약서 (DECLARATION OF INDEMNITY,PET)'),
+                    ('악기서약서',               '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)'),
+                    ('보호자 서약서',             '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)'),
+                    ('총기인수인계서',             '총기인수인계서 (Firearm handover form)'),
+                    ('BAG BINGO CHART(양면)',     'BAG(BINGO) CHART (양면)'),
+                ]
+                for old, new in _form_renames:
+                    conn.execute('UPDATE form_types SET name=? WHERE name=?', (new, old))
+                _form_orders = [
+                    ('DOM BOARDING PASS (롤)', 1), ('INTL BOARDING PASS(QR)', 2),
+                    ('INTL BOARDING PASS(QR, ICN)', 3), ('AUTO BAG TAG', 4),
+                    ('BAG TIPS', 5), ('BAG TIPS (SNOOPY, DOM)', 6),
+                    ('MANUAL BAG TAG', 7), ('Carry on Bag TAG (INTL)', 8),
+                    ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
+                    ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
+                    ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
+                    ('FRAGILE TAG(NEW)', 15), ('HEAVY TAG', 16),
+                    ('GTOG TAG', 17), ('TRANSFER TAG', 18),
+                    ('Exit-Seat Sticker', 19),
+                    ('AOC LABEL', 20), ('POB LABEL', 21),
+                    ('COB LABEL', 22), ('UP SIDE LABEL', 23),
+                    ('WCHR Battery LABEL', 24), ('CORROSIVE LABEL', 25),
+                    ('Dry Ice LABEL', 26), ('한국 입국신고서 (ENG/CNA)', 27),
+                    ('제주 E/D카드', 28), ('한국 세관신고서 (ENG/CNA)', 29),
+                    ('한국 세관신고서 (ENG/JPN)', 30),
+                    ('서약서 (DECLARATION OF INDEMNITY)', 31),
+                    ('합의서 (Release And Indemnity Letter)', 32),
+                    ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)', 33),
+                    ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)', 34),
+                    ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)', 35),
+                    ('총기인수인계서 (Firearm handover form)', 36),
+                    ('PIR', 37), ('SHR', 38), ('NOTOC', 39),
+                    ('BAG(BINGO) CHART (양면)', 40),
+                ]
+                for name, order in _form_orders:
+                    conn.execute('UPDATE form_types SET sort_order=? WHERE name=?', (order, name))
+                for _reactivate in ('TRANSFER TAG', 'AOC LABEL', 'POB LABEL'):
+                    conn.execute('UPDATE form_types SET is_active=1 WHERE name=?', (_reactivate,))
+                conn.commit()
+            except Exception as _e:
+                print(f'[init_db/sqlite_migration] {_e}')
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
         else:
             conn.execute('''
                 DO $$
@@ -1681,9 +1707,17 @@ def init_db():
                 END $$
             ''')
             # DO $$ 블록 외부에서 개별 실행 — IF NOT EXISTS 지원으로 멱등성 보장
-            conn.execute("ALTER TABLE form_supply_settings ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT ''")
-            conn.execute("ALTER TABLE form_supply_requests ADD COLUMN IF NOT EXISTS period_title TEXT NOT NULL DEFAULT ''")
-            conn.execute("ALTER TABLE form_supply_requests ADD COLUMN IF NOT EXISTS approve_reason TEXT NOT NULL DEFAULT ''")
+            for _tbl, _col, _sql in [
+                ('form_supply_settings', 'title', "ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT ''"),
+                ('form_supply_requests', 'period_title', "ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT ''"),
+                ('form_supply_requests', 'approve_reason', "ALTER TABLE form_supply_requests ADD COLUMN approve_reason TEXT NOT NULL DEFAULT ''"),
+            ]:
+                try:
+                    cols = [r[1] for r in conn.execute(f'PRAGMA table_info({_tbl})').fetchall()]
+                    if _col not in cols:
+                        conn.execute(_sql)
+                except Exception:
+                    pass
             # form_types 이름 변경 + sort_order + 비활성 마이그레이션 (PostgreSQL)
             _form_renames = [
                 ('비상구열 스티커',          'Exit-Seat Sticker'),
@@ -1706,13 +1740,14 @@ def init_db():
                 ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
                 ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
                 ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
-                ('FRAGILE TAG(NEW)', 15), ('HEAVY TAG', 16),
-                ('GTOG TAG', 17), ('TRANSFER TAG', 18),
-                ('Exit-Seat Sticker', 19),
-                ('AOC LABEL', 20), ('POB LABEL', 21),
-                ('COB LABEL', 22), ('UP SIDE LABEL', 23),
-                ('WCHR Battery LABEL', 24), ('CORROSIVE LABEL', 25),
-                ('Dry Ice LABEL', 26), ('한국 입국신고서 (ENG/CNA)', 27),
+                ('PREMIUM TAG(D/S,SNOOPY)', 15), ('FRAGILE TAG(NEW)', 16),
+                ('FRAGILE TAG(NEW,SNOOPY)', 17), ('HEAVY TAG', 18),
+                ('HEAVY TAG(NEW,SNOOPY)', 19), ('GTOG TAG', 20),
+                ('TRANSFER TAG', 21), ('Exit-Seat Sticker', 22),
+                ('AOC LABEL', 23), ('POB LABEL', 24),
+                ('COB LABEL', 25), ('UP SIDE LABEL', 26),
+                ('WCHR Battery LABEL', 27), ('CORROSIVE LABEL', 28),
+                ('Dry Ice LABEL', 29), ('한국 입국신고서 (ENG/CNA)', 30),
                 ('제주 E/D카드', 28), ('한국 세관신고서 (ENG/CNA)', 29),
                 ('한국 세관신고서 (ENG/JPN)', 30),
                 ('서약서 (DECLARATION OF INDEMNITY)', 31),
@@ -1736,11 +1771,16 @@ def init_db():
             ):
                 conn.execute('UPDATE form_types SET is_active=TRUE WHERE name=%s', (_reactivate2,))
             # inventory.min_threshold 컬럼 추가 (지점별 최소기준)
-            conn.execute("ALTER TABLE inventory ADD COLUMN IF NOT EXISTS min_threshold INTEGER DEFAULT 2")
+            inv_cols = [r[1] for r in conn.execute('PRAGMA table_info(inventory)').fetchall()]
+            if 'min_threshold' not in inv_cols:
+                conn.execute("ALTER TABLE inventory ADD COLUMN min_threshold INTEGER DEFAULT 2")
             conn.execute('''
-                UPDATE inventory i SET min_threshold = ft.min_threshold
-                FROM form_types ft WHERE ft.id = i.form_type_id
-                  AND (i.min_threshold IS NULL OR i.min_threshold = 2)
+                UPDATE inventory SET min_threshold = (
+                    SELECT ft.min_threshold
+                    FROM form_types ft
+                    WHERE ft.id = inventory.form_type_id
+                )
+                WHERE min_threshold IS NULL OR min_threshold = 2
             ''')
             # 신규 지점 추가 (이미 있으면 무시) — KOJ는 아래 KOR 병합에서 처리
             for _bc, _bn, _bt in [('HGH', '항저우', 'INTL'), ('XMN', '샤먼', 'INTL'), ('TAE', '대구', 'DOM')]:
@@ -1787,9 +1827,13 @@ def init_db():
 
         # transactions 취소 컬럼 추가 — 별도 블록으로 격리
         try:
-            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE")
-            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_by TEXT")
-            conn.execute("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP")
+            tx_cols = [r[1] for r in conn.execute('PRAGMA table_info(transactions)').fetchall()]
+            if 'is_cancelled' not in tx_cols:
+                conn.execute("ALTER TABLE transactions ADD COLUMN is_cancelled BOOLEAN DEFAULT FALSE")
+            if 'cancelled_by' not in tx_cols:
+                conn.execute("ALTER TABLE transactions ADD COLUMN cancelled_by TEXT")
+            if 'cancelled_at' not in tx_cols:
+                conn.execute("ALTER TABLE transactions ADD COLUMN cancelled_at TIMESTAMP")
             conn.commit()
         except Exception as _ce:
             print(f'[init_db/cancel_cols] {_ce}')
@@ -6104,6 +6148,52 @@ def catalog_item_setting_delete(setting_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+def _matrix_branch_rows(conn, branch_type):
+    """전체지점 매트릭스용 지점 정렬.
+    캡처 기준으로 '김포공항 → 도심공항 → 인천공항' 순서를 그대로 따라간다.
+    """
+    ph = '%s' if not USE_SQLITE else '?'
+    rows = conn.execute(
+        f"SELECT id, code, name FROM branches WHERE type={ph}",
+        (branch_type,)
+    ).fetchall()
+
+    # 실제 캡처 기준 우선순위: 김포공항 → 도심공항 → 인천공항
+    order = {
+        'CJJ': 0,
+        'CJU': 1,
+        'GMP': 2,
+        'PUS': 3,
+        'TAE': 4,
+        'ICN': 5,
+        'ALA': 6,
+        'CNX': 7,
+        'CXR': 8,
+        'MDC': 9,
+        'CTS': 10,
+        'FUK': 11,
+        'KIX': 12,
+        'NRT': 13,
+        'OKA': 14,
+        'TKS': 15,
+        'HKG': 16,
+        'PVG': 17,
+        'YNT': 18,
+        'BKK': 19,
+        'CGO': 20,
+        'DAD': 21,
+        'KOJ': 22,
+        'PQC': 23,
+        'YNJ': 24,
+    }
+
+    if branch_type == 'DOM':
+        return sorted(rows, key=lambda b: (order.get(b['code'], 999), b['code']))
+    if branch_type == 'INTL':
+        return sorted(rows, key=lambda b: (order.get(b['code'], 999), b['code']))
+    return rows
+
+
 def _catalog_matrix_data(conn):
     """카탈로그(운송아이템) 승인 건 전 지점 매트릭스용 데이터 조회 + 가공.
     페이지 렌더와 엑셀 내보내기에서 공통으로 사용."""
@@ -6112,12 +6202,8 @@ def _catalog_matrix_data(conn):
     ).fetchall()
     known_codes = {c['code'] for c in catalog_items}
 
-    branches_dom  = conn.execute(
-        "SELECT id, code, name FROM branches WHERE type='DOM' ORDER BY code"
-    ).fetchall()
-    branches_intl = conn.execute(
-        "SELECT id, code, name FROM branches WHERE type='INTL' ORDER BY code"
-    ).fetchall()
+    branches_dom  = _matrix_branch_rows(conn, 'DOM')
+    branches_intl = _matrix_branch_rows(conn, 'INTL')
 
     rows = conn.execute(
         "SELECT ri.item_code, COALESCE(cd.name, ri.item_name) AS item_name, "
@@ -7005,12 +7091,8 @@ def form_supply_matrix():
         'SELECT id, name FROM form_types WHERE is_active ORDER BY sort_order'
     ).fetchall()
 
-    branches_dom  = conn.execute(
-        "SELECT id, code, name FROM branches WHERE type='DOM' ORDER BY code"
-    ).fetchall()
-    branches_intl = conn.execute(
-        "SELECT id, code, name FROM branches WHERE type='INTL' ORDER BY code"
-    ).fetchall()
+    branches_dom  = _matrix_branch_rows(conn, 'DOM')
+    branches_intl = _matrix_branch_rows(conn, 'INTL')
 
     rows = conn.execute(
         "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
@@ -7105,12 +7187,8 @@ def form_supply_matrix_export():
     form_types = conn.execute(
         'SELECT id, name FROM form_types WHERE is_active ORDER BY sort_order'
     ).fetchall()
-    branches_dom  = conn.execute(
-        "SELECT id, code, name FROM branches WHERE type='DOM' ORDER BY code"
-    ).fetchall()
-    branches_intl = conn.execute(
-        "SELECT id, code, name FROM branches WHERE type='INTL' ORDER BY code"
-    ).fetchall()
+    branches_dom  = _matrix_branch_rows(conn, 'DOM')
+    branches_intl = _matrix_branch_rows(conn, 'INTL')
     rows = conn.execute(
         "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
         "FROM form_supply_request_items i "
