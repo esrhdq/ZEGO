@@ -967,6 +967,33 @@ def init_db():
                 )
                 conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_branch_tae',))
                 conn.commit()
+            _mig_snoopy = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_snoopy_dom_form_types',)
+            ).fetchone()
+            if not _mig_snoopy:
+                for _base_name, _new_name in [
+                    ('PREMIUM TAG(D/S)', 'PREMIUM TAG(D/S, SNOOPY, DOM)'),
+                    ('FRAGILE TAG(NEW)', 'FRAGILE TAG(NEW, SNOOPY, DOM)'),
+                    ('HEAVY TAG',        'HEAVY TAG(SNOOPY, DOM)'),
+                ]:
+                    _base = conn.execute(
+                        "SELECT unit, unit_detail, unit_price, min_threshold, sort_order "
+                        "FROM form_types WHERE name=%s", (_base_name,)
+                    ).fetchone()
+                    if _base:
+                        conn.execute(
+                            "UPDATE form_types SET sort_order = sort_order + 1 WHERE sort_order > %s",
+                            (_base['sort_order'],)
+                        )
+                        conn.execute(
+                            "INSERT INTO form_types "
+                            "(name, unit, unit_detail, unit_price, min_threshold, sort_order, is_active) "
+                            "VALUES (%s,%s,%s,%s,%s,%s,1) ON CONFLICT (name) DO NOTHING",
+                            (_new_name, _base['unit'], _base['unit_detail'], _base['unit_price'],
+                             _base['min_threshold'], _base['sort_order'] + 1)
+                        )
+                conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_snoopy_dom_form_types',))
+                conn.commit()
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1463,11 +1490,11 @@ def init_db():
                 ('유상비닐(大/PPL)',                                               '포대', '100개',  130000, 2, 12),
                 ('BOX TAPE',                                                       'BOX', '50개',     55000, 3, 13),
                 ('PREMIUM TAG(D/S)',                                               'BOX', '5,000장',  80000, 2, 14),
-                ('PREMIUM TAG(D/S,SNOOPY)',                                        'BOX', '5,000장',  80000, 2, 15),
+                ('PREMIUM TAG(D/S, SNOOPY, DOM)',                                  'BOX', '5,000장',  80000, 2, 15),
                 ('FRAGILE TAG(NEW)',                                               'BOX', '5,000장',  80000, 2, 16),
-                ('FRAGILE TAG(NEW,SNOOPY)',                                        'BOX', '5,000장',  80000, 2, 17),
+                ('FRAGILE TAG(NEW, SNOOPY, DOM)',                                  'BOX', '5,000장',  80000, 2, 17),
                 ('HEAVY TAG',                                                      'BOX', '5,000장',  80000, 2, 18),
-                ('HEAVY TAG(NEW,SNOOPY)',                                          'BOX', '5,000장',  80000, 2, 19),
+                ('HEAVY TAG(SNOOPY, DOM)',                                         'BOX', '5,000장',  80000, 2, 19),
                 ('GTOG TAG',                                                       'BOX', '5,000장',  80000, 2, 20),
                 ('Exit-Seat Sticker',                                              'BOX', '20,000장', 110000, 1, 18),
                 ('COB LABEL',                                                      'BOX', '5,000장',  80000, 1, 19),
@@ -1601,6 +1628,31 @@ def init_db():
                 ]
                 for old, new in _form_renames:
                     conn.execute('UPDATE form_types SET name=? WHERE name=?', (new, old))
+                # SNOOPY(DOM) 파생 양식 추가 — 기존 항목 바로 뒤에 삽입
+                for _base_name, _new_name in [
+                    ('PREMIUM TAG(D/S)', 'PREMIUM TAG(D/S, SNOOPY, DOM)'),
+                    ('FRAGILE TAG(NEW)', 'FRAGILE TAG(NEW, SNOOPY, DOM)'),
+                    ('HEAVY TAG',        'HEAVY TAG(SNOOPY, DOM)'),
+                ]:
+                    _base = conn.execute(
+                        'SELECT unit, unit_detail, unit_price, min_threshold, sort_order '
+                        'FROM form_types WHERE name=?', (_base_name,)
+                    ).fetchone()
+                    _exists = conn.execute(
+                        'SELECT 1 FROM form_types WHERE name=?', (_new_name,)
+                    ).fetchone()
+                    if _base and not _exists:
+                        conn.execute(
+                            'UPDATE form_types SET sort_order = sort_order + 1 WHERE sort_order > ?',
+                            (_base['sort_order'],)
+                        )
+                        conn.execute(
+                            'INSERT INTO form_types '
+                            '(name, unit, unit_detail, unit_price, min_threshold, sort_order, is_active) '
+                            'VALUES (?,?,?,?,?,?,1)',
+                            (_new_name, _base['unit'], _base['unit_detail'], _base['unit_price'],
+                             _base['min_threshold'], _base['sort_order'] + 1)
+                        )
                 _form_orders = [
                     ('DOM BOARDING PASS (롤)', 1), ('INTL BOARDING PASS(QR)', 2),
                     ('INTL BOARDING PASS(QR, ICN)', 3), ('AUTO BAG TAG', 4),
@@ -1609,23 +1661,25 @@ def init_db():
                     ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
                     ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
                     ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
-                    ('FRAGILE TAG(NEW)', 15), ('HEAVY TAG', 16),
-                    ('GTOG TAG', 17), ('TRANSFER TAG', 18),
-                    ('Exit-Seat Sticker', 19),
-                    ('AOC LABEL', 20), ('POB LABEL', 21),
-                    ('COB LABEL', 22), ('UP SIDE LABEL', 23),
-                    ('WCHR Battery LABEL', 24), ('CORROSIVE LABEL', 25),
-                    ('Dry Ice LABEL', 26), ('한국 입국신고서 (ENG/CNA)', 27),
-                    ('제주 E/D카드', 28), ('한국 세관신고서 (ENG/CNA)', 29),
-                    ('한국 세관신고서 (ENG/JPN)', 30),
-                    ('서약서 (DECLARATION OF INDEMNITY)', 31),
-                    ('합의서 (Release And Indemnity Letter)', 32),
-                    ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)', 33),
-                    ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)', 34),
-                    ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)', 35),
-                    ('총기인수인계서 (Firearm handover form)', 36),
-                    ('PIR', 37), ('SHR', 38), ('NOTOC', 39),
-                    ('BAG(BINGO) CHART (양면)', 40),
+                    ('PREMIUM TAG(D/S, SNOOPY, DOM)', 15), ('FRAGILE TAG(NEW)', 16),
+                    ('FRAGILE TAG(NEW, SNOOPY, DOM)', 17), ('HEAVY TAG', 18),
+                    ('HEAVY TAG(SNOOPY, DOM)', 19), ('GTOG TAG', 20),
+                    ('TRANSFER TAG', 21),
+                    ('Exit-Seat Sticker', 22),
+                    ('AOC LABEL', 23), ('POB LABEL', 24),
+                    ('COB LABEL', 25), ('UP SIDE LABEL', 26),
+                    ('WCHR Battery LABEL', 27), ('CORROSIVE LABEL', 28),
+                    ('Dry Ice LABEL', 29), ('한국 입국신고서 (ENG/CNA)', 30),
+                    ('제주 E/D카드', 31), ('한국 세관신고서 (ENG/CNA)', 32),
+                    ('한국 세관신고서 (ENG/JPN)', 33),
+                    ('서약서 (DECLARATION OF INDEMNITY)', 34),
+                    ('합의서 (Release And Indemnity Letter)', 35),
+                    ('반려동물 서약서 (DECLARATION OF INDEMNITY,PET)', 36),
+                    ('악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)', 37),
+                    ('보호자 서약서 (DECLARATION OF PARENT GUARDIAN)', 38),
+                    ('총기인수인계서 (Firearm handover form)', 39),
+                    ('PIR', 40), ('SHR', 41), ('NOTOC', 42),
+                    ('BAG(BINGO) CHART (양면)', 43),
                 ]
                 for name, order in _form_orders:
                     conn.execute('UPDATE form_types SET sort_order=? WHERE name=?', (order, name))
@@ -1776,9 +1830,9 @@ def init_db():
                 ('SRI 봉투(大)', 9), ('CO-MAIL 봉투(NEW)', 10),
                 ('유상비닐(小/PPS)', 11), ('유상비닐(大/PPL)', 12),
                 ('BOX TAPE', 13), ('PREMIUM TAG(D/S)', 14),
-                ('PREMIUM TAG(D/S,SNOOPY)', 15), ('FRAGILE TAG(NEW)', 16),
-                ('FRAGILE TAG(NEW,SNOOPY)', 17), ('HEAVY TAG', 18),
-                ('HEAVY TAG(NEW,SNOOPY)', 19), ('GTOG TAG', 20),
+                ('PREMIUM TAG(D/S, SNOOPY, DOM)', 15), ('FRAGILE TAG(NEW)', 16),
+                ('FRAGILE TAG(NEW, SNOOPY, DOM)', 17), ('HEAVY TAG', 18),
+                ('HEAVY TAG(SNOOPY, DOM)', 19), ('GTOG TAG', 20),
                 ('TRANSFER TAG', 21), ('Exit-Seat Sticker', 22),
                 ('AOC LABEL', 23), ('POB LABEL', 24),
                 ('COB LABEL', 25), ('UP SIDE LABEL', 26),
