@@ -995,7 +995,10 @@ def init_db():
                     unit          TEXT NOT NULL,
                     unit_detail   TEXT,
                     unit_price    INTEGER DEFAULT 0,
-                    min_threshold INTEGER DEFAULT 2
+                    min_threshold INTEGER DEFAULT 2,
+                    sort_order    INTEGER NOT NULL DEFAULT 999,
+                    is_active     INTEGER NOT NULL DEFAULT 1,
+                    memo          TEXT NOT NULL DEFAULT ''
                 )
             ''')
             conn.execute('''
@@ -1107,13 +1110,14 @@ def init_db():
             ''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS catalog_defs (
-                    code       TEXT PRIMARY KEY,
-                    img        TEXT NOT NULL,
-                    name       TEXT NOT NULL,
-                    cat        TEXT NOT NULL,
-                    sub_desc   TEXT NOT NULL DEFAULT '',
-                    sort_order INTEGER NOT NULL DEFAULT 0,
-                    img_data   TEXT NOT NULL DEFAULT ''
+                    code         TEXT PRIMARY KEY,
+                    img          TEXT NOT NULL,
+                    name         TEXT NOT NULL,
+                    cat          TEXT NOT NULL,
+                    sub_desc     TEXT NOT NULL DEFAULT '',
+                    sort_order   INTEGER NOT NULL DEFAULT 0,
+                    img_data     TEXT NOT NULL DEFAULT '',
+                    user_deleted INTEGER NOT NULL DEFAULT 0
                 )
             ''')
             conn.execute('''
@@ -1129,12 +1133,17 @@ def init_db():
             ''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS catalog_request_items (
-                    id              INTEGER PRIMARY KEY,
-                    request_id      INTEGER NOT NULL REFERENCES catalog_requests(id),
-                    item_code       TEXT NOT NULL,
-                    quantity        INTEGER DEFAULT 1,
-                    custom_img_data TEXT DEFAULT '',
-                    custom_text     TEXT DEFAULT '',
+                    id                 INTEGER PRIMARY KEY,
+                    request_id         INTEGER NOT NULL REFERENCES catalog_requests(id),
+                    item_code          TEXT NOT NULL,
+                    quantity           INTEGER DEFAULT 1,
+                    custom_img_data    TEXT DEFAULT '',
+                    custom_text        TEXT DEFAULT '',
+                    item_name          TEXT DEFAULT '',
+                    item_cat           TEXT DEFAULT '',
+                    item_status        TEXT NOT NULL DEFAULT 'pending',
+                    item_reject_reason TEXT DEFAULT '',
+                    request_reason     TEXT DEFAULT '',
                     UNIQUE(request_id, item_code)
                 )
             ''')
@@ -1166,12 +1175,25 @@ def init_db():
             ''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS form_supply_request_items (
-                    id           INTEGER PRIMARY KEY,
-                    request_id   INTEGER NOT NULL,
-                    form_type_id INTEGER NOT NULL,
-                    quantity     INTEGER NOT NULL DEFAULT 1,
+                    id                 INTEGER PRIMARY KEY,
+                    request_id         INTEGER NOT NULL,
+                    form_type_id       INTEGER NOT NULL,
+                    quantity           INTEGER NOT NULL DEFAULT 1,
+                    item_status        TEXT NOT NULL DEFAULT 'pending',
+                    item_reject_reason TEXT NOT NULL DEFAULT '',
                     FOREIGN KEY (request_id)   REFERENCES form_supply_requests(id),
                     FOREIGN KEY (form_type_id) REFERENCES form_types(id)
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_settings (
+                    id           INTEGER PRIMARY KEY,
+                    title        TEXT DEFAULT '',
+                    period_start TEXT NOT NULL,
+                    period_end   TEXT NOT NULL,
+                    is_enabled   INTEGER DEFAULT 1,
+                    created_by   TEXT NOT NULL,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             # 기존 DB 마이그레이션 — 컬럼 추가
@@ -1202,7 +1224,10 @@ def init_db():
                     unit          TEXT NOT NULL,
                     unit_detail   TEXT,
                     unit_price    INTEGER DEFAULT 0,
-                    min_threshold INTEGER DEFAULT 2
+                    min_threshold INTEGER DEFAULT 2,
+                    sort_order    INTEGER NOT NULL DEFAULT 999,
+                    is_active     INTEGER NOT NULL DEFAULT 1,
+                    memo          TEXT NOT NULL DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS inventory (
                     id            SERIAL PRIMARY KEY,
@@ -1327,10 +1352,21 @@ def init_db():
                     updated_at    TIMESTAMP DEFAULT NOW()
                 );
                 CREATE TABLE IF NOT EXISTS form_supply_request_items (
+                    id                 SERIAL PRIMARY KEY,
+                    request_id         INTEGER NOT NULL REFERENCES form_supply_requests(id),
+                    form_type_id       INTEGER NOT NULL REFERENCES form_types(id),
+                    quantity           INTEGER NOT NULL DEFAULT 1,
+                    item_status        TEXT NOT NULL DEFAULT 'pending',
+                    item_reject_reason TEXT NOT NULL DEFAULT ''
+                );
+                CREATE TABLE IF NOT EXISTS catalog_settings (
                     id           SERIAL PRIMARY KEY,
-                    request_id   INTEGER NOT NULL REFERENCES form_supply_requests(id),
-                    form_type_id INTEGER NOT NULL REFERENCES form_types(id),
-                    quantity     INTEGER NOT NULL DEFAULT 1
+                    title        TEXT DEFAULT '',
+                    period_start TEXT NOT NULL,
+                    period_end   TEXT NOT NULL,
+                    is_enabled   INTEGER DEFAULT 1,
+                    created_by   TEXT NOT NULL,
+                    updated_at   TIMESTAMP DEFAULT NOW()
                 );
             ''')
             # 콜드스타트마다 실행: 멱등 컬럼 마이그레이션 (IF NOT EXISTS — 빠름)
@@ -6310,6 +6346,7 @@ def catalog_matrix():
         flash(T('flash.admin_only'), 'danger')
         return redirect(url_for('dashboard'))
 
+    _ensure_catalog_table()
     conn = get_db()
     matrix_items, branches_gimpo, branches_city, branches_incheon, resolved_rows, period_titles = _catalog_matrix_data(conn)
     conn.close()
@@ -6359,6 +6396,7 @@ def catalog_matrix_export():
 
     period_param = request.args.get('period', 'ALL').strip()
 
+    _ensure_catalog_table()
     conn = get_db()
     matrix_items, branches_gimpo, branches_city, branches_incheon, resolved_rows, period_titles = _catalog_matrix_data(conn)
     conn.close()
