@@ -1005,6 +1005,30 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/snoopy] {_e}')
+            _mig_reqhide = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_form_types_request_hidden',)
+            ).fetchone()
+            if not _mig_reqhide:
+                try:
+                    conn.execute(
+                        "ALTER TABLE form_types ADD COLUMN IF NOT EXISTS "
+                        "request_hidden BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                    # 기존에 신청 화면에서만 이름으로 숨겨오던 항목들을 컬럼 기반으로 이전
+                    for _name in (
+                        '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
+                        '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
+                        '총기인수인계서 (Firearm handover form)',
+                        'NOTOC',
+                    ):
+                        conn.execute(
+                            "UPDATE form_types SET request_hidden=TRUE WHERE name=%s", (_name,)
+                        )
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_form_types_request_hidden',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/request_hidden] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1036,7 +1060,8 @@ def init_db():
                     min_threshold INTEGER DEFAULT 2,
                     sort_order    INTEGER NOT NULL DEFAULT 999,
                     is_active     INTEGER NOT NULL DEFAULT 1,
-                    memo          TEXT NOT NULL DEFAULT ''
+                    memo          TEXT NOT NULL DEFAULT '',
+                    request_hidden INTEGER NOT NULL DEFAULT 0
                 )
             ''')
             conn.execute('''
@@ -1265,7 +1290,8 @@ def init_db():
                     min_threshold INTEGER DEFAULT 2,
                     sort_order    INTEGER NOT NULL DEFAULT 999,
                     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
-                    memo          TEXT NOT NULL DEFAULT ''
+                    memo          TEXT NOT NULL DEFAULT '',
+                    request_hidden BOOLEAN NOT NULL DEFAULT FALSE
                 );
                 CREATE TABLE IF NOT EXISTS inventory (
                     id            SERIAL PRIMARY KEY,
@@ -1618,6 +1644,16 @@ def init_db():
                     conn.execute("ALTER TABLE form_types ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
                 if 'memo' not in ft_cols:
                     conn.execute("ALTER TABLE form_types ADD COLUMN memo TEXT NOT NULL DEFAULT ''")
+                if 'request_hidden' not in ft_cols:
+                    conn.execute("ALTER TABLE form_types ADD COLUMN request_hidden INTEGER NOT NULL DEFAULT 0")
+                    # 기존에 신청 화면에서만 이름으로 숨겨오던 항목들을 컬럼 기반으로 이전
+                    for _rh_name in (
+                        '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
+                        '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
+                        '총기인수인계서 (Firearm handover form)',
+                        'NOTOC',
+                    ):
+                        conn.execute('UPDATE form_types SET request_hidden=1 WHERE name=?', (_rh_name,))
                 inv_cols = [r[1] for r in conn.execute('PRAGMA table_info(inventory)').fetchall()]
                 if 'min_threshold' not in inv_cols:
                     conn.execute("ALTER TABLE inventory ADD COLUMN min_threshold INTEGER NOT NULL DEFAULT 2")
@@ -6125,7 +6161,7 @@ def form_supply_settings():
         d['created_at'] = d.get('updated_at')
         history_list.append(d)
     form_types = conn.execute(
-        'SELECT * FROM form_types ORDER BY (CASE WHEN is_active THEN 0 ELSE 1 END), sort_order'
+        'SELECT * FROM form_types ORDER BY (CASE WHEN request_hidden THEN 1 ELSE 0 END), sort_order'
     ).fetchall()
 
     # 운송아이템 설정 이력
@@ -6609,43 +6645,43 @@ def admin_form_type_memo(form_id):
 @app.route('/admin/form-type/<int:form_id>/delete', methods=['POST'])
 @login_required
 def admin_form_type_delete(form_id):
-    """양식 삭제(비활성화) — 입고/출고/신청/매트릭스 등 전 화면에서 숨김.
-    기존 입출고·신청 이력은 보존되며, 복원 시 다시 노출된다."""
+    """양식을 신청 화면에서만 숨김 — 입고/출고/매트릭스에는 계속 노출되고
+    기존 입출고·신청 이력도 그대로 보존된다. 복원 시 신청 화면에도 다시 노출된다."""
     T = _get_T()
     if session.get('role') != 'admin':
         return {'ok': False, 'error': T('flash.no_permission')}, 403
     ph = '%s' if not USE_SQLITE else '?'
-    active_val = '0' if USE_SQLITE else 'FALSE'
+    hide_val = '1' if USE_SQLITE else 'TRUE'
     conn = get_db()
     row = conn.execute(f'SELECT name FROM form_types WHERE id={ph}', (form_id,)).fetchone()
     if not row:
         conn.close()
         return {'ok': False, 'error': 'not found'}, 404
-    conn.execute(f'UPDATE form_types SET is_active={active_val} WHERE id={ph}', (form_id,))
+    conn.execute(f'UPDATE form_types SET request_hidden={hide_val} WHERE id={ph}', (form_id,))
     conn.commit()
     conn.close()
-    log_action('운송양식_삭제', row['name'])
+    log_action('운송양식_신청숨김', row['name'])
     return {'ok': True}
 
 
 @app.route('/admin/form-type/<int:form_id>/restore', methods=['POST'])
 @login_required
 def admin_form_type_restore(form_id):
-    """삭제(비활성화)된 양식을 다시 노출."""
+    """신청 화면에서 숨겨진 양식을 다시 노출."""
     T = _get_T()
     if session.get('role') != 'admin':
         return {'ok': False, 'error': T('flash.no_permission')}, 403
     ph = '%s' if not USE_SQLITE else '?'
-    active_val = '1' if USE_SQLITE else 'TRUE'
+    hide_val = '0' if USE_SQLITE else 'FALSE'
     conn = get_db()
     row = conn.execute(f'SELECT name FROM form_types WHERE id={ph}', (form_id,)).fetchone()
     if not row:
         conn.close()
         return {'ok': False, 'error': 'not found'}, 404
-    conn.execute(f'UPDATE form_types SET is_active={active_val} WHERE id={ph}', (form_id,))
+    conn.execute(f'UPDATE form_types SET request_hidden={hide_val} WHERE id={ph}', (form_id,))
     conn.commit()
     conn.close()
-    log_action('운송양식_복원', row['name'])
+    log_action('운송양식_신청복원', row['name'])
     return {'ok': True}
 
 
@@ -6781,20 +6817,13 @@ def form_supply_request():
 
     # GET — 폼 렌더
     bid = session.get('branch_id')
-    # 아래 항목은 입고/출고/매트릭스 등 다른 화면에는 계속 노출하되, 신청 화면에서만 숨김
-    _hidden_in_request = (
-        '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
-        '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
-        '총기인수인계서 (Firearm handover form)',
-        'NOTOC',
-    )
-    _hidden_ph = ','.join([ph] * len(_hidden_in_request))
+    # request_hidden=TRUE인 항목은 입고/출고/매트릭스에는 계속 노출하되 신청 화면에서만 숨김
     form_types = conn.execute(
         f'SELECT f.*, COALESCE(inv.quantity, -1) AS stock_qty '
         f'FROM form_types f '
         f'LEFT JOIN inventory inv ON inv.form_type_id = f.id AND inv.branch_id = {ph} '
-        f'WHERE f.is_active AND f.name NOT IN ({_hidden_ph}) ORDER BY f.sort_order',
-        (bid, *_hidden_in_request)
+        f'WHERE f.is_active AND NOT f.request_hidden ORDER BY f.sort_order',
+        (bid,)
     ).fetchall()
     conn.close()
     return render_template('form_supply_request.html',

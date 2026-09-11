@@ -178,11 +178,11 @@
             </thead>
             <tbody>
               {% for f in form_types %}
-              <tr id="memo-row-{{ f.id }}" class="{{ 'opacity-50' if not f.is_active }}">
+              <tr id="memo-row-{{ f.id }}" class="{{ 'opacity-50' if f.request_hidden }}">
                 <td class="text-muted small">{{ loop.index }}</td>
                 <td class="fw-semibold small">
                   {{ f.name }}
-                  {% if not f.is_active %}
+                  {% if f.request_hidden %}
                   <span class="badge bg-secondary ms-1">{{ T('fssettings.deleted_badge') }}</span>
                   {% endif %}
                 </td>
@@ -194,7 +194,7 @@
                           data-memo="{{ f.memo | e }}">
                     <i class="fa-solid fa-pen-to-square"></i>
                   </button>
-                  {% if f.is_active %}
+                  {% if not f.request_hidden %}
                   <button type="button" class="btn btn-sm btn-outline-danger form-delete-btn"
                           data-id="{{ f.id }}" data-name="{{ f.name | e }}">
                     <i class="fa-solid fa-trash"></i>
