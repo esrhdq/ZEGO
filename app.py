@@ -971,29 +971,40 @@ def init_db():
                 "SELECT name FROM _migrations WHERE name=%s", ('add_snoopy_dom_form_types',)
             ).fetchone()
             if not _mig_snoopy:
-                for _base_name, _new_name in [
-                    ('PREMIUM TAG(D/S)', 'PREMIUM TAG(D/S, SNOOPY, DOM)'),
-                    ('FRAGILE TAG(NEW)', 'FRAGILE TAG(NEW, SNOOPY, DOM)'),
-                    ('HEAVY TAG',        'HEAVY TAG(SNOOPY, DOM)'),
-                ]:
-                    _base = conn.execute(
-                        "SELECT unit, unit_detail, unit_price, min_threshold, sort_order "
-                        "FROM form_types WHERE name=%s", (_base_name,)
-                    ).fetchone()
-                    if _base:
-                        conn.execute(
-                            "UPDATE form_types SET sort_order = sort_order + 1 WHERE sort_order > %s",
-                            (_base['sort_order'],)
-                        )
-                        conn.execute(
-                            "INSERT INTO form_types "
-                            "(name, unit, unit_detail, unit_price, min_threshold, sort_order, is_active) "
-                            "VALUES (%s,%s,%s,%s,%s,%s,1) ON CONFLICT (name) DO NOTHING",
-                            (_new_name, _base['unit'], _base['unit_detail'], _base['unit_price'],
-                             _base['min_threshold'], _base['sort_order'] + 1)
-                        )
-                conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_snoopy_dom_form_types',))
-                conn.commit()
+                try:
+                    for _base_name, _new_name in [
+                        ('PREMIUM TAG(D/S)', 'PREMIUM TAG(D/S, SNOOPY, DOM)'),
+                        ('FRAGILE TAG(NEW)', 'FRAGILE TAG(NEW, SNOOPY, DOM)'),
+                        ('HEAVY TAG',        'HEAVY TAG(SNOOPY, DOM)'),
+                    ]:
+                        _exists = conn.execute(
+                            "SELECT 1 FROM form_types WHERE name=%s", (_new_name,)
+                        ).fetchone()
+                        if _exists:
+                            continue
+                        _base = conn.execute(
+                            "SELECT unit, unit_detail, unit_price, min_threshold, sort_order "
+                            "FROM form_types WHERE name=%s", (_base_name,)
+                        ).fetchone()
+                        if _base:
+                            conn.execute(
+                                "UPDATE form_types SET sort_order = sort_order + 1 WHERE sort_order > %s",
+                                (_base['sort_order'],)
+                            )
+                            conn.execute(
+                                "INSERT INTO form_types "
+                                "(name, unit, unit_detail, unit_price, min_threshold, sort_order, is_active) "
+                                "VALUES (%s,%s,%s,%s,%s,%s,TRUE) ON CONFLICT (name) DO NOTHING",
+                                (_new_name, _base['unit'], _base['unit_detail'], _base['unit_price'],
+                                 _base['min_threshold'], _base['sort_order'] + 1)
+                            )
+                        else:
+                            print(f'[data_migration/snoopy] base form_type not found: {_base_name!r}')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_snoopy_dom_form_types',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/snoopy] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1253,7 +1264,7 @@ def init_db():
                     unit_price    INTEGER DEFAULT 0,
                     min_threshold INTEGER DEFAULT 2,
                     sort_order    INTEGER NOT NULL DEFAULT 999,
-                    is_active     INTEGER NOT NULL DEFAULT 1,
+                    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
                     memo          TEXT NOT NULL DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS inventory (
