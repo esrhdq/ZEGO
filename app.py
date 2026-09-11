@@ -6736,12 +6736,20 @@ def form_supply_request():
 
     # GET — 폼 렌더
     bid = session.get('branch_id')
+    # 아래 항목은 입고/출고/매트릭스 등 다른 화면에는 계속 노출하되, 신청 화면에서만 숨김
+    _hidden_in_request = (
+        '악기 서약서 (DECLARATION OF INDEMNITY,Musical Instrument)',
+        '보호자 서약서 (DECLARATION OF PARENT GUARDIAN)',
+        '총기인수인계서 (Firearm handover form)',
+        'NOTOC',
+    )
+    _hidden_ph = ','.join([ph] * len(_hidden_in_request))
     form_types = conn.execute(
-        'SELECT f.*, COALESCE(inv.quantity, -1) AS stock_qty '
-        'FROM form_types f '
-        'LEFT JOIN inventory inv ON inv.form_type_id = f.id AND inv.branch_id = %s '
-        'WHERE f.is_active ORDER BY f.sort_order',
-        (bid,)
+        f'SELECT f.*, COALESCE(inv.quantity, -1) AS stock_qty '
+        f'FROM form_types f '
+        f'LEFT JOIN inventory inv ON inv.form_type_id = f.id AND inv.branch_id = {ph} '
+        f'WHERE f.is_active AND f.name NOT IN ({_hidden_ph}) ORDER BY f.sort_order',
+        (bid, *_hidden_in_request)
     ).fetchall()
     conn.close()
     return render_template('form_supply_request.html',
