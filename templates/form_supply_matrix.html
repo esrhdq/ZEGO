@@ -57,10 +57,12 @@
     border: 1px solid rgba(255,255,255,.15);
     min-width: 52px;
   }
-  th.hd-dom  { background: #1d4ed8; }
-  th.hd-intl { background: #6d28d9; }
-  th.hd-branch-dom  { background: #2563eb; }
-  th.hd-branch-intl { background: #7c3aed; }
+  th.hd-gimpo   { background: #1d4ed8; }
+  th.hd-city    { background: #15803d; }
+  th.hd-incheon { background: #6d28d9; }
+  th.hd-branch-gimpo   { background: #2563eb; }
+  th.hd-branch-city    { background: #16a34a; }
+  th.hd-branch-incheon { background: #7c3aed; }
   th.hd-formname { background: #1e293b; color: #fff; text-align: left; padding: 4px 10px; }
 
   /* 분기 구분 행 */
@@ -150,8 +152,15 @@
   </a>
 </div>
 
+{# ── 지점 그룹 정의 (김포공항 / 도심공항 / 인천공항) ── #}
+{% set branch_groups = [
+  ('gimpo',   '김포공항', branches_gimpo),
+  ('city',    '도심공항', branches_city),
+  ('incheon', '인천공항', branches_incheon),
+] %}
+
 {# ── 컬럼 수 계산 (분기 구분 행 colspan용) ── #}
-{% set total_cols = (branches_dom|length) + (branches_intl|length) + 3 %}
+{% set total_cols = (branches_gimpo|length) + (branches_city|length) + (branches_incheon|length) + 4 %}
 
 {# ── 데이터 행 렌더 매크로 ── #}
 {% macro render_rows(pv) %}
@@ -159,32 +168,21 @@
 {% set ft_pivot = pv.get(ft.id, {}) %}
 <tr>
   <td class="col-form">{{ ft.name }}</td>
-  {% set dom_total = namespace(v=0) %}
-  {% for b in branches_dom %}
+  {% for key, label, branches in branch_groups %}
+  {% set group_total = namespace(v=0) %}
+  {% for b in branches %}
     {% set entries = ft_pivot.get(b.id, []) %}
     <td>
       {% for e in entries %}
-        {% set dom_total.v = dom_total.v + e.qty %}
+        {% set group_total.v = group_total.v + e.qty %}
         <span class="cell-entry cell-{{ e.status }}">
           <span class="qty">{{ e.qty }}</span>
         </span>
       {% endfor %}
     </td>
   {% endfor %}
-  <td class="col-total">{% if dom_total.v > 0 %}{{ dom_total.v }}{% endif %}</td>
-  {% set intl_total = namespace(v=0) %}
-  {% for b in branches_intl %}
-    {% set entries = ft_pivot.get(b.id, []) %}
-    <td>
-      {% for e in entries %}
-        {% set intl_total.v = intl_total.v + e.qty %}
-        <span class="cell-entry cell-{{ e.status }}">
-          <span class="qty">{{ e.qty }}</span>
-        </span>
-      {% endfor %}
-    </td>
+  <td class="col-total">{% if group_total.v > 0 %}{{ group_total.v }}{% endif %}</td>
   {% endfor %}
-  <td class="col-total">{% if intl_total.v > 0 %}{{ intl_total.v }}{% endif %}</td>
 </tr>
 {% endfor %}
 {% endmacro %}
@@ -194,22 +192,19 @@
     <thead>
       <tr class="row-group">
         <th class="col-form hd-formname" rowspan="2">{{ T('common.form_name') }}</th>
-        {% if branches_dom %}
-        <th class="hd-dom" colspan="{{ branches_dom|length + 1 }}">{{ T('common.domestic') }}</th>
+        {% for key, label, branches in branch_groups %}
+        {% if branches %}
+        <th class="hd-{{ key }}" colspan="{{ branches|length + 1 }}">{{ label }}</th>
         {% endif %}
-        {% if branches_intl %}
-        <th class="hd-intl" colspan="{{ branches_intl|length + 1 }}">{{ T('common.international') }}</th>
-        {% endif %}
+        {% endfor %}
       </tr>
       <tr class="row-branch">
-        {% for b in branches_dom %}
-        <th class="hd-branch-dom" title="{{ b.name }}">{{ b.code }}</th>
+        {% for key, label, branches in branch_groups %}
+        {% for b in branches %}
+        <th class="hd-branch-{{ key }}" title="{{ b.name }}">{{ b.code }}</th>
         {% endfor %}
-        <th class="hd-branch-dom col-total">{{ T('fsmatrix.subtotal') }}</th>
-        {% for b in branches_intl %}
-        <th class="hd-branch-intl" title="{{ b.name }}">{{ b.code }}</th>
+        <th class="hd-branch-{{ key }} col-total">{{ T('fsmatrix.subtotal') }}</th>
         {% endfor %}
-        <th class="hd-branch-intl col-total">{{ T('fsmatrix.subtotal') }}</th>
       </tr>
     </thead>
 

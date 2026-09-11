@@ -6148,50 +6148,99 @@ def catalog_item_setting_delete(setting_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-def _matrix_branch_rows(conn, branch_type):
-    """전체지점 매트릭스용 지점 정렬.
-    캡처 기준으로 '김포공항 → 도심공항 → 인천공항' 순서를 그대로 따라간다.
+_MATRIX_GIMPO_ORDER = {
+    'CJJ': 0, 'CJU': 1, 'GMP': 2, 'PUS': 3, 'TAE': 4, 'TSA': 5, 'TPE': 6, 'KMJ': 7,
+}
+_MATRIX_CITY_ORDER = {
+    '광명역': 0, '서울역': 1, '이지드랍': 2,
+}
+_MATRIX_INCHEON_ORDER = {
+    'ICN': 0, 'ALA': 1, 'CNX': 2, 'CXR': 3, 'MDC': 4, 'CTS': 5, 'FUK': 6, 'KIX': 7,
+    'NRT': 8, 'OKA': 9, 'TKS': 10, 'HKG': 11, 'PVG': 12, 'YNT': 13, 'BKK': 14,
+    'CGO': 15, 'DAD': 16, 'KOJ': 17, 'PQC': 18, 'YNJ': 19, 'HGH': 20, 'XMN': 21,
+}
+
+
+def _matrix_branch_groups(conn):
+    """전체지점 매트릭스용 지점 3분류: 김포공항 / 도심공항 / 인천공항.
+    지점의 DOM/INTL 구분과 무관하게, 실제 캡처(엑셀) 기준 물리적 출발 거점으로 재그룹핑한다.
+    예) TSA/TPE/KMJ는 DB상 type=INTL이지만 김포공항 발 노선이라 김포공항 그룹에 포함.
     """
-    ph = '%s' if not USE_SQLITE else '?'
     rows = conn.execute(
-        f"SELECT id, code, name FROM branches WHERE type={ph}",
-        (branch_type,)
+        "SELECT id, code, name, type FROM branches WHERE type IN ('DOM', 'INTL')"
     ).fetchall()
 
-    # 실제 캡처 기준 우선순위: 김포공항 → 도심공항 → 인천공항
-    order = {
-        'CJJ': 0,
-        'CJU': 1,
-        'GMP': 2,
-        'PUS': 3,
-        'TAE': 4,
-        'ICN': 5,
-        'ALA': 6,
-        'CNX': 7,
-        'CXR': 8,
-        'MDC': 9,
-        'CTS': 10,
-        'FUK': 11,
-        'KIX': 12,
-        'NRT': 13,
-        'OKA': 14,
-        'TKS': 15,
-        'HKG': 16,
-        'PVG': 17,
-        'YNT': 18,
-        'BKK': 19,
-        'CGO': 20,
-        'DAD': 21,
-        'KOJ': 22,
-        'PQC': 23,
-        'YNJ': 24,
-    }
+    gimpo, city, incheon = [], [], []
+    for b in rows:
+        code = b['code']
+        if code in _MATRIX_GIMPO_ORDER:
+            gimpo.append(b)
+        elif code in _MATRIX_CITY_ORDER:
+            city.append(b)
+        elif code in _MATRIX_INCHEON_ORDER:
+            incheon.append(b)
+        elif b['type'] == 'DOM':
+            gimpo.append(b)
+        else:
+            incheon.append(b)
 
-    if branch_type == 'DOM':
-        return sorted(rows, key=lambda b: (order.get(b['code'], 999), b['code']))
-    if branch_type == 'INTL':
-        return sorted(rows, key=lambda b: (order.get(b['code'], 999), b['code']))
-    return rows
+    gimpo.sort(key=lambda b: (_MATRIX_GIMPO_ORDER.get(b['code'], 999), b['code']))
+    city.sort(key=lambda b: (_MATRIX_CITY_ORDER.get(b['code'], 999), b['code']))
+    incheon.sort(key=lambda b: (_MATRIX_INCHEON_ORDER.get(b['code'], 999), b['code']))
+    return gimpo, city, incheon
+
+
+def _matrix_excel_group_defs(branches_gimpo, branches_city, branches_incheon):
+    """매트릭스 엑셀 내보내기용 3그룹(김포공항/도심공항/인천공항) 정의: (라벨, 지점목록, 헤더색, 코드색)."""
+    return [
+        ('김포공항', branches_gimpo,   '1D4ED8', '2563EB'),
+        ('도심공항', branches_city,    '15803D', '16A34A'),
+        ('인천공항', branches_incheon, '6D28D9', '7C3AED'),
+    ]
+
+
+def _write_matrix_excel_headers(ws, groups, fill, font, center, border, gray2, start_col=2):
+    """행1(그룹 라벨)/행2(지점 코드+소계) 헤더를 그려주고, (총 데이터열 수, [(그룹 시작열, [branch_id,...]), ...])를 반환."""
+    col = start_col
+    col_info = []
+    for label, branches, hdr_color, code_color in groups:
+        group_start = col
+        if branches:
+            end_col = group_start + len(branches)
+            ws.merge_cells(start_row=1, start_column=group_start, end_row=1, end_column=end_col)
+            c = ws.cell(1, group_start, label)
+            c.fill = fill(hdr_color); c.font = font(True, 'FFFFFF', 9)
+            c.alignment = center(); c.border = border
+        for b in branches:
+            cc = ws.cell(2, col, b['code'])
+            cc.fill = fill(code_color); cc.font = font(True, 'FFFFFF', 8)
+            cc.alignment = center(); cc.border = border
+            col += 1
+        cc = ws.cell(2, col, '소계')
+        cc.fill = fill(gray2); cc.font = font(True, 'FFFFFF', 8)
+        cc.alignment = center(); cc.border = border
+        col += 1
+        col_info.append((group_start, [b['id'] for b in branches]))
+    return col - start_col, col_info
+
+
+def _write_matrix_excel_data_row(ws_ref, r, label_text, data_dict, col_info, fill, font, center, left, border, gray):
+    """매트릭스 엑셀 데이터 한 행(라벨 + 그룹별 지점 수량 + 그룹별 소계)을 기록."""
+    c = ws_ref.cell(r, 1, label_text)
+    c.font = font(False, '374151', 9); c.alignment = left(); c.border = border
+    for group_start, bids in col_info:
+        col = group_start
+        total = 0
+        for bid in bids:
+            qty = data_dict.get(bid, 0)
+            total += qty
+            cc = ws_ref.cell(r, col, qty if qty else '')
+            cc.font = font(True, '15803D', 9) if qty else font(False, 'AAAAAA', 8)
+            cc.alignment = center(); cc.border = border
+            col += 1
+        cc = ws_ref.cell(r, col, total if total else '')
+        cc.fill = fill(gray); cc.font = font(True, '1E293B', 9)
+        cc.alignment = center(); cc.border = border
 
 
 def _catalog_matrix_data(conn):
@@ -6202,8 +6251,7 @@ def _catalog_matrix_data(conn):
     ).fetchall()
     known_codes = {c['code'] for c in catalog_items}
 
-    branches_dom  = _matrix_branch_rows(conn, 'DOM')
-    branches_intl = _matrix_branch_rows(conn, 'INTL')
+    branches_gimpo, branches_city, branches_incheon = _matrix_branch_groups(conn)
 
     rows = conn.execute(
         "SELECT ri.item_code, COALESCE(cd.name, ri.item_name) AS item_name, "
@@ -6250,7 +6298,7 @@ def _catalog_matrix_data(conn):
             seen_t.add(t)
             period_titles.append(t)
 
-    return matrix_items, branches_dom, branches_intl, resolved_rows, period_titles
+    return matrix_items, branches_gimpo, branches_city, branches_incheon, resolved_rows, period_titles
 
 
 @app.route('/admin/catalog/matrix')
@@ -6263,7 +6311,7 @@ def catalog_matrix():
         return redirect(url_for('dashboard'))
 
     conn = get_db()
-    matrix_items, branches_dom, branches_intl, resolved_rows, period_titles = _catalog_matrix_data(conn)
+    matrix_items, branches_gimpo, branches_city, branches_incheon, resolved_rows, period_titles = _catalog_matrix_data(conn)
     conn.close()
 
     def build_pivot(filtered_pairs):
@@ -6288,8 +6336,9 @@ def catalog_matrix():
 
     return render_template('catalog_matrix.html',
                            matrix_items=matrix_items,
-                           branches_dom=branches_dom,
-                           branches_intl=branches_intl,
+                           branches_gimpo=branches_gimpo,
+                           branches_city=branches_city,
+                           branches_incheon=branches_incheon,
                            pivot_all=pivot_all,
                            pivot_by_title=pivot_by_title,
                            period_titles=period_titles)
@@ -6311,7 +6360,7 @@ def catalog_matrix_export():
     period_param = request.args.get('period', 'ALL').strip()
 
     conn = get_db()
-    matrix_items, branches_dom, branches_intl, resolved_rows, period_titles = _catalog_matrix_data(conn)
+    matrix_items, branches_gimpo, branches_city, branches_incheon, resolved_rows, period_titles = _catalog_matrix_data(conn)
     conn.close()
 
     def build_pivot(filtered_pairs):
@@ -6350,8 +6399,6 @@ def catalog_matrix_export():
     border_thin = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     NAVY  = '1E293B'; WHITE = 'FFFFFF'
-    BLUE  = '1D4ED8'; BLUE2 = '2563EB'
-    PURP  = '6D28D9'; PURP2 = '7C3AED'
     GRAY  = 'F8FAFC'; GRAY2 = '334155'
     DIVBG = '1E293B'
 
@@ -6361,105 +6408,41 @@ def catalog_matrix_export():
     sheet_title = period_param if period_param != 'ALL' else '전체 기간'
     ws.title = sheet_title[:31]
 
-    dom_cnt  = len(branches_dom)
-    intl_cnt = len(branches_intl)
-    total_data_cols = dom_cnt + 1 + intl_cnt + 1  # 소계 포함
+    groups = _matrix_excel_group_defs(branches_gimpo, branches_city, branches_incheon)
 
     # 열 너비
+    total_data_cols = len(branches_gimpo) + 1 + len(branches_city) + 1 + len(branches_incheon) + 1
     ws.column_dimensions['A'].width = 30
     for col_idx in range(2, 2 + total_data_cols):
         ws.column_dimensions[get_column_letter(col_idx)].width = 9
 
-    # ── 행 1: 그룹 헤더 (아이템명 | 국내 | 국제) ─────────────────
+    # ── 행 1: 그룹 헤더 (아이템명 | 김포공항 | 도심공항 | 인천공항) ─────────────────
     ws.row_dimensions[1].height = 20
     cell = ws.cell(1, 1, '아이템명')
     cell.fill = _fill(NAVY); cell.font = _font(True, WHITE, 9)
     cell.alignment = _center(); cell.border = border_thin
-
-    dom_start_col = 2
-    if dom_cnt > 0:
-        dom_end_col = dom_start_col + dom_cnt  # 소계 포함
-        ws.merge_cells(start_row=1, start_column=dom_start_col,
-                       end_row=1,   end_column=dom_end_col)
-        c = ws.cell(1, dom_start_col, '국내')
-        c.fill = _fill(BLUE); c.font = _font(True, WHITE, 9)
-        c.alignment = _center(); c.border = border_thin
-
-    intl_start_col = dom_start_col + dom_cnt + 1
-    if intl_cnt > 0:
-        intl_end_col = intl_start_col + intl_cnt  # 소계 포함
-        ws.merge_cells(start_row=1, start_column=intl_start_col,
-                       end_row=1,   end_column=intl_end_col)
-        c = ws.cell(1, intl_start_col, '국제')
-        c.fill = _fill(PURP); c.font = _font(True, WHITE, 9)
-        c.alignment = _center(); c.border = border_thin
 
     # ── 행 2: 지점 코드 헤더 ────────────────────────────────────
     ws.row_dimensions[2].height = 18
     cell = ws.cell(2, 1, '')
     cell.fill = _fill(NAVY); cell.border = border_thin
 
-    col = dom_start_col
-    for b in branches_dom:
-        c = ws.cell(2, col, b['code'])
-        c.fill = _fill(BLUE2); c.font = _font(True, WHITE, 8)
-        c.alignment = _center(); c.border = border_thin
-        col += 1
-    c = ws.cell(2, col, '소계')
-    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
-    c.alignment = _center(); c.border = border_thin
-    col += 1
-
-    for b in branches_intl:
-        c = ws.cell(2, col, b['code'])
-        c.fill = _fill(PURP2); c.font = _font(True, WHITE, 8)
-        c.alignment = _center(); c.border = border_thin
-        col += 1
-    c = ws.cell(2, col, '소계')
-    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
-    c.alignment = _center(); c.border = border_thin
+    total_data_cols, col_info = _write_matrix_excel_headers(
+        ws, groups, _fill, _font, _center, border_thin, GRAY2
+    )
 
     # ── 데이터 행 ────────────────────────────────────────────────
     cur_row = 3
-    bid_dom  = [b['id'] for b in branches_dom]
-    bid_intl = [b['id'] for b in branches_intl]
 
     def write_data_rows(ws_ref, pv, start_row):
         r = start_row
         for it in matrix_items:
             ws_ref.row_dimensions[r].height = 15
             it_data = pv.get(it['code'], {})
-
-            c = ws_ref.cell(r, 1, it['name'])
-            c.font = _font(False, '374151', 9); c.alignment = _left()
-            c.border = border_thin
-
-            col = dom_start_col
-            dom_total = 0
-            for bid in bid_dom:
-                qty = it_data.get(bid, 0)
-                dom_total += qty
-                c = ws_ref.cell(r, col, qty if qty else '')
-                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
-                c.alignment = _center(); c.border = border_thin
-                col += 1
-            c = ws_ref.cell(r, col, dom_total if dom_total else '')
-            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
-            c.alignment = _center(); c.border = border_thin
-            col += 1
-
-            intl_total = 0
-            for bid in bid_intl:
-                qty = it_data.get(bid, 0)
-                intl_total += qty
-                c = ws_ref.cell(r, col, qty if qty else '')
-                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
-                c.alignment = _center(); c.border = border_thin
-                col += 1
-            c = ws_ref.cell(r, col, intl_total if intl_total else '')
-            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
-            c.alignment = _center(); c.border = border_thin
-
+            _write_matrix_excel_data_row(
+                ws_ref, r, it['name'], it_data, col_info,
+                _fill, _font, _center, _left, border_thin, GRAY
+            )
             r += 1
         return r
 
@@ -7091,8 +7074,7 @@ def form_supply_matrix():
         'SELECT id, name FROM form_types WHERE is_active ORDER BY sort_order'
     ).fetchall()
 
-    branches_dom  = _matrix_branch_rows(conn, 'DOM')
-    branches_intl = _matrix_branch_rows(conn, 'INTL')
+    branches_gimpo, branches_city, branches_incheon = _matrix_branch_groups(conn)
 
     rows = conn.execute(
         "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
@@ -7159,8 +7141,9 @@ def form_supply_matrix():
 
     return render_template('form_supply_matrix.html',
                            form_types=form_types,
-                           branches_dom=branches_dom,
-                           branches_intl=branches_intl,
+                           branches_gimpo=branches_gimpo,
+                           branches_city=branches_city,
+                           branches_incheon=branches_incheon,
                            pivot_all=pivot_all,
                            pivot_by_title=pivot_by_title,
                            period_titles=period_titles)
@@ -7187,8 +7170,7 @@ def form_supply_matrix_export():
     form_types = conn.execute(
         'SELECT id, name FROM form_types WHERE is_active ORDER BY sort_order'
     ).fetchall()
-    branches_dom  = _matrix_branch_rows(conn, 'DOM')
-    branches_intl = _matrix_branch_rows(conn, 'INTL')
+    branches_gimpo, branches_city, branches_incheon = _matrix_branch_groups(conn)
     rows = conn.execute(
         "SELECT i.form_type_id, r.branch_id, i.quantity, r.created_at, r.status, r.period_title "
         "FROM form_supply_request_items i "
@@ -7264,8 +7246,6 @@ def form_supply_matrix_export():
     border_thin = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     NAVY  = '1E293B'; WHITE = 'FFFFFF'
-    BLUE  = '1D4ED8'; BLUE2 = '2563EB'
-    PURP  = '6D28D9'; PURP2 = '7C3AED'
     GRAY  = 'F8FAFC'; GRAY2 = '334155'
     DIVBG = '1E293B'
 
@@ -7275,110 +7255,41 @@ def form_supply_matrix_export():
     sheet_title = period_param if period_param != 'ALL' else '전체 기간'
     ws.title = sheet_title[:31]
 
-    dom_cnt  = len(branches_dom)
-    intl_cnt = len(branches_intl)
-    total_data_cols = dom_cnt + 1 + intl_cnt + 1  # 소계 포함
+    groups = _matrix_excel_group_defs(branches_gimpo, branches_city, branches_incheon)
 
     # 열 너비
+    total_data_cols = len(branches_gimpo) + 1 + len(branches_city) + 1 + len(branches_incheon) + 1
     ws.column_dimensions['A'].width = 30
     for col_idx in range(2, 2 + total_data_cols):
         ws.column_dimensions[get_column_letter(col_idx)].width = 9
 
-    # ── 행 1: 그룹 헤더 (양식명 | 국내 | 국제) ─────────────────
+    # ── 행 1: 그룹 헤더 (양식명 | 김포공항 | 도심공항 | 인천공항) ─────────────────
     ws.row_dimensions[1].height = 20
     cell = ws.cell(1, 1, '양식명')
     cell.fill = _fill(NAVY); cell.font = _font(True, WHITE, 9)
     cell.alignment = _center(); cell.border = border_thin
-
-    dom_start_col = 2
-    if dom_cnt > 0:
-        dom_end_col = dom_start_col + dom_cnt  # 소계 포함
-        ws.merge_cells(start_row=1, start_column=dom_start_col,
-                       end_row=1,   end_column=dom_end_col)
-        c = ws.cell(1, dom_start_col, '국내')
-        c.fill = _fill(BLUE); c.font = _font(True, WHITE, 9)
-        c.alignment = _center(); c.border = border_thin
-
-    intl_start_col = dom_start_col + dom_cnt + 1
-    if intl_cnt > 0:
-        intl_end_col = intl_start_col + intl_cnt  # 소계 포함
-        ws.merge_cells(start_row=1, start_column=intl_start_col,
-                       end_row=1,   end_column=intl_end_col)
-        c = ws.cell(1, intl_start_col, '국제')
-        c.fill = _fill(PURP); c.font = _font(True, WHITE, 9)
-        c.alignment = _center(); c.border = border_thin
 
     # ── 행 2: 지점 코드 헤더 ────────────────────────────────────
     ws.row_dimensions[2].height = 18
     cell = ws.cell(2, 1, '')
     cell.fill = _fill(NAVY); cell.border = border_thin
 
-    col = dom_start_col
-    for b in branches_dom:
-        c = ws.cell(2, col, b['code'])
-        c.fill = _fill(BLUE2); c.font = _font(True, WHITE, 8)
-        c.alignment = _center(); c.border = border_thin
-        col += 1
-    # 국내 소계
-    c = ws.cell(2, col, '소계')
-    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
-    c.alignment = _center(); c.border = border_thin
-    col += 1
-
-    for b in branches_intl:
-        c = ws.cell(2, col, b['code'])
-        c.fill = _fill(PURP2); c.font = _font(True, WHITE, 8)
-        c.alignment = _center(); c.border = border_thin
-        col += 1
-    # 국제 소계
-    c = ws.cell(2, col, '소계')
-    c.fill = _fill(GRAY2); c.font = _font(True, WHITE, 8)
-    c.alignment = _center(); c.border = border_thin
+    total_data_cols, col_info = _write_matrix_excel_headers(
+        ws, groups, _fill, _font, _center, border_thin, GRAY2
+    )
 
     # ── 데이터 행 ────────────────────────────────────────────────
     cur_row = 3
-    bid_dom  = [b['id'] for b in branches_dom]
-    bid_intl = [b['id'] for b in branches_intl]
 
     def write_data_rows(ws_ref, pv, start_row):
         r = start_row
         for ft in form_types:
             ws_ref.row_dimensions[r].height = 15
             ft_data = pv.get(ft['id'], {})
-
-            # 양식명
-            c = ws_ref.cell(r, 1, ft['name'])
-            c.font = _font(False, '374151', 9); c.alignment = _left()
-            c.border = border_thin
-
-            col = dom_start_col
-            dom_total = 0
-            for bid in bid_dom:
-                qty = ft_data.get(bid, 0)
-                dom_total += qty
-                c = ws_ref.cell(r, col, qty if qty else '')
-                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
-                c.alignment = _center(); c.border = border_thin
-                col += 1
-            # 국내 소계
-            c = ws_ref.cell(r, col, dom_total if dom_total else '')
-            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
-            c.alignment = _center(); c.border = border_thin
-            col += 1
-
-            intl_total = 0
-            for bid in bid_intl:
-                qty = ft_data.get(bid, 0)
-                intl_total += qty
-                c = ws_ref.cell(r, col, qty if qty else '')
-                c.font = _font(True, '15803D', 9) if qty else _font(False, 'AAAAAA', 8)
-                c.alignment = _center(); c.border = border_thin
-                col += 1
-            # 국제 소계
-            c = ws_ref.cell(r, col, intl_total if intl_total else '')
-            c.fill = _fill(GRAY); c.font = _font(True, '1E293B', 9)
-            c.alignment = _center(); c.border = border_thin
-
+            _write_matrix_excel_data_row(
+                ws_ref, r, ft['name'], ft_data, col_info,
+                _fill, _font, _center, _left, border_thin, GRAY
+            )
             r += 1
         return r
 
