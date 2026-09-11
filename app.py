@@ -6124,7 +6124,9 @@ def form_supply_settings():
         d = dict(s)
         d['created_at'] = d.get('updated_at')
         history_list.append(d)
-    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+    form_types = conn.execute(
+        'SELECT * FROM form_types ORDER BY (CASE WHEN is_active THEN 0 ELSE 1 END), sort_order'
+    ).fetchall()
 
     # 운송아이템 설정 이력
     try:
@@ -6601,6 +6603,49 @@ def admin_form_type_memo(form_id):
     conn.execute(f'UPDATE form_types SET memo={ph} WHERE id={ph}', (memo, form_id))
     conn.commit()
     conn.close()
+    return {'ok': True}
+
+
+@app.route('/admin/form-type/<int:form_id>/delete', methods=['POST'])
+@login_required
+def admin_form_type_delete(form_id):
+    """양식 삭제(비활성화) — 입고/출고/신청/매트릭스 등 전 화면에서 숨김.
+    기존 입출고·신청 이력은 보존되며, 복원 시 다시 노출된다."""
+    T = _get_T()
+    if session.get('role') != 'admin':
+        return {'ok': False, 'error': T('flash.no_permission')}, 403
+    ph = '%s' if not USE_SQLITE else '?'
+    active_val = '0' if USE_SQLITE else 'FALSE'
+    conn = get_db()
+    row = conn.execute(f'SELECT name FROM form_types WHERE id={ph}', (form_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {'ok': False, 'error': 'not found'}, 404
+    conn.execute(f'UPDATE form_types SET is_active={active_val} WHERE id={ph}', (form_id,))
+    conn.commit()
+    conn.close()
+    log_action('운송양식_삭제', row['name'])
+    return {'ok': True}
+
+
+@app.route('/admin/form-type/<int:form_id>/restore', methods=['POST'])
+@login_required
+def admin_form_type_restore(form_id):
+    """삭제(비활성화)된 양식을 다시 노출."""
+    T = _get_T()
+    if session.get('role') != 'admin':
+        return {'ok': False, 'error': T('flash.no_permission')}, 403
+    ph = '%s' if not USE_SQLITE else '?'
+    active_val = '1' if USE_SQLITE else 'TRUE'
+    conn = get_db()
+    row = conn.execute(f'SELECT name FROM form_types WHERE id={ph}', (form_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {'ok': False, 'error': 'not found'}, 404
+    conn.execute(f'UPDATE form_types SET is_active={active_val} WHERE id={ph}', (form_id,))
+    conn.commit()
+    conn.close()
+    log_action('운송양식_복원', row['name'])
     return {'ok': True}
 
 
