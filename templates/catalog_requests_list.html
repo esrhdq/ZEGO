@@ -93,8 +93,8 @@
             <span class="status-badge status-partial"><i class="fa-solid fa-sliders me-1"></i>{{ T('catreqlist.status_partial') }}</span>
             {% endif %}
           </td>
-          <td style="font-size:.78rem;color:#666">{{ r.created_at|string|truncate(16,true,'') }}</td>
-          <td style="font-size:.78rem;color:#666">{{ r.updated_at|string|truncate(16,true,'') if r.status != 'pending' else '—' }}</td>
+          <td style="font-size:.78rem;color:#666">{{ r.created_at|dt }}</td>
+          <td style="font-size:.78rem;color:#666">{{ r.updated_at|dt if r.status != 'pending' else '—' }}</td>
           <td style="font-size:.78rem;color:#555;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             {{ r.notes or '—' }}
           </td>

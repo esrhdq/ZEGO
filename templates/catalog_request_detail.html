@@ -83,12 +83,12 @@
     </div>
     <div class="req-info-item">
       <div class="req-info-label">{{ T('catreqdet.label_req_date') }}</div>
-      <div class="req-info-value" style="font-size:.8rem">{{ req.created_at|string|truncate(16,true,'') }}</div>
+      <div class="req-info-value" style="font-size:.8rem">{{ req.created_at|dt }}</div>
     </div>
     <div class="req-info-item">
       <div class="req-info-label">{{ T('catreqdet.label_proc_date') }}</div>
       <div class="req-info-value" style="font-size:.8rem">
-        {{ req.updated_at|string|truncate(16,true,'') if req.status != 'pending' else '—' }}
+        {{ req.updated_at|dt if req.status != 'pending' else '—' }}
       </div>
     </div>
     <div class="req-info-item">

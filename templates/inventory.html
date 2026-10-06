@@ -565,7 +565,7 @@ document.querySelectorAll('.branch-detail-btn').forEach(btn => {
           <td class="text-center fw-bold ${qtyClass}">${qty}</td>
           <td class="text-center text-muted">${thr}</td>
           <td class="text-center"><span class="badge ${status[1]}">${status[0]}</span></td>
-          <td class="small text-muted">${(r.last_updated || '').slice(0,16) || '—'}</td>
+          <td class="small text-muted">${r.last_updated || '—'}</td>
         </tr>`);
     });
 

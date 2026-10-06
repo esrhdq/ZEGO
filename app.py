@@ -5467,7 +5467,12 @@ def api_inventory_branches():
         ORDER BY b.type, b.code
     ''', params).fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    result = []
+    for r in rows:
+        d = dict(r)
+        d['last_updated'] = dt_filter(d['last_updated'])
+        result.append(d)
+    return jsonify(result)
 
 
 # ── 지점 이메일 맵 API ────────────────────────────────────────────────────────
