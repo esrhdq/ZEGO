@@ -405,6 +405,7 @@
   "fsreq.title": "Form Supply Request",
   "fsreq.period_active": "Submission period is now open.",
   "fsreq.period_inactive": "Form supply requests are currently closed.",
+  "fsreq.branch_not_eligible": "Your branch is not eligible for this request period.",
   "fsreq.scheduled_period": "Scheduled period:",
   "fsreq.admin_disabled": "Disabled by admin",
   "fsreq.no_period": "No submission period has been set by admin.",

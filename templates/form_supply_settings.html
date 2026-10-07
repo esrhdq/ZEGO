@@ -4,6 +4,36 @@
 {% block page_title %}신청 기간 설정{% endblock %}
 
 {% block content %}
+{# ── 신청가능지점 선택 UI (양식/카탈로그 생성폼 + 공용 수정모달에서 재사용) ── #}
+{% macro branch_picker(id_prefix, selected_ids) %}
+<div class="mb-3">
+  <div class="form-check form-switch mb-2">
+    <input type="checkbox" class="form-check-input branch-picker-all" id="{{ id_prefix }}_all"
+           name="all_branches" value="1" {% if not selected_ids %}checked{% endif %}>
+    <label class="form-check-label fw-semibold" for="{{ id_prefix }}_all">전체 지점</label>
+  </div>
+  <div class="branch-picker-list border rounded p-2" id="{{ id_prefix }}_list"
+       style="max-height:160px;overflow-y:auto;{% if not selected_ids %}opacity:.5;pointer-events:none{% endif %}">
+    {% for key, label, branches in branch_groups %}
+    {% if branches %}
+    <div class="small fw-semibold text-muted mt-1">{{ label }}</div>
+    <div class="d-flex flex-wrap gap-2 mb-1">
+      {% for b in branches %}
+      <div class="form-check form-check-inline m-0">
+        <input type="checkbox" class="form-check-input branch-picker-item" name="eligible_branch_ids"
+               value="{{ b.id }}" id="{{ id_prefix }}_b{{ b.id }}"
+               {% if b.id in selected_ids %}checked{% endif %}>
+        <label class="form-check-label small" for="{{ id_prefix }}_b{{ b.id }}">{{ b.code }}</label>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <div class="form-text">선택한 지점에만 이번 기간 신청이 열립니다. 전체 지점을 켜면 제한 없이 모든 지점이 신청할 수 있습니다.</div>
+</div>
+{% endmacro %}
+
 <!-- 신청종류 탭 -->
 <ul class="nav nav-tabs mb-3" id="periodTab">
   <li class="nav-item">
@@ -77,6 +107,12 @@
                 </div>
                 <div class="form-text">{{ T('fssettings.enable_hint') }}</div>
               </div>
+              <div class="mb-4">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-building-flag me-1 text-primary"></i>신청가능지점
+                </label>
+                {{ branch_picker('form_create', current_eligible.ids) }}
+              </div>
               <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary px-4" data-loading>
                   <i class="fa-solid fa-floppy-disk me-1"></i>{{ T('common.save') }}
@@ -105,6 +141,7 @@
                     <th>{{ T('fssettings.col_title') }}</th>
                     <th>{{ T('fssettings.col_period') }}</th>
                     <th class="text-center">{{ T('common.status') }}</th>
+                    <th>신청대상</th>
                     <th>{{ T('fssettings.col_setter') }}</th>
                     <th style="width:80px" class="text-center">{{ T('common.manage') }}</th>
                   </tr>
@@ -121,6 +158,13 @@
                         <span class="badge badge-pending rounded-pill">{{ T('fssettings.status_inactive') }}</span>
                       {% endif %}
                     </td>
+                    <td class="small">
+                      {% if s.eligible.is_all %}
+                        <span class="text-muted">전체</span>
+                      {% else %}
+                        <span title="{{ s.eligible.codes|join(', ') }}">{{ s.eligible.codes|length }}개 지점</span>
+                      {% endif %}
+                    </td>
                     <td class="small text-muted">{{ s.created_by or '—' }}</td>
                     <td class="text-center" onclick="event.stopPropagation()">
                       <button type="button" class="btn btn-sm btn-outline-secondary me-1 setting-edit-btn"
@@ -130,7 +174,8 @@
                               data-title="{{ s.title | e }}"
                               data-start="{{ s.period_start }}"
                               data-end="{{ s.period_end }}"
-                              data-enabled="{{ '1' if s.is_enabled else '0' }}">
+                              data-enabled="{{ '1' if s.is_enabled else '0' }}"
+                              data-eligible="{{ s.eligible.ids|join(',') }}">
                         <i class="fa-solid fa-pen-to-square"></i>
                       </button>
                       <button type="button" class="btn btn-sm btn-outline-danger setting-del-btn"
@@ -271,6 +316,12 @@
                 </div>
                 <div class="form-text">체크 해제 시 기간 내여도 신청이 비활성화됩니다.</div>
               </div>
+              <div class="mb-4">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-building-flag me-1 text-primary"></i>신청가능지점
+                </label>
+                {{ branch_picker('catalog_create', catalog_current_eligible.ids) }}
+              </div>
               <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary px-4" data-loading>
                   <i class="fa-solid fa-floppy-disk me-1"></i>저장
@@ -299,6 +350,7 @@
                     <th>기간명</th>
                     <th>기간</th>
                     <th class="text-center">상태</th>
+                    <th>신청대상</th>
                     <th>설정자</th>
                     <th style="width:80px" class="text-center">관리</th>
                   </tr>
@@ -315,6 +367,13 @@
                         <span class="badge badge-pending rounded-pill">비활성</span>
                       {% endif %}
                     </td>
+                    <td class="small">
+                      {% if s.eligible.is_all %}
+                        <span class="text-muted">전체</span>
+                      {% else %}
+                        <span title="{{ s.eligible.codes|join(', ') }}">{{ s.eligible.codes|length }}개 지점</span>
+                      {% endif %}
+                    </td>
                     <td class="small text-muted">{{ s.created_by or '—' }}</td>
                     <td class="text-center" onclick="event.stopPropagation()">
                       <button type="button" class="btn btn-sm btn-outline-secondary me-1 setting-edit-btn"
@@ -324,7 +383,8 @@
                               data-title="{{ s.title | e }}"
                               data-start="{{ s.period_start }}"
                               data-end="{{ s.period_end }}"
-                              data-enabled="{{ '1' if s.is_enabled else '0' }}">
+                              data-enabled="{{ '1' if s.is_enabled else '0' }}"
+                              data-eligible="{{ s.eligible.ids|join(',') }}">
                         <i class="fa-solid fa-pen-to-square"></i>
                       </button>
                       <button type="button" class="btn btn-sm btn-outline-danger setting-del-btn"
@@ -375,10 +435,14 @@
           <label class="form-label fw-semibold">{{ T('fssettings.end_label_short') }} <span class="text-danger">*</span></label>
           <input type="date" id="editEnd" class="form-control" required>
         </div>
-        <div class="form-check form-switch">
+        <div class="form-check form-switch mb-3">
           <input type="checkbox" id="editEnabled" class="form-check-input" role="switch" value="1">
           <label class="form-check-label fw-semibold" for="editEnabled">{{ T('fssettings.enable_label') }}</label>
         </div>
+        <label class="form-label fw-semibold">
+          <i class="fa-solid fa-building-flag me-1 text-primary"></i>신청가능지점
+        </label>
+        {{ branch_picker('edit', []) }}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
@@ -426,6 +490,34 @@ var _jsConfirmDelete   = '{{ T("fssettings.js_confirm_delete") }}';
 var _jsAlertDelFailed  = '{{ T("fssettings.js_alert_del_failed") }}';
 var _jsUnknownError    = '{{ T("common.js_unknown_error") }}';
 
+// ── 신청가능지점 선택 토글(전체 지점 스위치 ↔ 개별 체크리스트) ────────────────
+document.querySelectorAll('.branch-picker-all').forEach(function(sw) {
+  sw.addEventListener('change', function() {
+    var list = document.getElementById(sw.id.replace(/_all$/, '_list'));
+    if (!list) return;
+    list.style.opacity = sw.checked ? '.5' : '1';
+    list.style.pointerEvents = sw.checked ? 'none' : 'auto';
+  });
+});
+
+function _setBranchPicker(idPrefix, idsCsv) {
+  var ids = (idsCsv || '').split(',').filter(Boolean);
+  var allSwitch = document.getElementById(idPrefix + '_all');
+  var list = document.getElementById(idPrefix + '_list');
+  allSwitch.checked = ids.length === 0;
+  list.querySelectorAll('.branch-picker-item').forEach(function(cb) {
+    cb.checked = ids.indexOf(cb.value) !== -1;
+  });
+  list.style.opacity = allSwitch.checked ? '.5' : '1';
+  list.style.pointerEvents = allSwitch.checked ? 'none' : 'auto';
+}
+
+function _getBranchPickerIds(idPrefix) {
+  if (document.getElementById(idPrefix + '_all').checked) return [];
+  return Array.from(document.getElementById(idPrefix + '_list').querySelectorAll('.branch-picker-item:checked'))
+    .map(function(cb) { return parseInt(cb.value); });
+}
+
 // ── 기간 설정 수정/삭제 ──────────────────────────────────────────────────────
 var _editSettingId   = null;
 var _editSettingType = 'form';
@@ -439,6 +531,7 @@ document.querySelectorAll('.setting-edit-btn').forEach(function(btn) {
     document.getElementById('editStart').value    = btn.dataset.start || '';
     document.getElementById('editEnd').value      = btn.dataset.end   || '';
     document.getElementById('editEnabled').checked = btn.dataset.enabled === '1';
+    _setBranchPicker('edit', btn.dataset.eligible || '');
     if (!_editModal) _editModal = new bootstrap.Modal(document.getElementById('settingEditModal'));
     _editModal.show();
   });
@@ -460,7 +553,8 @@ if (_saveBtn) _saveBtn.addEventListener('click', function() {
       title:        document.getElementById('editTitle').value.trim(),
       period_start: start,
       period_end:   end,
-      is_enabled:   document.getElementById('editEnabled').checked
+      is_enabled:   document.getElementById('editEnabled').checked,
+      eligible_branch_ids: _getBranchPickerIds('edit')
     })
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.ok) { _editModal.hide(); location.reload(); }

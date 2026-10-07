@@ -405,6 +405,7 @@
   "fsreq.title": "運送書類申請",
   "fsreq.period_active": "申請期間が有効です。",
   "fsreq.period_inactive": "現在は運送書類申請期間ではありません。",
+  "fsreq.branch_not_eligible": "今回の申請期間は当拠点が対象ではありません。",
   "fsreq.scheduled_period": "予定期間:",
   "fsreq.admin_disabled": "管理者が無効化",
   "fsreq.no_period": "管理者がまだ申請期間を設定していません。",

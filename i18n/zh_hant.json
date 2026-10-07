@@ -405,6 +405,7 @@
   "fsreq.title": "運輸表單申請",
   "fsreq.period_active": "申請期間已開啟。",
   "fsreq.period_inactive": "目前不在運輸表單申請期間。",
+  "fsreq.branch_not_eligible": "本次申請期間不包含本據點。",
   "fsreq.scheduled_period": "預定期間:",
   "fsreq.admin_disabled": "管理員已停用",
   "fsreq.no_period": "管理員尚未設定申請期間。",

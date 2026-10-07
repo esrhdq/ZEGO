@@ -405,6 +405,7 @@
   "fsreq.title": "运输表单申请",
   "fsreq.period_active": "申请期间已开启。",
   "fsreq.period_inactive": "当前不在运输表单申请期间。",
+  "fsreq.branch_not_eligible": "本次申请期间不包含本网点。",
   "fsreq.scheduled_period": "预定期间:",
   "fsreq.admin_disabled": "管理员已禁用",
   "fsreq.no_period": "管理员尚未设置申请期间。",

@@ -535,8 +535,20 @@ def send_email(to_addr, subject, body_html):
 
 # ── 운송양식 신청 기간 헬퍼 ────────────────────────────────────────────────
 
-def _get_active_supply_period():
-    """현재 활성화된 신청 기간 반환. 없으면 None."""
+def _branch_eligible_for_period(period_row, branch_id):
+    """해당 지점이 이 신청 기간의 대상인지 확인.
+    eligible_branch_ids가 비어있으면 전체 지점 허용. branch_id가 None(관리자 등)이면 항상 허용."""
+    if not period_row or branch_id is None:
+        return True
+    raw = (dict(period_row).get('eligible_branch_ids') or '').strip()
+    if not raw:
+        return True
+    ids = {s.strip() for s in raw.split(',') if s.strip()}
+    return str(branch_id) in ids
+
+
+def _get_active_supply_period(branch_id=None):
+    """현재 활성화된 신청 기간 반환. branch_id가 신청가능지점에 없으면 None."""
     conn = get_db()
     ph = '%s' if not USE_SQLITE else '?'
     today = datetime.now(_KST).strftime('%Y-%m-%d')
@@ -544,11 +556,13 @@ def _get_active_supply_period():
         f"SELECT * FROM form_supply_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
         (today, today)
     ).fetchone()
+    if row and not _branch_eligible_for_period(row, branch_id):
+        return None
     return row
 
 
-def _get_active_catalog_period():
-    """운송아이템 신청 활성 기간 반환. 없으면 None."""
+def _get_active_catalog_period(branch_id=None):
+    """운송아이템 신청 활성 기간 반환. branch_id가 신청가능지점에 없으면 None."""
     conn = get_db()
     ph = '%s' if not USE_SQLITE else '?'
     today = datetime.now(_KST).strftime('%Y-%m-%d')
@@ -557,13 +571,15 @@ def _get_active_catalog_period():
             f"SELECT * FROM catalog_settings WHERE is_enabled=1 AND period_start<={ph} AND period_end>={ph} ORDER BY id DESC LIMIT 1",
             (today, today)
         ).fetchone()
+        if row and not _branch_eligible_for_period(row, branch_id):
+            return None
         return row
     except Exception:
         return None
 
 
-def _build_catalog_period_ctx():
-    """catalog_settings 최신 행 + in_range 플래그를 dict로 반환."""
+def _build_catalog_period_ctx(branch_id=None):
+    """catalog_settings 최신 행 + in_range/eligible 플래그를 dict로 반환."""
     conn = get_db()
     today = datetime.now(_KST).strftime('%Y-%m-%d')
     try:
@@ -574,6 +590,7 @@ def _build_catalog_period_ctx():
         return None
     d = dict(latest)
     d['in_range'] = str(d.get('period_start', '')) <= today <= str(d.get('period_end', ''))
+    d['eligible'] = _branch_eligible_for_period(d, branch_id)
     return d
 
 
@@ -1218,7 +1235,8 @@ def init_db():
                     period_end   TEXT NOT NULL,
                     is_enabled   INTEGER DEFAULT 1,
                     created_by   TEXT NOT NULL,
-                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    eligible_branch_ids TEXT NOT NULL DEFAULT ''
                 )
             ''')
             conn.execute('''
@@ -1256,7 +1274,8 @@ def init_db():
                     period_end   TEXT NOT NULL,
                     is_enabled   INTEGER DEFAULT 1,
                     created_by   TEXT NOT NULL,
-                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    eligible_branch_ids TEXT NOT NULL DEFAULT ''
                 )
             ''')
             # 기존 DB 마이그레이션 — 컬럼 추가
@@ -1401,7 +1420,8 @@ def init_db():
                     period_end   TEXT NOT NULL,
                     is_enabled   INTEGER DEFAULT 1,
                     created_by   TEXT NOT NULL,
-                    updated_at   TIMESTAMP DEFAULT NOW()
+                    updated_at   TIMESTAMP DEFAULT NOW(),
+                    eligible_branch_ids TEXT NOT NULL DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS form_supply_requests (
                     id            SERIAL PRIMARY KEY,
@@ -1430,7 +1450,8 @@ def init_db():
                     period_end   TEXT NOT NULL,
                     is_enabled   INTEGER DEFAULT 1,
                     created_by   TEXT NOT NULL,
-                    updated_at   TIMESTAMP DEFAULT NOW()
+                    updated_at   TIMESTAMP DEFAULT NOW(),
+                    eligible_branch_ids TEXT NOT NULL DEFAULT ''
                 );
             ''')
             # 콜드스타트마다 실행: 멱등 컬럼 마이그레이션 (IF NOT EXISTS — 빠름)
@@ -4013,8 +4034,8 @@ def catalog():
         import threading
         threading.Thread(target=_warm_img_tmp_cache_bg, daemon=True).start()
 
-    period_ctx = _build_catalog_period_ctx()
-    is_period_active = bool(period_ctx and period_ctx.get('is_enabled') and period_ctx.get('in_range'))
+    period_ctx = _build_catalog_period_ctx(bid)
+    is_period_active = bool(period_ctx and period_ctx.get('is_enabled') and period_ctx.get('in_range') and period_ctx.get('eligible'))
     return render_template('catalog.html',
         catalog_items=catalog_items,
         cat_groups=cat_groups,
@@ -4126,8 +4147,8 @@ def catalog_cart_update():
     action         = data.get('action', 'add')   # add | remove | clear
 
     # 신청 기간 외 장바구니 추가 차단 (remove/clear는 허용, admin 제외)
-    if action == 'add' and role != 'admin' and not _get_active_catalog_period():
-        return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아닙니다.'}), 403
+    if action == 'add' and role != 'admin' and not _get_active_catalog_period(target_bid):
+        return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아니거나 신청 대상 지점이 아닙니다.'}), 403
 
     # 커스텀 제작 아이템(X-Banner/스탠션/신규추가)은 요청사유 필수
     if action not in ('remove', 'clear') and qty > 0 and \
@@ -4230,8 +4251,8 @@ def catalog_cart():
     catalog_items = _get_catalog_items(conn)
     conn.close()
 
-    period_ctx = _build_catalog_period_ctx()
-    is_period_active = bool(period_ctx and period_ctx.get('is_enabled') and period_ctx.get('in_range'))
+    period_ctx = _build_catalog_period_ctx(target_bid)
+    is_period_active = bool(period_ctx and period_ctx.get('is_enabled') and period_ctx.get('in_range') and period_ctx.get('eligible'))
     return render_template('catalog_request.html',
         cart_items=cart_items,
         branches=branches,
@@ -4260,8 +4281,8 @@ def catalog_request_submit():
         return jsonify({'ok': False, 'msg': T('flash.no_branch_info')}), 400
 
     # 신청 기간 체크 (admin 제외)
-    if role != 'admin' and not _get_active_catalog_period():
-        return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아닙니다.'}), 403
+    if role != 'admin' and not _get_active_catalog_period(target_bid):
+        return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아니거나 신청 대상 지점이 아닙니다.'}), 403
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
@@ -6102,12 +6123,19 @@ def form_supply_settings():
             _cols = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_settings)').fetchall()]
             if 'title' not in _cols:
                 conn.execute("ALTER TABLE form_supply_settings ADD COLUMN title TEXT NOT NULL DEFAULT ''")
+            if 'eligible_branch_ids' not in _cols:
+                conn.execute("ALTER TABLE form_supply_settings ADD COLUMN eligible_branch_ids TEXT NOT NULL DEFAULT ''")
             _cols2 = [r[1] for r in conn.execute('PRAGMA table_info(form_supply_requests)').fetchall()]
             if 'period_title' not in _cols2:
                 conn.execute("ALTER TABLE form_supply_requests ADD COLUMN period_title TEXT NOT NULL DEFAULT ''")
+            _cols3 = [r[1] for r in conn.execute('PRAGMA table_info(catalog_settings)').fetchall()]
+            if 'eligible_branch_ids' not in _cols3:
+                conn.execute("ALTER TABLE catalog_settings ADD COLUMN eligible_branch_ids TEXT NOT NULL DEFAULT ''")
         else:
             conn.execute("ALTER TABLE form_supply_settings ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT ''")
+            conn.execute("ALTER TABLE form_supply_settings ADD COLUMN IF NOT EXISTS eligible_branch_ids TEXT NOT NULL DEFAULT ''")
             conn.execute("ALTER TABLE form_supply_requests ADD COLUMN IF NOT EXISTS period_title TEXT NOT NULL DEFAULT ''")
+            conn.execute("ALTER TABLE catalog_settings ADD COLUMN IF NOT EXISTS eligible_branch_ids TEXT NOT NULL DEFAULT ''")
         conn.commit()
     except Exception as _me:
         app.logger.warning(f'[lazy-migrate] {_me}')
@@ -6132,31 +6160,50 @@ def form_supply_settings():
             conn.close()
             return redirect(url_for('form_supply_settings', tab=supply_type))
 
+        all_branches = request.form.get('all_branches') == '1'
+        eligible_branch_ids = '' if all_branches else ','.join(request.form.getlist('eligible_branch_ids'))
+
         if supply_type == 'catalog':
             conn.execute(
-                f"INSERT INTO catalog_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
-                f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
-                (period_title, period_start, period_end, is_enabled, session['username'])
+                f"INSERT INTO catalog_settings (title, period_start, period_end, is_enabled, created_by, updated_at, eligible_branch_ids) "
+                f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql},{ph})",
+                (period_title, period_start, period_end, is_enabled, session['username'], eligible_branch_ids)
             )
-            log_action('운송아이템_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
+            log_action('운송아이템_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled}, 대상지점:{eligible_branch_ids or "전체"})')
             flash('신청 기간이 저장되었습니다.', 'success')
         else:
             conn.execute(
-                f"INSERT INTO form_supply_settings (title, period_start, period_end, is_enabled, created_by, updated_at) "
-                f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql})",
-                (period_title, period_start, period_end, is_enabled, session['username'])
+                f"INSERT INTO form_supply_settings (title, period_start, period_end, is_enabled, created_by, updated_at, eligible_branch_ids) "
+                f"VALUES ({ph},{ph},{ph},{ph},{ph},{now_sql},{ph})",
+                (period_title, period_start, period_end, is_enabled, session['username'], eligible_branch_ids)
             )
-            log_action('운송양식_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled})')
+            log_action('운송양식_신청기간_설정', f'[{period_title}] {period_start}~{period_end} (활성:{is_enabled}, 대상지점:{eligible_branch_ids or "전체"})')
             flash(T('flash.period_settings_saved'), 'success')
 
         conn.commit()
         conn.close()
         return redirect(url_for('form_supply_settings', tab=supply_type))
 
+    # 지점 목록 (신청가능지점 선택용 — 매트릭스와 동일한 3그룹)
+    branches_gimpo, branches_city, branches_incheon = _matrix_branch_groups(conn)
+    branch_groups = [
+        ('gimpo', '김포공항', branches_gimpo),
+        ('city', '도심공항', branches_city),
+        ('incheon', '인천공항', branches_incheon),
+    ]
+    branch_code_map = {b['id']: b['code'] for grp in (branches_gimpo, branches_city, branches_incheon) for b in grp}
+
+    def _eligible_summary(raw_ids):
+        ids = [int(x) for x in (raw_ids or '').split(',') if x.strip().isdigit()]
+        if not ids:
+            return {'ids': [], 'codes': [], 'is_all': True}
+        return {'ids': ids, 'codes': [branch_code_map.get(i, '?') for i in ids], 'is_all': False}
+
     # GET — 운송양식 설정 이력
     current = conn.execute(
         'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 1'
     ).fetchone()
+    current_eligible = _eligible_summary(dict(current).get('eligible_branch_ids') if current else None)
     settings_history = conn.execute(
         'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 50'
     ).fetchall()
@@ -6164,6 +6211,7 @@ def form_supply_settings():
     for s in settings_history:
         d = dict(s)
         d['created_at'] = d.get('updated_at')
+        d['eligible'] = _eligible_summary(d.get('eligible_branch_ids'))
         history_list.append(d)
     form_types = conn.execute(
         'SELECT * FROM form_types ORDER BY (CASE WHEN request_hidden THEN 1 ELSE 0 END), sort_order'
@@ -6173,17 +6221,25 @@ def form_supply_settings():
     try:
         catalog_current = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 1').fetchone()
         catalog_history_raw = conn.execute('SELECT * FROM catalog_settings ORDER BY id DESC LIMIT 50').fetchall()
-        catalog_history = [dict(s) for s in catalog_history_raw]
+        catalog_history = []
+        for s in catalog_history_raw:
+            d = dict(s)
+            d['eligible'] = _eligible_summary(d.get('eligible_branch_ids'))
+            catalog_history.append(d)
     except Exception:
         catalog_current, catalog_history = None, []
+    catalog_current_eligible = _eligible_summary(dict(catalog_current).get('eligible_branch_ids') if catalog_current else None)
 
     conn.close()
     return render_template('form_supply_settings.html',
                            current=current,
+                           current_eligible=current_eligible,
                            settings_history=history_list,
                            form_types=form_types,
                            catalog_current=catalog_current,
+                           catalog_current_eligible=catalog_current_eligible,
                            catalog_history=catalog_history,
+                           branch_groups=branch_groups,
                            active_tab=active_tab)
 
 
@@ -6198,6 +6254,7 @@ def form_supply_setting_edit(setting_id):
     period_start = data.get('period_start', '').strip()
     period_end   = data.get('period_end', '').strip()
     is_enabled   = 1 if data.get('is_enabled') else 0
+    eligible_branch_ids = ','.join(str(int(i)) for i in (data.get('eligible_branch_ids') or []))
     if not period_start or not period_end or period_start > period_end:
         return jsonify({'ok': False, 'error': T('flash.invalid_date')}), 400
     ph = '%s' if not USE_SQLITE else '?'
@@ -6205,8 +6262,9 @@ def form_supply_setting_edit(setting_id):
     try:
         conn = get_db()
         conn.execute(
-            f'UPDATE form_supply_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, updated_at={now_sql} WHERE id={ph}',
-            (title, period_start, period_end, is_enabled, setting_id)
+            f'UPDATE form_supply_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, '
+            f'updated_at={now_sql}, eligible_branch_ids={ph} WHERE id={ph}',
+            (title, period_start, period_end, is_enabled, eligible_branch_ids, setting_id)
         )
         conn.commit()
         conn.close()
@@ -6256,6 +6314,7 @@ def catalog_item_setting_edit(setting_id):
     period_start = data.get('period_start', '').strip()
     period_end   = data.get('period_end', '').strip()
     is_enabled   = 1 if data.get('is_enabled') else 0
+    eligible_branch_ids = ','.join(str(int(i)) for i in (data.get('eligible_branch_ids') or []))
     if not period_start or not period_end or period_start > period_end:
         return jsonify({'ok': False, 'error': T('flash.invalid_date')}), 400
     ph = '%s' if not USE_SQLITE else '?'
@@ -6263,8 +6322,9 @@ def catalog_item_setting_edit(setting_id):
     try:
         conn = get_db()
         conn.execute(
-            f'UPDATE catalog_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, updated_at={now_sql} WHERE id={ph}',
-            (title, period_start, period_end, is_enabled, setting_id)
+            f'UPDATE catalog_settings SET title={ph}, period_start={ph}, period_end={ph}, is_enabled={ph}, '
+            f'updated_at={now_sql}, eligible_branch_ids={ph} WHERE id={ph}',
+            (title, period_start, period_end, is_enabled, eligible_branch_ids, setting_id)
         )
         conn.commit()
         conn.close()
@@ -6738,7 +6798,7 @@ def form_supply_request():
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
 
     # 활성 기간 / 최근 설정 조회 (템플릿용)
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now(_KST).strftime('%Y-%m-%d')
     latest = conn.execute(
         'SELECT * FROM form_supply_settings ORDER BY id DESC LIMIT 1'
     ).fetchone()
@@ -6748,11 +6808,12 @@ def form_supply_request():
         d['in_range'] = (
             str(d.get('period_start', '')) <= today <= str(d.get('period_end', ''))
         )
+        d['eligible'] = _branch_eligible_for_period(d, bid)
         period_ctx = d
 
     if request.method == 'POST':
         # 서버사이드 기간 검증
-        active = _get_active_supply_period()
+        active = _get_active_supply_period(bid)
         if not active:
             flash(T('flash.not_in_period'), 'danger')
             conn.close()

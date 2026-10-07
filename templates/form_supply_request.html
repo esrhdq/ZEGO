@@ -5,7 +5,8 @@
 
 {% block content %}
 {# ── 신청 기간 상태 판단 ──────────────────────────────────────────── #}
-{% set is_active = period and period.is_enabled and period.in_range %}
+{% set period_open = period and period.is_enabled and period.in_range %}
+{% set is_active = period_open and period.eligible %}
 
 <style>
 .fs-row.checked { background: #fff8f8; }
@@ -75,7 +76,7 @@
      style="background:var(--warning-bg);border:1px solid #fcd34d;border-radius:12px">
   <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:1.1rem"></i>
   <div>
-    <strong>{{ T('fsreq.period_inactive') }}</strong>
+    <strong>{{ T('fsreq.branch_not_eligible') if period_open else T('fsreq.period_inactive') }}</strong>
     {% if period and period.period_start and period.period_end %}
     <div class="small text-muted mt-1">
       {{ T('fsreq.scheduled_period') }} {{ period.period_start }} ~ {{ period.period_end }}

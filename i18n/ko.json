@@ -405,6 +405,7 @@
   "fsreq.title": "운송양식 신청",
   "fsreq.period_active": "신청 기간이 활성화 되었습니다.",
   "fsreq.period_inactive": "현재 운송양식 신청 기간이 아닙니다.",
+  "fsreq.branch_not_eligible": "이번 신청 기간에는 우리 지점이 신청 대상이 아닙니다.",
   "fsreq.scheduled_period": "예정 기간:",
   "fsreq.admin_disabled": "관리자가 비활성 처리함",
   "fsreq.no_period": "관리자가 아직 신청 기간을 설정하지 않았습니다.",

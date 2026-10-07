@@ -280,6 +280,9 @@
      style="background:var(--warning-bg);border:1px solid #fcd34d;border-radius:12px">
   <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:1.1rem"></i>
   <div>
+    {% if period and period.is_enabled and period.in_range and not period.eligible %}
+    <strong>이번 신청 기간에는 우리 지점이 신청 대상이 아닙니다.</strong>
+    {% else %}
     <strong>현재 운송아이템 신청 기간이 아닙니다.</strong>
     {% if period and period.period_start and period.period_end %}
     <div class="small text-muted mt-1">
@@ -288,6 +291,7 @@
     </div>
     {% else %}
     <div class="small text-muted mt-1">관리자가 신청 기간을 설정하지 않았습니다.</div>
+    {% endif %}
     {% endif %}
   </div>
 </div>
