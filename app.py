@@ -1224,6 +1224,7 @@ def init_db():
                     item_status        TEXT NOT NULL DEFAULT 'pending',
                     item_reject_reason TEXT DEFAULT '',
                     request_reason     TEXT DEFAULT '',
+                    request_lang       TEXT DEFAULT '',
                     UNIQUE(request_id, item_code)
                 )
             ''')
@@ -3965,6 +3966,7 @@ def _ensure_catalog_table():
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_status TEXT DEFAULT \'pending\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_reject_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_reason TEXT DEFAULT \'\'')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_lang TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
@@ -4145,6 +4147,7 @@ def catalog_cart_update():
     item_name      = (data.get('item_name') or '').strip()
     item_cat       = (data.get('item_cat') or '').strip()
     request_reason = (data.get('request_reason') or '').strip()
+    request_lang   = (data.get('request_lang') or '').strip()
     action         = data.get('action', 'add')   # add | remove | clear
 
     # 신청 기간 외 장바구니 추가 차단 (remove/clear는 허용, admin 제외)
@@ -4191,23 +4194,25 @@ def catalog_cart_update():
         if USE_SQLITE:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason)
-                VALUES (?,?,?,?,?,?,?,?)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=excluded.quantity, custom_img_data=excluded.custom_img_data,
                     custom_text=excluded.custom_text, item_name=excluded.item_name,
-                    item_cat=excluded.item_cat, request_reason=excluded.request_reason
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason))
+                    item_cat=excluded.item_cat, request_reason=excluded.request_reason,
+                    request_lang=excluded.request_lang
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang))
         else:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=EXCLUDED.quantity, custom_img_data=EXCLUDED.custom_img_data,
                     custom_text=EXCLUDED.custom_text, item_name=EXCLUDED.item_name,
-                    item_cat=EXCLUDED.item_cat, request_reason=EXCLUDED.request_reason
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason))
+                    item_cat=EXCLUDED.item_cat, request_reason=EXCLUDED.request_reason,
+                    request_lang=EXCLUDED.request_lang
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang))
         conn.commit()
 
     cnt = _cart_count(conn, target_bid)

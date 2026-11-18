@@ -442,6 +442,29 @@
         </div>
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            요청언어 <span class="text-danger">*</span>
+          </label>
+          <div id="rcm-lang-group" class="d-flex flex-wrap gap-3 p-2" style="border:1px solid #ced4da;border-radius:6px">
+            <div class="form-check m-0">
+              <input type="checkbox" class="form-check-input rcm-lang-item" id="rcm-lang-koen" value="한/영">
+              <label class="form-check-label" style="font-size:.82rem" for="rcm-lang-koen">한/영</label>
+            </div>
+            <div class="form-check m-0">
+              <input type="checkbox" class="form-check-input rcm-lang-item" id="rcm-lang-kocn" value="한/중(간체)">
+              <label class="form-check-label" style="font-size:.82rem" for="rcm-lang-kocn">한/중(간체)</label>
+            </div>
+            <div class="form-check m-0">
+              <input type="checkbox" class="form-check-input rcm-lang-item" id="rcm-lang-koja" value="한/일">
+              <label class="form-check-label" style="font-size:.82rem" for="rcm-lang-koja">한/일</label>
+            </div>
+            <div class="form-check m-0">
+              <input type="checkbox" class="form-check-input rcm-lang-item" id="rcm-lang-kotw" value="한/중(번체)">
+              <label class="form-check-label" style="font-size:.82rem" for="rcm-lang-kotw">한/중(번체)</label>
+            </div>
+          </div>
+        </div>
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
             {{ T('catalog.label_custom_image') }} <span style="font-size:.75rem;font-weight:400;color:#888">{{ T('catalog.label_custom_image_hint') }}</span>
           </label>
           <div class="d-flex align-items-center flex-wrap gap-2">
@@ -984,6 +1007,8 @@ function reqAddItem(code, name, cat) {
     document.getElementById('rcm-qty').value = 1;
     document.getElementById('rcm-reason').value = '';
     document.getElementById('rcm-reason').classList.remove('is-invalid');
+    document.querySelectorAll('.rcm-lang-item').forEach(cb => cb.checked = false);
+    document.getElementById('rcm-lang-group').style.borderColor = '#ced4da';
     document.getElementById('rcm-text').value = '';
     document.getElementById('rcm-image').value = '';
     document.getElementById('rcm-img-name').textContent = '';
@@ -1022,6 +1047,15 @@ async function rcmSubmit() {
     return;
   }
   reasonEl.classList.remove('is-invalid');
+  const langEls = Array.from(document.querySelectorAll('.rcm-lang-item'));
+  const langs   = langEls.filter(cb => cb.checked).map(cb => cb.value);
+  const langGroup = document.getElementById('rcm-lang-group');
+  if (langs.length === 0) {
+    langGroup.style.borderColor = 'var(--red)';
+    langGroup.scrollIntoView({behavior: 'smooth', block: 'center'});
+    return;
+  }
+  langGroup.style.borderColor = '#ced4da';
   const code = document.getElementById('rcm-code').value;
   const qty  = parseInt(document.getElementById('rcm-qty').value) || 1;
   const text = document.getElementById('rcm-text').value.trim();
@@ -1033,7 +1067,7 @@ async function rcmSubmit() {
     });
   }
   bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).hide();
-  reqCartUpdate(code, qty, imgData, text, '', '', reason);
+  reqCartUpdate(code, qty, imgData, text, '', '', reason, langs.join(', '));
 }
 
 let rcmEditorImgData = '';
@@ -1183,7 +1217,7 @@ window.addEventListener('message', e => {
   }
 });
 
-async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat, requestReason) {
+async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat, requestReason, requestLang) {
   if (!IS_PERIOD_ACTIVE) {
     catToast('현재 운송아이템 신청 기간이 아닙니다.', 'danger');
     return;
@@ -1196,7 +1230,7 @@ async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat
         item_code: code, quantity: qty,
         custom_img_data: customImg, custom_text: customText,
         item_name: itemName || '', item_cat: itemCat || '',
-        request_reason: requestReason || ''
+        request_reason: requestReason || '', request_lang: requestLang || ''
       })
     });
     const json = await res.json();

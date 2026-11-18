@@ -109,6 +109,11 @@
               <i class="fa-solid fa-circle-info me-1" style="opacity:.5"></i>{{ it.request_reason[:60] }}{% if it.request_reason|length > 60 %}…{% endif %}
             </div>
             {% endif %}
+            {% if it.request_lang %}
+            <div style="font-size:.72rem;color:#0f766e;margin-top:2px">
+              <i class="fa-solid fa-language me-1" style="opacity:.6"></i>{{ it.request_lang }}
+            </div>
+            {% endif %}
             {% if it.custom_text %}
             <div style="font-size:.72rem;color:#555;margin-top:2px">
               <i class="fa-solid fa-quote-left me-1" style="opacity:.4"></i>{{ it.custom_text[:60] }}{% if it.custom_text|length > 60 %}…{% endif %}
