@@ -5189,12 +5189,27 @@ def catalog_add():
         'SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_defs WHERE cat=%s', (cat,)
     ).fetchone()['m']
 
-    conn.execute(
-        'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data, custom_fields) '
-        'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
-        (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64, custom_fields)
-    )
-    conn.commit()
+    try:
+        conn.execute(
+            'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data, custom_fields) '
+            'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+            (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64, custom_fields)
+        )
+        conn.commit()
+    except Exception as _e:
+        conn.rollback()
+        app.logger.error(f'[catalog_add] {_e}')
+        try:
+            conn.execute(
+                'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data) '
+                'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64)
+            )
+            conn.commit()
+        except Exception as _e2:
+            conn.rollback()
+            conn.close()
+            return _fail(f'저장 중 오류가 발생했습니다: {_e2}')
     conn.close()
     _invalidate_catalog_cache()
     if is_ajax:
@@ -5289,12 +5304,31 @@ def catalog_update():
 
         new_img_url = url_for('catalog_img', filename=img_stem + '.png')
 
-    conn.execute(
-        'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
-        'img=%s, img_data=%s, sort_order=%s, custom_fields=%s WHERE code=%s',
-        (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, custom_fields, code)
-    )
-    conn.commit()
+    try:
+        conn.execute(
+            'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
+            'img=%s, img_data=%s, sort_order=%s, custom_fields=%s WHERE code=%s',
+            (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, custom_fields, code)
+        )
+        conn.commit()
+    except Exception as _e:
+        conn.rollback()
+        app.logger.error(f'[catalog_update] {_e}')
+        # custom_fields 컬럼이 아직 없는 경우를 대비한 폴백 — 해당 값만 빼고 재시도
+        try:
+            conn.execute(
+                'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
+                'img=%s, img_data=%s, sort_order=%s WHERE code=%s',
+                (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, code)
+            )
+            conn.commit()
+            conn.close()
+            _invalidate_catalog_cache()
+            return jsonify({'ok': False, 'msg': f'다른 항목은 저장됐지만 커스텀 요청 필드 저장에 실패했습니다: {_e}'}), 500
+        except Exception as _e2:
+            conn.rollback()
+            conn.close()
+            return jsonify({'ok': False, 'msg': f'저장 중 오류가 발생했습니다: {_e2}'}), 500
     conn.close()
     _invalidate_catalog_cache()
     resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code, 'custom_fields': custom_fields}
