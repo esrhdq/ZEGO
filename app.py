@@ -1046,25 +1046,31 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/request_hidden] {_e}')
-            _mig_cf = conn.execute(
-                "SELECT name FROM _migrations WHERE name=%s", ('add_catalog_custom_fields_columns',)
+            _mig_cf2 = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_catalog_custom_fields_tables',)
             ).fetchone()
-            if not _mig_cf:
+            if not _mig_cf2:
                 try:
-                    conn.execute(
-                        "SET lock_timeout = '5s'"
-                    )
-                    conn.execute(
-                        "ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS custom_fields TEXT NOT NULL DEFAULT ''"
-                    )
-                    conn.execute(
-                        "ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS custom_fields_answer TEXT DEFAULT ''"
-                    )
-                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_catalog_custom_fields_columns',))
+                    # catalog_defs/catalog_request_items는 트래픽이 많아 ALTER TABLE이
+                    # 락 경합으로 실패하기 쉬움 — 별도의 새 테이블을 만들면 기존 테이블에
+                    # 락을 전혀 잡지 않아도 돼서 경합 자체가 생기지 않음
+                    conn.execute('''
+                        CREATE TABLE IF NOT EXISTS catalog_item_fields (
+                            item_code     TEXT PRIMARY KEY,
+                            custom_fields TEXT NOT NULL DEFAULT ''
+                        )
+                    ''')
+                    conn.execute('''
+                        CREATE TABLE IF NOT EXISTS catalog_request_item_fields (
+                            request_item_id      INTEGER PRIMARY KEY,
+                            custom_fields_answer TEXT NOT NULL DEFAULT ''
+                        )
+                    ''')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_catalog_custom_fields_tables',))
                     conn.commit()
                 except Exception as _e:
                     conn.rollback()
-                    print(f'[data_migration/custom_fields] {_e}')
+                    print(f'[data_migration/custom_fields_tables] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1216,8 +1222,19 @@ def init_db():
                     sub_desc      TEXT NOT NULL DEFAULT '',
                     sort_order    INTEGER NOT NULL DEFAULT 0,
                     img_data      TEXT NOT NULL DEFAULT '',
-                    user_deleted  INTEGER NOT NULL DEFAULT 0,
+                    user_deleted  INTEGER NOT NULL DEFAULT 0
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_item_fields (
+                    item_code     TEXT PRIMARY KEY,
                     custom_fields TEXT NOT NULL DEFAULT ''
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_request_item_fields (
+                    request_item_id      INTEGER PRIMARY KEY,
+                    custom_fields_answer TEXT NOT NULL DEFAULT ''
                 )
             ''')
             conn.execute('''
@@ -1245,7 +1262,6 @@ def init_db():
                     item_reject_reason TEXT DEFAULT '',
                     request_reason     TEXT DEFAULT '',
                     request_lang       TEXT DEFAULT '',
-                    custom_fields_answer TEXT DEFAULT '',
                     UNIQUE(request_id, item_code)
                 )
             ''')
@@ -3878,6 +3894,29 @@ def _parse_custom_fields(raw):
         return '[]'
 
 
+def _set_item_custom_fields(conn, item_code, custom_fields_json):
+    """카탈로그 아이템의 커스텀 요청 필드 정의를 catalog_item_fields에 upsert.
+    catalog_defs와 별도 테이블이라 락 경합 없이 안전하게 갱신 가능."""
+    ph = '%s' if not USE_SQLITE else '?'
+    try:
+        if USE_SQLITE:
+            conn.execute(
+                'INSERT INTO catalog_item_fields (item_code, custom_fields) VALUES (?,?) '
+                'ON CONFLICT(item_code) DO UPDATE SET custom_fields=excluded.custom_fields',
+                (item_code, custom_fields_json)
+            )
+        else:
+            conn.execute(
+                'INSERT INTO catalog_item_fields (item_code, custom_fields) VALUES (%s,%s) '
+                'ON CONFLICT(item_code) DO UPDATE SET custom_fields=EXCLUDED.custom_fields',
+                (item_code, custom_fields_json)
+            )
+        conn.commit()
+    except Exception as _e:
+        conn.rollback()
+        print(f'[set_item_custom_fields] {_e}')
+
+
 def _attach_custom_answers(items):
     """catalog_request_items 행들의 custom_fields_answer(JSON) 문자열을 dict로 파싱해 붙여줌."""
     import json
@@ -3894,9 +3933,12 @@ def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)."""
     try:
         rows = conn.execute(
-            "SELECT code, img, name, cat, sub_desc, sort_order, custom_fields, "
-            "CASE WHEN COALESCE(img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
-            'FROM catalog_defs WHERE user_deleted IS NOT TRUE'
+            "SELECT cd.code, cd.img, cd.name, cd.cat, cd.sub_desc, cd.sort_order, "
+            "COALESCE(cif.custom_fields, '') AS custom_fields, "
+            "CASE WHEN COALESCE(cd.img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
+            'FROM catalog_defs cd '
+            'LEFT JOIN catalog_item_fields cif ON cif.item_code = cd.code '
+            'WHERE cd.user_deleted IS NOT TRUE'
         ).fetchall()
     except Exception:
         try:
@@ -4037,9 +4079,21 @@ def _ensure_catalog_table():
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_reject_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_lang TEXT DEFAULT \'\'')
-        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS custom_fields_answer TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE')
-        conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS custom_fields TEXT NOT NULL DEFAULT \'\'')
+        # catalog_defs/catalog_request_items는 트래픽이 많아 ALTER TABLE이 락 경합으로
+        # 실패하기 쉬움 — 커스텀 필드 정의/답변은 별도 테이블에 저장(기존 테이블에 락 불필요)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_item_fields (
+                item_code     TEXT PRIMARY KEY,
+                custom_fields TEXT NOT NULL DEFAULT ''
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_request_item_fields (
+                request_item_id      INTEGER PRIMARY KEY,
+                custom_fields_answer TEXT NOT NULL DEFAULT ''
+            )
+        ''')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
@@ -4243,9 +4297,12 @@ def catalog_cart_update():
     # 아이템에 등록된 커스텀 요청 필드는 전부 필수 — 서버에서도 재검증
     if action not in ('remove', 'clear') and qty > 0 and item_code:
         import json as _json
-        item_row = conn.execute(
-            f'SELECT custom_fields FROM catalog_defs WHERE code={ph}', (item_code,)
-        ).fetchone()
+        try:
+            item_row = conn.execute(
+                f'SELECT custom_fields FROM catalog_item_fields WHERE item_code={ph}', (item_code,)
+            ).fetchone()
+        except Exception:
+            item_row = None
         if item_row and item_row['custom_fields']:
             try:
                 field_defs = _json.loads(item_row['custom_fields'])
@@ -4291,26 +4348,48 @@ def catalog_cart_update():
         if USE_SQLITE:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang,custom_fields_answer)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=excluded.quantity, custom_img_data=excluded.custom_img_data,
                     custom_text=excluded.custom_text, item_name=excluded.item_name,
                     item_cat=excluded.item_cat, request_reason=excluded.request_reason,
-                    request_lang=excluded.request_lang, custom_fields_answer=excluded.custom_fields_answer
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang, custom_fields_answer_json))
+                    request_lang=excluded.request_lang
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang))
         else:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang,custom_fields_answer)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=EXCLUDED.quantity, custom_img_data=EXCLUDED.custom_img_data,
                     custom_text=EXCLUDED.custom_text, item_name=EXCLUDED.item_name,
                     item_cat=EXCLUDED.item_cat, request_reason=EXCLUDED.request_reason,
-                    request_lang=EXCLUDED.request_lang, custom_fields_answer=EXCLUDED.custom_fields_answer
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang, custom_fields_answer_json))
+                    request_lang=EXCLUDED.request_lang
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang))
         conn.commit()
+        ri_row = conn.execute(
+            f'SELECT id FROM catalog_request_items WHERE request_id={ph} AND item_code={ph}',
+            (req_id, item_code)
+        ).fetchone()
+        if ri_row:
+            try:
+                if USE_SQLITE:
+                    conn.execute(
+                        'INSERT INTO catalog_request_item_fields (request_item_id, custom_fields_answer) VALUES (?,?) '
+                        'ON CONFLICT(request_item_id) DO UPDATE SET custom_fields_answer=excluded.custom_fields_answer',
+                        (ri_row['id'], custom_fields_answer_json)
+                    )
+                else:
+                    conn.execute(
+                        'INSERT INTO catalog_request_item_fields (request_item_id, custom_fields_answer) VALUES (%s,%s) '
+                        'ON CONFLICT(request_item_id) DO UPDATE SET custom_fields_answer=EXCLUDED.custom_fields_answer',
+                        (ri_row['id'], custom_fields_answer_json)
+                    )
+                conn.commit()
+            except Exception as _e:
+                conn.rollback()
+                print(f'[cart_update/custom_fields_answer] {_e}')
 
     cnt = _cart_count(conn, target_bid)
     conn.close()
@@ -4342,9 +4421,10 @@ def catalog_cart():
     if req_row:
         rows = conn.execute(
             f'SELECT ri.*, COALESCE(cd.name, ri.item_name) AS name, '
-            f'COALESCE(cd.cat, ri.item_cat) AS cat, cd.img '
+            f'COALESCE(cd.cat, ri.item_cat) AS cat, cd.img, crif.custom_fields_answer '
             f'FROM catalog_request_items ri '
             f'LEFT JOIN catalog_defs cd ON cd.code=ri.item_code '
+            f'LEFT JOIN catalog_request_item_fields crif ON crif.request_item_id=ri.id '
             f'WHERE ri.request_id={ph}',
             (req_row['id'],)
         ).fetchall()
@@ -4537,9 +4617,10 @@ def catalog_request_detail(req_id):
 
     items = conn.execute(
         f'SELECT ri.*, COALESCE(cd.name, ri.item_name) item_name, '
-        f'COALESCE(cd.cat, ri.item_cat) cat, cd.img '
+        f'COALESCE(cd.cat, ri.item_cat) cat, cd.img, crif.custom_fields_answer '
         f'FROM catalog_request_items ri '
         f'LEFT JOIN catalog_defs cd ON cd.code=ri.item_code '
+        f'LEFT JOIN catalog_request_item_fields crif ON crif.request_item_id=ri.id '
         f'WHERE ri.request_id={ph}', (req_id,)
     ).fetchall()
     conn.close()
@@ -5191,25 +5272,17 @@ def catalog_add():
 
     try:
         conn.execute(
-            'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data, custom_fields) '
-            'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
-            (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64, custom_fields)
+            'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data) '
+            'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+            (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64)
         )
         conn.commit()
     except Exception as _e:
         conn.rollback()
+        conn.close()
         app.logger.error(f'[catalog_add] {_e}')
-        try:
-            conn.execute(
-                'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data) '
-                'VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64)
-            )
-            conn.commit()
-        except Exception as _e2:
-            conn.rollback()
-            conn.close()
-            return _fail(f'저장 중 오류가 발생했습니다: {_e2}')
+        return _fail(f'저장 중 오류가 발생했습니다: {_e}')
+    _set_item_custom_fields(conn, code, custom_fields)
     conn.close()
     _invalidate_catalog_cache()
     if is_ajax:
@@ -5256,6 +5329,9 @@ def catalog_update():
             return jsonify({'ok': False, 'msg': T('flash.code_in_use').format(code=new_code)})
         conn.execute(
             'UPDATE catalog_branch_items SET item_code=%s WHERE item_code=%s', (new_code, code)
+        )
+        conn.execute(
+            'UPDATE catalog_item_fields SET item_code=%s WHERE item_code=%s', (new_code, code)
         )
 
     img_stem     = existing['img']
@@ -5307,28 +5383,16 @@ def catalog_update():
     try:
         conn.execute(
             'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
-            'img=%s, img_data=%s, sort_order=%s, custom_fields=%s WHERE code=%s',
-            (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, custom_fields, code)
+            'img=%s, img_data=%s, sort_order=%s WHERE code=%s',
+            (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, code)
         )
         conn.commit()
     except Exception as _e:
         conn.rollback()
+        conn.close()
         app.logger.error(f'[catalog_update] {_e}')
-        # custom_fields 컬럼이 아직 없는 경우를 대비한 폴백 — 해당 값만 빼고 재시도
-        try:
-            conn.execute(
-                'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
-                'img=%s, img_data=%s, sort_order=%s WHERE code=%s',
-                (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, code)
-            )
-            conn.commit()
-            conn.close()
-            _invalidate_catalog_cache()
-            return jsonify({'ok': False, 'msg': f'다른 항목은 저장됐지만 커스텀 요청 필드 저장에 실패했습니다: {_e}'}), 500
-        except Exception as _e2:
-            conn.rollback()
-            conn.close()
-            return jsonify({'ok': False, 'msg': f'저장 중 오류가 발생했습니다: {_e2}'}), 500
+        return jsonify({'ok': False, 'msg': f'저장 중 오류가 발생했습니다: {_e}'}), 500
+    _set_item_custom_fields(conn, new_code, custom_fields)
     conn.close()
     _invalidate_catalog_cache()
     resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code, 'custom_fields': custom_fields}
