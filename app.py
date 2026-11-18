@@ -3959,6 +3959,13 @@ def _ensure_catalog_table():
         return
     try:
         conn = get_db()
+        # 다른 요청이 같은 테이블에 락을 잡고 있을 때 DDL이 응답 없이 무한정
+        # 대기하는 것을 방지 — 락을 못 잡으면 몇 초 내로 실패하고 다음 콜드
+        # 스타트(또는 재시도)에서 다시 시도하도록 함
+        try:
+            conn.execute("SET lock_timeout = '5s'")
+        except Exception:
+            pass
         conn.execute('''
             CREATE TABLE IF NOT EXISTS catalog_branch_items (
                 id         SERIAL PRIMARY KEY,
@@ -4022,7 +4029,7 @@ def _ensure_catalog_table():
     except Exception as _e:
         print(f'[ensure_catalog_table] {_e}')
         try:
-            get_db().rollback()
+            conn.rollback()
         except Exception:
             pass
 
