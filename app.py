@@ -1190,14 +1190,15 @@ def init_db():
             ''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS catalog_defs (
-                    code         TEXT PRIMARY KEY,
-                    img          TEXT NOT NULL,
-                    name         TEXT NOT NULL,
-                    cat          TEXT NOT NULL,
-                    sub_desc     TEXT NOT NULL DEFAULT '',
-                    sort_order   INTEGER NOT NULL DEFAULT 0,
-                    img_data     TEXT NOT NULL DEFAULT '',
-                    user_deleted INTEGER NOT NULL DEFAULT 0
+                    code          TEXT PRIMARY KEY,
+                    img           TEXT NOT NULL,
+                    name          TEXT NOT NULL,
+                    cat           TEXT NOT NULL,
+                    sub_desc      TEXT NOT NULL DEFAULT '',
+                    sort_order    INTEGER NOT NULL DEFAULT 0,
+                    img_data      TEXT NOT NULL DEFAULT '',
+                    user_deleted  INTEGER NOT NULL DEFAULT 0,
+                    custom_fields TEXT NOT NULL DEFAULT ''
                 )
             ''')
             conn.execute('''
@@ -1225,6 +1226,7 @@ def init_db():
                     item_reject_reason TEXT DEFAULT '',
                     request_reason     TEXT DEFAULT '',
                     request_lang       TEXT DEFAULT '',
+                    custom_fields_answer TEXT DEFAULT '',
                     UNIQUE(request_id, item_code)
                 )
             ''')
@@ -3827,11 +3829,53 @@ def _fast_schema_check(conn):
         _ensure_user_deleted_col()
 
 
+def _parse_custom_fields(raw):
+    """관리자가 입력한 커스텀 요청 필드(JSON 배열) 검증/정리.
+    형식이 맞지 않는 값은 모두 걸러내고, 비정상 입력 전체는 빈 배열로 처리."""
+    import json
+    if not raw:
+        return '[]'
+    try:
+        fields = json.loads(raw)
+        if not isinstance(fields, list):
+            return '[]'
+        cleaned = []
+        for f in fields:
+            if not isinstance(f, dict):
+                continue
+            label = str(f.get('label', '')).strip()
+            ftype = f.get('type')
+            if not label or ftype not in ('checkbox', 'text'):
+                continue
+            item = {'label': label, 'type': ftype}
+            if ftype == 'checkbox':
+                opts = [str(o).strip() for o in (f.get('options') or []) if str(o).strip()]
+                if not opts:
+                    continue
+                item['options'] = opts
+            cleaned.append(item)
+        return json.dumps(cleaned, ensure_ascii=False)
+    except Exception:
+        return '[]'
+
+
+def _attach_custom_answers(items):
+    """catalog_request_items 행들의 custom_fields_answer(JSON) 문자열을 dict로 파싱해 붙여줌."""
+    import json
+    for it in items:
+        raw = it.get('custom_fields_answer')
+        try:
+            it['custom_fields_answer_parsed'] = json.loads(raw) if raw else {}
+        except Exception:
+            it['custom_fields_answer_parsed'] = {}
+    return items
+
+
 def _get_catalog_items(conn):
     """DB에서 카탈로그 아이템 목록 로드 (CAT_ORDER + sort_order 기준 정렬)."""
     try:
         rows = conn.execute(
-            "SELECT code, img, name, cat, sub_desc, sort_order, "
+            "SELECT code, img, name, cat, sub_desc, sort_order, custom_fields, "
             "CASE WHEN COALESCE(img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
             'FROM catalog_defs WHERE user_deleted IS NOT TRUE'
         ).fetchall()
@@ -3967,7 +4011,9 @@ def _ensure_catalog_table():
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS item_reject_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_reason TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS request_lang TEXT DEFAULT \'\'')
+        conn.execute('ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS custom_fields_answer TEXT DEFAULT \'\'')
         conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS user_deleted BOOLEAN NOT NULL DEFAULT FALSE')
+        conn.execute('ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS custom_fields TEXT NOT NULL DEFAULT \'\'')
         conn.commit()
         cnt = conn.execute('SELECT COUNT(*) AS cnt FROM catalog_defs').fetchone()['cnt']
         if cnt == 0:
@@ -4150,6 +4196,12 @@ def catalog_cart_update():
     request_lang   = (data.get('request_lang') or '').strip()
     action         = data.get('action', 'add')   # add | remove | clear
 
+    custom_answers_raw = data.get('custom_fields_answer') or {}
+    custom_fields_answer = {}
+    if isinstance(custom_answers_raw, dict):
+        for k, v in custom_answers_raw.items():
+            custom_fields_answer[str(k).strip()] = str(v).strip()
+
     # 신청 기간 외 장바구니 추가 차단 (remove/clear는 허용, admin 제외)
     if action == 'add' and role != 'admin' and not _get_active_catalog_period(target_bid):
         return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아니거나 신청 대상 지점이 아닙니다.'}), 403
@@ -4161,6 +4213,23 @@ def catalog_cart_update():
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
+
+    # 아이템에 등록된 커스텀 요청 필드는 전부 필수 — 서버에서도 재검증
+    if action not in ('remove', 'clear') and qty > 0 and item_code:
+        import json as _json
+        item_row = conn.execute(
+            f'SELECT custom_fields FROM catalog_defs WHERE code={ph}', (item_code,)
+        ).fetchone()
+        if item_row and item_row['custom_fields']:
+            try:
+                field_defs = _json.loads(item_row['custom_fields'])
+            except Exception:
+                field_defs = []
+            for fld in field_defs:
+                label = fld.get('label', '')
+                if label and not custom_fields_answer.get(label):
+                    conn.close()
+                    return jsonify({'ok': False, 'msg': f'"{label}" 항목을 입력(선택)해주세요.'}), 400
 
     if action == 'clear':
         req_row = conn.execute(
@@ -4191,28 +4260,30 @@ def catalog_cart_update():
             conn.commit()
     else:
         req_id = _get_or_create_draft(conn, target_bid)
+        import json as _json
+        custom_fields_answer_json = _json.dumps(custom_fields_answer, ensure_ascii=False) if custom_fields_answer else ''
         if USE_SQLITE:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang)
-                VALUES (?,?,?,?,?,?,?,?,?)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang,custom_fields_answer)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=excluded.quantity, custom_img_data=excluded.custom_img_data,
                     custom_text=excluded.custom_text, item_name=excluded.item_name,
                     item_cat=excluded.item_cat, request_reason=excluded.request_reason,
-                    request_lang=excluded.request_lang
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang))
+                    request_lang=excluded.request_lang, custom_fields_answer=excluded.custom_fields_answer
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang, custom_fields_answer_json))
         else:
             conn.execute('''
                 INSERT INTO catalog_request_items
-                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    (request_id,item_code,quantity,custom_img_data,custom_text,item_name,item_cat,request_reason,request_lang,custom_fields_answer)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(request_id,item_code) DO UPDATE
                 SET quantity=EXCLUDED.quantity, custom_img_data=EXCLUDED.custom_img_data,
                     custom_text=EXCLUDED.custom_text, item_name=EXCLUDED.item_name,
                     item_cat=EXCLUDED.item_cat, request_reason=EXCLUDED.request_reason,
-                    request_lang=EXCLUDED.request_lang
-            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang))
+                    request_lang=EXCLUDED.request_lang, custom_fields_answer=EXCLUDED.custom_fields_answer
+            ''', (req_id, item_code, qty, custom_img, custom_text, item_name, item_cat, request_reason, request_lang, custom_fields_answer_json))
         conn.commit()
 
     cnt = _cart_count(conn, target_bid)
@@ -4251,7 +4322,7 @@ def catalog_cart():
             f'WHERE ri.request_id={ph}',
             (req_row['id'],)
         ).fetchall()
-        cart_items = [dict(r) for r in rows]
+        cart_items = _attach_custom_answers([dict(r) for r in rows])
 
     branches = conn.execute('SELECT id,code,name FROM branches ORDER BY type,code').fetchall()
     catalog_items = _get_catalog_items(conn)
@@ -4447,7 +4518,7 @@ def catalog_request_detail(req_id):
     ).fetchall()
     conn.close()
     return render_template('catalog_request_detail.html',
-        req=dict(req), items=[dict(i) for i in items])
+        req=dict(req), items=_attach_custom_answers([dict(i) for i in items]))
 
 
 # ── 카탈로그 신청: 관리자 액션 (승인/반려/대기) ───────────────────────────────
@@ -5031,6 +5102,7 @@ def catalog_add():
     cat      = request.form.get('cat', '').strip()
     sub_desc = request.form.get('sub_desc', '').strip()
     custom_code = request.form.get('code', '').strip()
+    custom_fields = _parse_custom_fields(request.form.get('custom_fields', ''))
 
     if not name or not cat:
         return _fail(T('flash.name_cat_required'))
@@ -5092,9 +5164,9 @@ def catalog_add():
     ).fetchone()['m']
 
     conn.execute(
-        'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data) '
-        'VALUES (%s, %s, %s, %s, %s, %s, %s)',
-        (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64)
+        'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data, custom_fields) '
+        'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+        (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64, custom_fields)
     )
     conn.commit()
     conn.close()
@@ -5118,6 +5190,7 @@ def catalog_update():
     name     = request.form.get('name', '').strip()
     cat      = request.form.get('cat', '').strip()
     sub_desc = request.form.get('sub_desc', '').strip()
+    custom_fields = _parse_custom_fields(request.form.get('custom_fields', ''))
     try:
         sort_order = int(request.form.get('sort_order', 0) or 0)
     except (ValueError, TypeError):
@@ -5192,13 +5265,13 @@ def catalog_update():
 
     conn.execute(
         'UPDATE catalog_defs SET code=%s, name=%s, cat=%s, sub_desc=%s, '
-        'img=%s, img_data=%s, sort_order=%s WHERE code=%s',
-        (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, code)
+        'img=%s, img_data=%s, sort_order=%s, custom_fields=%s WHERE code=%s',
+        (new_code, name, cat, sub_desc, img_stem, img_data_b64, sort_order, custom_fields, code)
     )
     conn.commit()
     conn.close()
     _invalidate_catalog_cache()
-    resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code}
+    resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code, 'custom_fields': custom_fields}
     if new_img_url:
         resp['img_url'] = new_img_url
     return jsonify(resp)

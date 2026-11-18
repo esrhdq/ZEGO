@@ -358,6 +358,13 @@
           <input type="file" id="cem-image" class="d-none" accept=".png,.jpg,.jpeg,.webp" onchange="cemImgChange(this)">
           <span id="cem-img-fname" class="ms-2 text-muted" style="font-size:.75rem"></span>
         </div>
+        <div class="mb-1">
+          <label class="adm-form-label d-block">커스텀 요청 필드 <span class="text-muted fw-normal">(신청 시 추가로 입력받을 항목, 선택)</span></label>
+          <div id="cem-fields-list"></div>
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="cfAddFieldRow('cem-fields-list')">
+            <i class="fa-solid fa-plus me-1"></i>필드 추가
+          </button>
+        </div>
       </div>
       <div class="modal-footer pt-2">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
@@ -403,6 +410,13 @@
           </label>
           <input type="file" id="cam-image" class="d-none" accept=".png,.jpg,.jpeg,.webp" onchange="camImgChange(this)">
           <span id="cam-img-fname" class="ms-2 text-muted" style="font-size:.75rem"></span>
+        </div>
+        <div class="mb-1">
+          <label class="adm-form-label d-block">커스텀 요청 필드 <span class="text-muted fw-normal">(신청 시 추가로 입력받을 항목, 선택)</span></label>
+          <div id="cam-fields-list"></div>
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="cfAddFieldRow('cam-fields-list')">
+            <i class="fa-solid fa-plus me-1"></i>필드 추가
+          </button>
         </div>
       </div>
       <div class="modal-footer pt-2">
@@ -463,6 +477,7 @@
             </div>
           </div>
         </div>
+        <div id="rcm-custom-fields"></div>
         <div class="mb-2">
           <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
             {{ T('catalog.label_custom_image') }} <span style="font-size:.75rem;font-weight:400;color:#888">{{ T('catalog.label_custom_image_hint') }}</span>
@@ -679,6 +694,7 @@
           data-sub="{{ item.sub_desc | e }}"
           data-img="{{ cat_img_url(item.img) }}"
           data-sort="{{ item.sort_order }}"
+          data-fields="{{ (item.custom_fields or '[]') | e }}"
           onclick="event.stopPropagation(); catOpenEdit(this)"
           title="{{ T('common.edit') }}">
     <i class="fa-solid fa-pen"></i>
@@ -712,7 +728,8 @@
   <button class="cat-req-btn" id="reqbtn-{{ item.code }}"
           data-code="{{ item.code }}" data-name="{{ item.name|e }}"
           data-cat="{{ item.cat|e }}"
-          onclick="reqAddItem(this.dataset.code, this.dataset.name, this.dataset.cat)">
+          data-fields="{{ (item.custom_fields or '[]') | e }}"
+          onclick="reqAddItem(this.dataset.code, this.dataset.name, this.dataset.cat, this.dataset.fields)">
     <i class="fa-solid fa-cart-plus"></i> {{ T('catalog.btn_add_item') }}
   </button>
 </div>
@@ -1000,8 +1017,43 @@ function catToggleReq() {
   if (reqMode && editMode) catToggleEdit();
 }
 
-function reqAddItem(code, name, cat) {
-  if (CUSTOM_CATS.includes(cat)) {
+function _escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function rcmRenderCustomFields(fields) {
+  const container = document.getElementById('rcm-custom-fields');
+  container.innerHTML = '';
+  fields.forEach((f, idx) => {
+    if (!f || !f.label || !f.type) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'mb-2 rcm-custom-field';
+    wrap.dataset.label = f.label;
+    wrap.dataset.type  = f.type;
+    let html = '<label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">'
+      + _escapeHtml(f.label) + ' <span class="text-danger">*</span></label>';
+    if (f.type === 'checkbox') {
+      html += '<div class="rcm-cf-group d-flex flex-wrap gap-3 p-2" style="border:1px solid #ced4da;border-radius:6px">';
+      (f.options || []).forEach((opt, oi) => {
+        const id = 'rcm-cf-' + idx + '-' + oi;
+        html += '<div class="form-check m-0">'
+          + '<input type="checkbox" class="form-check-input rcm-cf-item" id="' + id + '" value="' + _escapeHtml(opt) + '">'
+          + '<label class="form-check-label" style="font-size:.82rem" for="' + id + '">' + _escapeHtml(opt) + '</label></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<textarea class="form-control form-control-sm rcm-cf-text" rows="2"></textarea>';
+    }
+    wrap.innerHTML = html;
+    container.appendChild(wrap);
+  });
+}
+
+function reqAddItem(code, name, cat, fieldsJson) {
+  let fields = [];
+  try { fields = JSON.parse(fieldsJson || '[]'); } catch(e) { fields = []; }
+  if (CUSTOM_CATS.includes(cat) || fields.length > 0) {
     document.getElementById('rcm-code').value = code;
     document.getElementById('rcm-title').textContent = name;
     document.getElementById('rcm-qty').value = 1;
@@ -1009,6 +1061,7 @@ function reqAddItem(code, name, cat) {
     document.getElementById('rcm-reason').classList.remove('is-invalid');
     document.querySelectorAll('.rcm-lang-item').forEach(cb => cb.checked = false);
     document.getElementById('rcm-lang-group').style.borderColor = '#ced4da';
+    rcmRenderCustomFields(fields);
     document.getElementById('rcm-text').value = '';
     document.getElementById('rcm-image').value = '';
     document.getElementById('rcm-img-name').textContent = '';
@@ -1056,6 +1109,36 @@ async function rcmSubmit() {
     return;
   }
   langGroup.style.borderColor = '#ced4da';
+
+  // 아이템별 커스텀 요청 필드 검증 + 수집
+  const customAnswers = {};
+  const cfRows = Array.from(document.querySelectorAll('#rcm-custom-fields .rcm-custom-field'));
+  for (const row of cfRows) {
+    const label = row.dataset.label;
+    const type  = row.dataset.type;
+    if (type === 'checkbox') {
+      const group = row.querySelector('.rcm-cf-group');
+      const vals  = Array.from(row.querySelectorAll('.rcm-cf-item:checked')).map(cb => cb.value);
+      if (vals.length === 0) {
+        group.style.borderColor = 'var(--red)';
+        group.scrollIntoView({behavior: 'smooth', block: 'center'});
+        return;
+      }
+      group.style.borderColor = '#ced4da';
+      customAnswers[label] = vals.join(', ');
+    } else {
+      const ta = row.querySelector('.rcm-cf-text');
+      const v  = ta.value.trim();
+      if (!v) {
+        ta.classList.add('is-invalid');
+        ta.focus();
+        return;
+      }
+      ta.classList.remove('is-invalid');
+      customAnswers[label] = v;
+    }
+  }
+
   const code = document.getElementById('rcm-code').value;
   const qty  = parseInt(document.getElementById('rcm-qty').value) || 1;
   const text = document.getElementById('rcm-text').value.trim();
@@ -1067,7 +1150,7 @@ async function rcmSubmit() {
     });
   }
   bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).hide();
-  reqCartUpdate(code, qty, imgData, text, '', '', reason, langs.join(', '));
+  reqCartUpdate(code, qty, imgData, text, '', '', reason, langs.join(', '), customAnswers);
 }
 
 let rcmEditorImgData = '';
@@ -1217,7 +1300,7 @@ window.addEventListener('message', e => {
   }
 });
 
-async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat, requestReason, requestLang) {
+async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat, requestReason, requestLang, customFieldsAnswer) {
   if (!IS_PERIOD_ACTIVE) {
     catToast('현재 운송아이템 신청 기간이 아닙니다.', 'danger');
     return;
@@ -1230,7 +1313,8 @@ async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat
         item_code: code, quantity: qty,
         custom_img_data: customImg, custom_text: customText,
         item_name: itemName || '', item_cat: itemCat || '',
-        request_reason: requestReason || '', request_lang: requestLang || ''
+        request_reason: requestReason || '', request_lang: requestLang || '',
+        custom_fields_answer: customFieldsAnswer || {}
       })
     });
     const json = await res.json();
@@ -1271,6 +1355,7 @@ function catOpenEdit(btn) {
   const lbl = document.getElementById('cem-img-label');
   lbl.classList.remove('has-file');
   lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
+  cfLoadFields('cem-fields-list', btn.dataset.fields);
   bootstrap.Modal.getOrCreateInstance(document.getElementById('catEditModal')).show();
 }
 
@@ -1305,6 +1390,7 @@ async function catSubmitEdit() {
   fd.append('code', code);        fd.append('new_code', newCode);
   fd.append('name', name);        fd.append('cat', cat);
   fd.append('sub_desc', subDesc); fd.append('sort_order', sortOrder);
+  fd.append('custom_fields', JSON.stringify(cfSerializeContainer('cem-fields-list')));
   if (imgFile) fd.append('image', imgFile);
 
   const btn = document.getElementById('cem-submit-btn');
@@ -1342,7 +1428,13 @@ async function catSubmitEdit() {
           editBtn.dataset.cat  = cat;
           editBtn.dataset.sub  = subDesc;
           editBtn.dataset.sort = sortOrder;
+          editBtn.dataset.fields = json.custom_fields || '[]';
           if (json.img_url) editBtn.dataset.img = json.img_url;
+        }
+        const reqBtn = card.querySelector('.cat-req-btn');
+        if (reqBtn) {
+          reqBtn.dataset.fields = json.custom_fields || '[]';
+          if (actualCode !== code) reqBtn.dataset.code = actualCode;
         }
         if (actualCode !== code) {
           const cb  = card.querySelector('.cat-check');
@@ -1396,10 +1488,83 @@ function catOpenAdd(cat) {
   document.getElementById('cam-code').value   = '';
   document.getElementById('cam-image').value  = '';
   document.getElementById('cam-img-fname').textContent = '';
+  document.getElementById('cam-fields-list').innerHTML = '';
   const lbl = document.getElementById('cam-img-label');
   lbl.classList.remove('has-file');
   lbl.innerHTML = '<i class="fa-solid fa-image me-1"></i>' + _fileSelect;
   bootstrap.Modal.getOrCreateInstance(document.getElementById('catAddModal')).show();
+}
+
+// ── 커스텀 요청 필드 빌더 (아이템 추가/수정 모달 공용) ──────────────────────
+let _cfRowSeq = 0;
+
+function cfAddFieldRow(containerId, data) {
+  data = data || {label: '', type: 'checkbox', options: ['']};
+  const container = document.getElementById(containerId);
+  const row = document.createElement('div');
+  row.className = 'custom-field-row border rounded p-2 mb-2';
+  row.id = 'cfrow-' + (_cfRowSeq++);
+  row.innerHTML =
+    '<div class="d-flex gap-2 mb-2 align-items-start">' +
+      '<input type="text" class="form-control form-control-sm cf-label" placeholder="필드명 (예: 입구/출구 선택)" value="' + _escapeHtml(data.label) + '">' +
+      '<select class="form-select form-select-sm cf-type" style="max-width:110px">' +
+        '<option value="checkbox"' + (data.type === 'checkbox' ? ' selected' : '') + '>체크박스형</option>' +
+        '<option value="text"' + (data.type === 'text' ? ' selected' : '') + '>기재형</option>' +
+      '</select>' +
+      '<button type="button" class="btn btn-sm btn-outline-danger cf-remove-field" title="필드 삭제"><i class="fa-solid fa-trash"></i></button>' +
+    '</div>' +
+    '<div class="cf-options-wrap"' + (data.type === 'checkbox' ? '' : ' style="display:none"') + '>' +
+      '<div class="cf-options-list"></div>' +
+      '<button type="button" class="btn btn-sm btn-outline-secondary cf-add-option mt-1"><i class="fa-solid fa-plus me-1"></i>보기 추가</button>' +
+    '</div>';
+  container.appendChild(row);
+
+  const optsList = row.querySelector('.cf-options-list');
+  const opts = (data.options && data.options.length) ? data.options : [''];
+  opts.forEach(opt => cfAddOptionRow(optsList, opt));
+
+  row.querySelector('.cf-remove-field').addEventListener('click', () => row.remove());
+  row.querySelector('.cf-add-option').addEventListener('click', () => cfAddOptionRow(optsList, ''));
+  row.querySelector('.cf-type').addEventListener('change', e => {
+    row.querySelector('.cf-options-wrap').style.display = (e.target.value === 'checkbox') ? '' : 'none';
+  });
+}
+
+function cfAddOptionRow(optsListEl, value) {
+  const optRow = document.createElement('div');
+  optRow.className = 'd-flex gap-2 mb-1 cf-option-row';
+  optRow.innerHTML =
+    '<input type="text" class="form-control form-control-sm cf-option" placeholder="보기 (예: 입구)" value="' + _escapeHtml(value || '') + '">' +
+    '<button type="button" class="btn btn-sm btn-outline-secondary cf-remove-option"><i class="fa-solid fa-xmark"></i></button>';
+  optsListEl.appendChild(optRow);
+  optRow.querySelector('.cf-remove-option').addEventListener('click', () => optRow.remove());
+}
+
+function cfSerializeContainer(containerId) {
+  const container = document.getElementById(containerId);
+  const rows = Array.from(container.querySelectorAll('.custom-field-row'));
+  const result = [];
+  rows.forEach(row => {
+    const label = row.querySelector('.cf-label').value.trim();
+    const type  = row.querySelector('.cf-type').value;
+    if (!label) return;
+    const field = {label: label, type: type};
+    if (type === 'checkbox') {
+      const opts = Array.from(row.querySelectorAll('.cf-option')).map(inp => inp.value.trim()).filter(Boolean);
+      if (opts.length === 0) return;
+      field.options = opts;
+    }
+    result.push(field);
+  });
+  return result;
+}
+
+function cfLoadFields(containerId, fieldsJsonStr) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  let fields = [];
+  try { fields = JSON.parse(fieldsJsonStr || '[]'); } catch(e) { fields = []; }
+  fields.forEach(f => cfAddFieldRow(containerId, f));
 }
 
 function camImgChange(input) {
@@ -1428,6 +1593,7 @@ async function catSubmitAdd() {
   const fd = new FormData();
   fd.append('name', name);   fd.append('cat', cat);
   fd.append('sub_desc', subDesc); fd.append('code', code);
+  fd.append('custom_fields', JSON.stringify(cfSerializeContainer('cam-fields-list')));
   fd.append('image', imgFile); fd.append('_ajax', '1');
 
   const btn = document.getElementById('cam-submit-btn');

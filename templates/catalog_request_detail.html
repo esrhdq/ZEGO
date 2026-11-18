@@ -159,6 +159,11 @@
               <strong>요청언어:</strong> {{ it.request_lang }}
             </div>
             {% endif %}
+            {% for fkey, fval in (it.custom_fields_answer_parsed or {}).items() %}
+            <div style="font-size:.78rem;color:#9a3412;margin-bottom:4px;background:#fff7ed;border-radius:6px;padding:6px 10px;max-width:300px">
+              <strong>{{ fkey }}:</strong> {{ fval }}
+            </div>
+            {% endfor %}
             {% if it.custom_img_data %}
             <img class="custom-img-preview" src="{{ it.custom_img_data }}" alt="{{ T('catreqdet.img_modal_title') }}" loading="lazy"
                  onclick="document.getElementById('fullImg').src=this.src; bootstrap.Modal.getOrCreateInstance(document.getElementById('imgModal')).show()">
