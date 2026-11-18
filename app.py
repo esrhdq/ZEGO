@@ -55,7 +55,7 @@ _BRANCH_EMAIL_SEEDS = {
 }
 
 # ── 카탈로그 기본 카테고리 순서 ───────────────────────────────────────────────
-CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', '안내문', '카운터 종합 안내문', '간판·표찰', '스탬프·쿠폰']
+CAT_ORDER = ['X-Banner', '저울', '스탠션', '아크릴 거치대', 'DESK TOP', '안내문', '카운터 종합 안내문', '간판·표찰', '스탬프·쿠폰', '기타']
 
 # ── 운송아이템 카탈로그 기본 항목 (DB 시딩용) ─────────────────────────────────
 CATALOG_ITEMS = [
@@ -4039,6 +4039,7 @@ def catalog():
     return render_template('catalog.html',
         catalog_items=catalog_items,
         cat_groups=cat_groups,
+        cat_order=CAT_ORDER,
         my_items=my_items,
         branches=branches,
         cart_cnt=cart_cnt,

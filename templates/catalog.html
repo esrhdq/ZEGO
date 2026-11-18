@@ -338,7 +338,7 @@
         <div class="mb-2">
           <label class="adm-form-label d-block">{{ T('catalog.label_category') }} <span class="text-danger">*</span></label>
           <select id="cem-cat" class="form-select form-select-sm">
-            {% for c in cat_groups %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            {% for c in cat_order %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
           </select>
         </div>
         <div class="mb-2">
@@ -385,7 +385,7 @@
         <div class="mb-2">
           <label class="adm-form-label d-block">{{ T('catalog.label_category') }} <span class="text-danger">*</span></label>
           <select id="cam-cat" class="form-select form-select-sm">
-            {% for c in cat_groups %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            {% for c in cat_order %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
           </select>
         </div>
         <div class="mb-2">
