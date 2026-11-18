@@ -663,6 +663,19 @@
   </div>
 </div>
 
+{% if session.role == 'admin' %}
+<!-- 관리자: 신청 모드에서 신청 대상 지점 선택 -->
+<div id="catReqBranchBar" class="d-none align-items-center gap-2 mb-3 p-2"
+     style="background:#1e3060;border-radius:8px">
+  <span class="text-white small ms-2">신청 대상 지점</span>
+  <select id="catReqBranchSel" class="form-select form-select-sm" style="width:auto;max-width:200px">
+    {% for b in branches %}
+    <option value="{{ b.id }}">{{ b.code }} — {{ b.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endif %}
+
 <!-- 통계바 -->
 <div class="cat-stats-bar">
   {% for cat, items in cat_groups.items() %}
@@ -1015,6 +1028,20 @@ function catToggleReq() {
     : '<i class="fa-solid fa-clipboard-list me-1"></i>' + _reqMode;
   btn.className = reqMode ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-warning';
   if (reqMode && editMode) catToggleEdit();
+  const branchBar = document.getElementById('catReqBranchBar');
+  if (branchBar) {
+    branchBar.classList.toggle('d-none', !reqMode);
+    branchBar.classList.toggle('d-flex', reqMode);
+  }
+}
+
+function _reqTargetBranchId() {
+  const sel = document.getElementById('catReqBranchSel');
+  if (sel && sel.value) {
+    const v = parseInt(sel.value);
+    if (!isNaN(v)) return v;
+  }
+  return {{ session.get('branch_id') | tojson }};
 }
 
 function _escapeHtml(s) {
@@ -1305,17 +1332,22 @@ async function reqCartUpdate(code, qty, customImg, customText, itemName, itemCat
     catToast('현재 운송아이템 신청 기간이 아닙니다.', 'danger');
     return;
   }
+  const _payload = {
+    item_code: code, quantity: qty,
+    custom_img_data: customImg, custom_text: customText,
+    item_name: itemName || '', item_cat: itemCat || '',
+    request_reason: requestReason || '', request_lang: requestLang || '',
+    custom_fields_answer: customFieldsAnswer || {}
+  };
+  {% if session.role == 'admin' %}
+  const _tbid = _reqTargetBranchId();
+  if (_tbid) _payload.branch_id = _tbid;
+  {% endif %}
   try {
     const res = await fetch('{{ url_for("catalog_cart_update") }}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        item_code: code, quantity: qty,
-        custom_img_data: customImg, custom_text: customText,
-        item_name: itemName || '', item_cat: itemCat || '',
-        request_reason: requestReason || '', request_lang: requestLang || '',
-        custom_fields_answer: customFieldsAnswer || {}
-      })
+      body: JSON.stringify(_payload)
     });
     const json = await res.json();
     if (json.ok) {
