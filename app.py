@@ -1046,6 +1046,25 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/request_hidden] {_e}')
+            _mig_cf = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_catalog_custom_fields_columns',)
+            ).fetchone()
+            if not _mig_cf:
+                try:
+                    conn.execute(
+                        "SET lock_timeout = '5s'"
+                    )
+                    conn.execute(
+                        "ALTER TABLE catalog_defs ADD COLUMN IF NOT EXISTS custom_fields TEXT NOT NULL DEFAULT ''"
+                    )
+                    conn.execute(
+                        "ALTER TABLE catalog_request_items ADD COLUMN IF NOT EXISTS custom_fields_answer TEXT DEFAULT ''"
+                    )
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_catalog_custom_fields_columns',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/custom_fields] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
