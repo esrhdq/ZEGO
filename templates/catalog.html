@@ -1418,11 +1418,14 @@ async function catSubmitEdit() {
   const imgFile   = document.getElementById('cem-image').files[0];
   if (!name) { catToast(_itemNameReq, 'danger'); return; }
 
+  const cemFields = cfSerializeContainer('cem-fields-list');
+  if (cemFields === null) { catToast('커스텀 요청 필드의 필드명(또는 보기)을 입력해주세요.', 'danger'); return; }
+
   const fd = new FormData();
   fd.append('code', code);        fd.append('new_code', newCode);
   fd.append('name', name);        fd.append('cat', cat);
   fd.append('sub_desc', subDesc); fd.append('sort_order', sortOrder);
-  fd.append('custom_fields', JSON.stringify(cfSerializeContainer('cem-fields-list')));
+  fd.append('custom_fields', JSON.stringify(cemFields));
   if (imgFile) fd.append('image', imgFile);
 
   const btn = document.getElementById('cem-submit-btn');
@@ -1572,22 +1575,34 @@ function cfAddOptionRow(optsListEl, value) {
   optRow.querySelector('.cf-remove-option').addEventListener('click', () => optRow.remove());
 }
 
+// 필드명/보기가 비어있는 행이 있으면 조용히 버리지 않고 null을 반환해
+// 호출부(catSubmitAdd/catSubmitEdit)가 저장을 막고 사용자에게 알리도록 함
 function cfSerializeContainer(containerId) {
   const container = document.getElementById(containerId);
   const rows = Array.from(container.querySelectorAll('.custom-field-row'));
   const result = [];
-  rows.forEach(row => {
-    const label = row.querySelector('.cf-label').value.trim();
-    const type  = row.querySelector('.cf-type').value;
-    if (!label) return;
+  for (const row of rows) {
+    const labelEl = row.querySelector('.cf-label');
+    const label   = labelEl.value.trim();
+    const type    = row.querySelector('.cf-type').value;
+    if (!label) {
+      labelEl.classList.add('is-invalid');
+      labelEl.focus();
+      return null;
+    }
+    labelEl.classList.remove('is-invalid');
     const field = {label: label, type: type};
     if (type === 'checkbox') {
-      const opts = Array.from(row.querySelectorAll('.cf-option')).map(inp => inp.value.trim()).filter(Boolean);
-      if (opts.length === 0) return;
+      const optionInputs = Array.from(row.querySelectorAll('.cf-option'));
+      const opts = optionInputs.map(inp => inp.value.trim()).filter(Boolean);
+      if (opts.length === 0) {
+        if (optionInputs[0]) { optionInputs[0].classList.add('is-invalid'); optionInputs[0].focus(); }
+        return null;
+      }
       field.options = opts;
     }
     result.push(field);
-  });
+  }
   return result;
 }
 
@@ -1622,10 +1637,13 @@ async function catSubmitAdd() {
   if (!name)    { catToast(_itemNameReq, 'danger'); return; }
   if (!imgFile) { catToast(_imgRequired, 'danger'); return; }
 
+  const camFields = cfSerializeContainer('cam-fields-list');
+  if (camFields === null) { catToast('커스텀 요청 필드의 필드명(또는 보기)을 입력해주세요.', 'danger'); return; }
+
   const fd = new FormData();
   fd.append('name', name);   fd.append('cat', cat);
   fd.append('sub_desc', subDesc); fd.append('code', code);
-  fd.append('custom_fields', JSON.stringify(cfSerializeContainer('cam-fields-list')));
+  fd.append('custom_fields', JSON.stringify(camFields));
   fd.append('image', imgFile); fd.append('_ajax', '1');
 
   const btn = document.getElementById('cam-submit-btn');
