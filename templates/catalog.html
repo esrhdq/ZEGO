@@ -531,6 +531,41 @@
   </div>
 </div>
 
+<!-- 신청 기본 모달 (일반 아이템: 수량 + 요청사유) -->
+<div class="modal fade" id="reqSimpleModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--red);color:#fff;padding:10px 16px">
+        <h6 class="modal-title" style="font-size:.92rem;font-weight:700">
+          <i class="fa-solid fa-cart-plus me-2"></i><span id="rsm-title">{{ T('catalog.modal_add_to_cart_title') }}</span>
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-2">
+        <input type="hidden" id="rsm-code">
+        <div class="mb-2">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">{{ T('catalog.label_quantity') }}</label>
+          <input type="number" id="rsm-qty" class="form-control form-control-sm"
+                 min="1" max="99" value="1" style="width:100px">
+        </div>
+        <div class="mb-1">
+          <label style="font-size:.83rem;font-weight:600;margin-bottom:3px;display:block">
+            {{ T('catalog.label_request_reason') }} <span class="text-danger">*</span>
+          </label>
+          <textarea id="rsm-reason" class="form-control form-control-sm" rows="2"
+                    placeholder="{{ T('catalog.placeholder_request_reason') }}"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ T('common.cancel') }}</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="rsmSubmit()">
+          <i class="fa-solid fa-cart-plus me-1"></i>{{ T('catalog.btn_add_to_cart') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 신규 추가 모달 -->
 <div class="modal fade" id="reqNewModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -1101,8 +1136,30 @@ function reqAddItem(code, name, cat, fieldsJson) {
     rcmClearEditorImg();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('reqCustomModal')).show();
   } else {
-    reqCartUpdate(code, 1, '', '');
+    document.getElementById('rsm-code').value = code;
+    document.getElementById('rsm-title').textContent = name;
+    document.getElementById('rsm-qty').value = 1;
+    document.getElementById('rsm-reason').value = '';
+    document.getElementById('rsm-reason').classList.remove('is-invalid');
+    const rsmEl = document.getElementById('reqSimpleModal');
+    rsmEl.addEventListener('shown.bs.modal', () => document.getElementById('rsm-reason').focus(), {once: true});
+    bootstrap.Modal.getOrCreateInstance(rsmEl).show();
   }
+}
+
+function rsmSubmit() {
+  const reasonEl = document.getElementById('rsm-reason');
+  const reason   = reasonEl.value.trim();
+  if (!reason) {
+    reasonEl.classList.add('is-invalid');
+    reasonEl.focus();
+    return;
+  }
+  reasonEl.classList.remove('is-invalid');
+  const code = document.getElementById('rsm-code').value;
+  const qty  = Math.max(1, parseInt(document.getElementById('rsm-qty').value) || 1);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('reqSimpleModal')).hide();
+  reqCartUpdate(code, qty, '', '', '', '', reason);
 }
 
 function rcmImgChange(input) {

@@ -4283,16 +4283,40 @@ def catalog_cart_update():
             custom_fields_answer[str(k).strip()] = str(v).strip()
 
     # 신청 기간 외 장바구니 추가 차단 (remove/clear는 허용, admin 제외)
-    if action == 'add' and role != 'admin' and not _get_active_catalog_period(target_bid):
+    if action in ('add', 'set_qty', 'set_reason') and role != 'admin' and not _get_active_catalog_period(target_bid):
         return jsonify({'ok': False, 'msg': '현재 운송아이템 신청 기간이 아니거나 신청 대상 지점이 아닙니다.'}), 403
 
-    # 커스텀 제작 아이템(X-Banner/스탠션/신규추가)은 요청사유 필수
-    if action not in ('remove', 'clear') and qty > 0 and \
-       (item_cat in ('X-Banner', '스탠션') or item_code.startswith('_new_')) and not request_reason:
+    # 모든 아이템은 요청사유 필수
+    if action == 'add' and qty > 0 and not request_reason:
         return jsonify({'ok': False, 'msg': '요청사유를 입력해주세요.'}), 400
 
     conn = get_db()
     ph   = '%s' if not USE_SQLITE else '?'
+
+    # 장바구니 화면: 수량만 변경 / 요청사유만 입력·수정 (기존 커스텀 이미지·문구·언어 등은 보존)
+    if action in ('set_qty', 'set_reason'):
+        if action == 'set_reason' and not request_reason:
+            conn.close()
+            return jsonify({'ok': False, 'msg': '요청사유를 입력해주세요.'}), 400
+        req_row = conn.execute(
+            f'SELECT id FROM catalog_requests WHERE branch_id={ph} AND status={ph}',
+            (target_bid, 'draft')
+        ).fetchone()
+        if req_row and item_code:
+            if action == 'set_qty':
+                conn.execute(
+                    f'UPDATE catalog_request_items SET quantity={ph} WHERE request_id={ph} AND item_code={ph}',
+                    (max(1, qty), req_row['id'], item_code)
+                )
+            else:
+                conn.execute(
+                    f'UPDATE catalog_request_items SET request_reason={ph} WHERE request_id={ph} AND item_code={ph}',
+                    (request_reason, req_row['id'], item_code)
+                )
+            conn.commit()
+        cnt = _cart_count(conn, target_bid)
+        conn.close()
+        return jsonify({'ok': True, 'cart_count': cnt})
 
     # 아이템에 등록된 커스텀 요청 필드는 전부 필수 — 서버에서도 재검증
     if action not in ('remove', 'clear') and qty > 0 and item_code:
@@ -4490,6 +4514,20 @@ def catalog_request_submit():
     if not selected:
         conn.close()
         return jsonify({'ok': False, 'msg': T('flash.cart_no_items')}), 400
+
+    # 요청사유 미입력 항목이 있으면 제출 차단 (사유 필수화 이전에 담긴 항목 대비)
+    sel_ph = ','.join([ph] * len(selected))
+    missing = conn.execute(
+        f"SELECT COALESCE(cd.name, NULLIF(ri.item_name, ''), ri.item_code) AS nm "
+        f"FROM catalog_request_items ri LEFT JOIN catalog_defs cd ON cd.code=ri.item_code "
+        f"WHERE ri.request_id={ph} AND ri.item_code IN ({sel_ph}) "
+        f"AND (ri.request_reason IS NULL OR TRIM(ri.request_reason)='')",
+        (req_row['id'], *selected)
+    ).fetchall()
+    if missing:
+        conn.close()
+        names = ', '.join(r['nm'] for r in missing[:5]) + (' 외' if len(missing) > 5 else '')
+        return jsonify({'ok': False, 'msg': f'요청사유가 입력되지 않은 항목이 있습니다: {names}'}), 400
 
     now_sql = 'NOW()' if not USE_SQLITE else "datetime('now')"
 
