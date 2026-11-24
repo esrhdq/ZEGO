@@ -1071,6 +1071,23 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/custom_fields_tables] {_e}')
+            _mig_opt = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_catalog_item_options_table',)
+            ).fetchone()
+            if not _mig_opt:
+                try:
+                    # 아이템별 '신청 시 노출 항목'(요청언어/시안 이미지/요청 문구) 설정 — 별도 테이블
+                    conn.execute('''
+                        CREATE TABLE IF NOT EXISTS catalog_item_options (
+                    item_code TEXT PRIMARY KEY,
+                    options   TEXT NOT NULL DEFAULT ''
+                )
+                    ''')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_catalog_item_options_table',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/item_options_table] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1229,6 +1246,12 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS catalog_item_fields (
                     item_code     TEXT PRIMARY KEY,
                     custom_fields TEXT NOT NULL DEFAULT ''
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS catalog_item_options (
+                    item_code TEXT PRIMARY KEY,
+                    options   TEXT NOT NULL DEFAULT ''
                 )
             ''')
             conn.execute('''
@@ -3917,6 +3940,74 @@ def _set_item_custom_fields(conn, item_code, custom_fields_json):
         print(f'[set_item_custom_fields] {_e}')
 
 
+CATALOG_CUSTOM_CATS = ('X-Banner', '스탠션')
+REQ_OPT_KEYS = ('lang', 'image', 'text')   # 요청언어 / 시안 이미지 / 요청 문구
+
+
+def _parse_req_options(raw, cat=''):
+    """아이템별 '신청 시 노출 항목' 설정(JSON) → {'lang','image','text': bool}.
+    설정이 없으면 기존 동작 유지: X-Banner/스탠션은 모두 노출, 그 외는 모두 숨김."""
+    import json
+    default = cat in CATALOG_CUSTOM_CATS
+    opts = {k: default for k in REQ_OPT_KEYS}
+    if raw:
+        try:
+            d = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(d, dict):
+                for k in REQ_OPT_KEYS:
+                    if k in d:
+                        opts[k] = bool(d[k])
+        except Exception:
+            pass
+    return opts
+
+
+def _set_item_req_options(conn, item_code, options_raw):
+    """아이템별 '신청 시 노출 항목' 설정을 catalog_item_options에 upsert."""
+    import json
+    if options_raw is None:
+        return
+    try:
+        d = json.loads(options_raw) if options_raw else {}
+    except Exception:
+        d = {}
+    if not isinstance(d, dict):
+        d = {}
+    val = json.dumps({k: bool(d.get(k)) for k in REQ_OPT_KEYS})
+    try:
+        if USE_SQLITE:
+            conn.execute(
+                'INSERT INTO catalog_item_options (item_code, options) VALUES (?,?) '
+                'ON CONFLICT(item_code) DO UPDATE SET options=excluded.options',
+                (item_code, val)
+            )
+        else:
+            conn.execute(
+                'INSERT INTO catalog_item_options (item_code, options) VALUES (%s,%s) '
+                'ON CONFLICT(item_code) DO UPDATE SET options=EXCLUDED.options',
+                (item_code, val)
+            )
+        conn.commit()
+    except Exception as _e:
+        conn.rollback()
+        print(f'[set_item_req_options] {_e}')
+
+
+def _get_item_req_options(conn, item_code, cat=''):
+    ph = '%s' if not USE_SQLITE else '?'
+    try:
+        row = conn.execute(
+            f'SELECT options FROM catalog_item_options WHERE item_code={ph}', (item_code,)
+        ).fetchone()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        row = None
+    return _parse_req_options(row['options'] if row else '', cat)
+
+
 def _attach_custom_answers(items):
     """catalog_request_items 행들의 custom_fields_answer(JSON) 문자열을 dict로 파싱해 붙여줌."""
     import json
@@ -3935,9 +4026,11 @@ def _get_catalog_items(conn):
         rows = conn.execute(
             "SELECT cd.code, cd.img, cd.name, cd.cat, cd.sub_desc, cd.sort_order, "
             "COALESCE(cif.custom_fields, '') AS custom_fields, "
+            "COALESCE(cio.options, '') AS req_options_raw, "
             "CASE WHEN COALESCE(cd.img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
             'FROM catalog_defs cd '
             'LEFT JOIN catalog_item_fields cif ON cif.item_code = cd.code '
+            'LEFT JOIN catalog_item_options cio ON cio.item_code = cd.code '
             'WHERE cd.user_deleted IS NOT TRUE'
         ).fetchall()
     except Exception:
@@ -3950,7 +4043,10 @@ def _get_catalog_items(conn):
             "CASE WHEN COALESCE(img_data,'')!='' THEN 1 ELSE 0 END AS is_custom "
             'FROM catalog_defs'
         ).fetchall()
+    import json as _json
     items = [dict(r) for r in rows]
+    for it in items:
+        it['req_options'] = _json.dumps(_parse_req_options(it.pop('req_options_raw', ''), it.get('cat', '')))
     cat_idx = {cat: i for i, cat in enumerate(CAT_ORDER)}
     items.sort(key=lambda x: (cat_idx.get(x['cat'], 999), x.get('sort_order', 0)))
     return items
@@ -4087,6 +4183,12 @@ def _ensure_catalog_table():
                 item_code     TEXT PRIMARY KEY,
                 custom_fields TEXT NOT NULL DEFAULT ''
             )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS catalog_item_options (
+                    item_code TEXT PRIMARY KEY,
+                    options   TEXT NOT NULL DEFAULT ''
+                )
         ''')
         conn.execute('''
             CREATE TABLE IF NOT EXISTS catalog_request_item_fields (
@@ -4317,6 +4419,17 @@ def catalog_cart_update():
         cnt = _cart_count(conn, target_bid)
         conn.close()
         return jsonify({'ok': True, 'cart_count': cnt})
+
+    # 요청언어 노출 아이템(신규 추가 포함)은 요청언어 필수
+    if action == 'add' and qty > 0 and item_code and not request_lang:
+        if item_code.startswith('_new_'):
+            _need_lang = True
+        else:
+            _cat_row = conn.execute(f'SELECT cat FROM catalog_defs WHERE code={ph}', (item_code,)).fetchone()
+            _need_lang = _get_item_req_options(conn, item_code, _cat_row['cat'] if _cat_row else item_cat)['lang']
+        if _need_lang:
+            conn.close()
+            return jsonify({'ok': False, 'msg': '요청언어를 선택해주세요.'}), 400
 
     # 아이템에 등록된 커스텀 요청 필드는 전부 필수 — 서버에서도 재검증
     if action not in ('remove', 'clear') and qty > 0 and item_code:
@@ -5307,12 +5420,18 @@ def catalog_add():
     max_sort = conn.execute(
         'SELECT COALESCE(MAX(sort_order), 0) AS m FROM catalog_defs WHERE cat=%s', (cat,)
     ).fetchone()['m']
+    # 정렬순서: 입력값이 있으면 사용, 비우면 카테고리 내 마지막 + 10
+    try:
+        _sort_in = request.form.get('sort_order', '').strip()
+        new_sort = int(_sort_in) if _sort_in else max_sort + 10
+    except (ValueError, TypeError):
+        new_sort = max_sort + 10
 
     try:
         conn.execute(
             'INSERT INTO catalog_defs (code, img, name, cat, sub_desc, sort_order, img_data) '
             'VALUES (%s, %s, %s, %s, %s, %s, %s)',
-            (code, img_stem, name, cat, sub_desc, max_sort + 10, img_data_b64)
+            (code, img_stem, name, cat, sub_desc, new_sort, img_data_b64)
         )
         conn.commit()
     except Exception as _e:
@@ -5321,6 +5440,7 @@ def catalog_add():
         app.logger.error(f'[catalog_add] {_e}')
         return _fail(f'저장 중 오류가 발생했습니다: {_e}')
     _set_item_custom_fields(conn, code, custom_fields)
+    _set_item_req_options(conn, code, request.form.get('req_options'))
     conn.close()
     _invalidate_catalog_cache()
     if is_ajax:
@@ -5370,6 +5490,9 @@ def catalog_update():
         )
         conn.execute(
             'UPDATE catalog_item_fields SET item_code=%s WHERE item_code=%s', (new_code, code)
+        )
+        conn.execute(
+            'UPDATE catalog_item_options SET item_code=%s WHERE item_code=%s', (new_code, code)
         )
 
     img_stem     = existing['img']
@@ -5431,9 +5554,13 @@ def catalog_update():
         app.logger.error(f'[catalog_update] {_e}')
         return jsonify({'ok': False, 'msg': f'저장 중 오류가 발생했습니다: {_e}'}), 500
     _set_item_custom_fields(conn, new_code, custom_fields)
+    _set_item_req_options(conn, new_code, request.form.get('req_options'))
+    import json as _json
+    req_opts = _json.dumps(_get_item_req_options(conn, new_code, cat))
     conn.close()
     _invalidate_catalog_cache()
-    resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code, 'custom_fields': custom_fields}
+    resp = {'ok': True, 'sub_desc': sub_desc, 'new_code': new_code, 'custom_fields': custom_fields,
+            'req_options': req_opts}
     if new_img_url:
         resp['img_url'] = new_img_url
     return jsonify(resp)
