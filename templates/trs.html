@@ -15,6 +15,8 @@
   .trs-dept-empty { color:var(--text-muted); font-style:italic; }
   .trs-cnt { cursor:pointer; font-weight:700; }
   .trs-cnt:hover { text-decoration:underline; color:var(--brand); }
+  .trs-bd { margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:.75rem;
+            color:var(--text-secondary); line-height:1.7; }
   .trs-cnt.zero { color:#D6D3D1; font-weight:400; cursor:default; text-decoration:none; }
   #trsTable td, #trsTable th { vertical-align:middle; font-size:.83rem; white-space:nowrap; }
   #trsBulk { position:sticky; top:0; z-index:5; display:none; }
@@ -164,17 +166,30 @@ const selected = new Set();
 function renderStats() {
   const tot = RADIOS.length, ok = RADIOS.filter(r => r.can_call).length;
   const bad = RADIOS.filter(r => BAD.includes(r.status)).length, nodept = RADIOS.filter(r => !r.dept).length;
-  const card = (n, label, icon, color, f) => `
-    <div class="col-6 col-lg-3"><div class="card stat-card" style="cursor:pointer" onclick='goList(${JSON.stringify(f)})'>
-      <div class="card-body d-flex align-items-center gap-3">
-        <div class="stat-icon" style="background:var(--${color}-bg);color:var(--${color})"><i class="fa-solid ${icon}"></i></div>
-        <div><div class="stat-num" style="color:var(--${color})">${n}</div><div class="stat-label">${label}</div></div>
+  // 지점별 내역: 해당 조건에 맞는 무전기가 1대 이상인 지점만, 지점 순서대로
+  const multiBranch = new Set(RADIOS.map(r => r.branch_id)).size > 1;
+  const breakdown = (pred, f) => {
+    if (!multiBranch) return '';
+    const cnt = {};
+    RADIOS.filter(pred).forEach(r => { cnt[r.branch_id] = (cnt[r.branch_id] || 0) + 1; });
+    const items = Object.keys(cnt).map(Number).sort((a, b) => (bOrder[a] ?? 999) - (bOrder[b] ?? 999))
+      .map(b => `<span class="trs-cnt" style="font-weight:600" onclick='event.stopPropagation();goList(${JSON.stringify({...f, branch: String(b)})})'>${esc(bName[b] || '-')} ${cnt[b]}</span>`);
+    return `<div class="trs-bd">${items.length ? items.join(' · ') : '<span class="text-muted">해당 없음</span>'}</div>`;
+  };
+  const card = (n, label, icon, color, f, pred) => `
+    <div class="col-6 col-lg-3"><div class="card stat-card h-100" style="cursor:pointer" onclick='goList(${JSON.stringify(f)})'>
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:var(--${color}-bg);color:var(--${color})"><i class="fa-solid ${icon}"></i></div>
+          <div><div class="stat-num" style="color:var(--${color})">${n}</div><div class="stat-label">${label}</div></div>
+        </div>
+        ${breakdown(pred, f)}
       </div></div></div>`;
   document.getElementById('trsStats').innerHTML =
-    card(tot, '총 보유', 'fa-walkie-talkie', 'info', {}) +
-    card(ok, '통화가능', 'fa-phone-volume', 'success', {call: '1'}) +
-    card(bad, '점검필요 (수리중·고장·분실)', 'fa-screwdriver-wrench', 'danger', {status: '__bad'}) +
-    card(nodept, '사용처 미지정', 'fa-circle-question', 'warning', {dept: '__none'});
+    card(tot, '총 보유', 'fa-walkie-talkie', 'info', {}, () => true) +
+    card(ok, '통화가능', 'fa-phone-volume', 'success', {call: '1'}, r => r.can_call) +
+    card(bad, '점검필요 (수리중·고장·분실)', 'fa-screwdriver-wrench', 'danger', {status: '__bad'}, r => BAD.includes(r.status)) +
+    card(nodept, '사용처 미지정', 'fa-circle-question', 'warning', {dept: '__none'}, r => !r.dept);
 }
 
 // ── 지점별 현황 매트릭스 ──
