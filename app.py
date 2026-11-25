@@ -1072,6 +1072,28 @@ def _trs_gmp_plan():
     return plan
 
 
+def _trs_pus_plan():
+    """부산(김해)지점 TRS 보유현황(2026-11): 이스타항공=총괄, 프리죤=여객, SHARP=램프.
+    전화번호가 살아있는 것만 통화가능(취소선·X = 불가)."""
+    blocked = '수발신차단완료'
+    plan = {701: {}, 702: {}, 703: {'memo': 'IFIS 등록번호'}}
+    for no in plan:
+        plan[no].update(dept='총괄', holder='이스타항공', can_call=True)
+    fz = {721: '', 722: '', 723: '', 724: '', 725: '', 704: '', 705: blocked, 706: blocked,
+          707: '검색대에서 프리죤 CTC시 사용하기 때문에 삭제하지 말 것 / IFIS 등록번호',
+          708: 'CNTR 사용', 709: 'GATE 사용', 733: blocked, 734: blocked, 729: blocked,
+          741: blocked, 742: blocked, 743: blocked, 744: blocked, 745: blocked}
+    for no, memo in fz.items():
+        plan[no] = {'dept': '여객조업사', 'holder': '프리죤에어포트서비스', 'memo': memo}
+    for no in (722, 707, 708, 709):
+        plan[no]['can_call'] = True
+    for no in (726, 727, 728, 710, 711, 730, 731, 732, 712, 713, 714, 715, 716,
+               746, 747, 748, 749, 750):
+        plan[no] = {'dept': '램프조업사', 'holder': 'SHARP',
+                    'memo': '' if no in (726, 727, 728) else blocked}
+    return plan
+
+
 # 제주: 아이디스파워텔 2026년 11월 고지서(10월 사용분)에서 010사용료가 청구된 무전기
 TRS_CJU_CALLABLE_2611 = [*range(901, 906), *range(951, 961), *range(962, 972)]
 
@@ -1303,6 +1325,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_gmp_usage] {_e}')
+            _mig_trs_pus = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_pus_usage_2611',)
+            ).fetchone()
+            if not _mig_trs_pus:
+                try:
+                    _trs_apply_plan(conn, _trs_pus_plan(), '부산 보유현황(26.11)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_pus_usage_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_pus_usage] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
