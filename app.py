@@ -1029,6 +1029,49 @@ def _trs_mark_callable(conn, radio_nos, source):
                      'VALUES (%s,%s,%s,%s,%s)', (row['id'], str(no), '수정', '통화가능: 불가 → 가능', source))
 
 
+def _trs_apply_plan(conn, plan, source):
+    """{무전번호: {컬럼: 값}} 일괄 반영 + 변경이력 기록. 값이 같으면 건너뜀."""
+    labels = {'dept': '사용처', 'holder': '사용업체/담당', 'can_call': '통화가능', 'memo': '비고'}
+    for no, sets in plan.items():
+        row = conn.execute('SELECT * FROM trs_radios WHERE radio_no=%s', (str(no),)).fetchone()
+        if not row:
+            continue
+        row = dict(row)
+        sets = {k: v for k, v in sets.items()
+                if (bool(row.get(k)) != bool(v) if k == 'can_call' else (row.get(k) or '') != v)}
+        if not sets:
+            continue
+        cols = ', '.join(f'{k}=%s' for k in sets)
+        conn.execute(f'UPDATE trs_radios SET {cols}, updated_at=NOW(), updated_by=%s WHERE id=%s',
+                     (*sets.values(), source, row['id']))
+        fmt = lambda k, v: ('가능' if v else '불가') if k == 'can_call' else (v or '-')
+        detail = ' / '.join(f"{labels[k]}: {fmt(k, row.get(k))} → {fmt(k, v)}" for k, v in sets.items())
+        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
+                     'VALUES (%s,%s,%s,%s,%s)', (row['id'], str(no), '일괄수정', detail, source))
+
+
+def _trs_gmp_plan():
+    """김포지점 TRS 사용현황(2026-11): 총괄 / FAS=여객(프리죤) / ATS=램프 / 급유·브리핑실=기타."""
+    plan = {}
+    for no, walkie in ((151, '①'), (152, '②'), (155, '⑤')):
+        plan[no] = {'dept': '총괄', 'holder': '이스타항공', 'memo': f'워키 {walkie}'}
+    fas = {153: '', 156: 'INTL1', 157: 'CNTR5', 158: 'GATE3', 159: 'CABIN2', 160: 'CNTR4',
+           161: 'GATE6', 162: 'INTL3', 163: 'CNTR3', 164: 'CNTR1', 165: 'GATE1', 166: 'CNTR2',
+           167: 'A1', 168: 'GATE4', 169: 'INTL4', 170: 'GATE5', 171: 'INTL2', 172: 'CABIN1',
+           173: 'INTL5', 174: 'GATE2'}
+    for no, walkie in fas.items():
+        plan[no] = {'dept': '여객조업사', 'holder': '프리죤에어포트서비스',
+                    'memo': f'워키 {walkie}' if walkie else ''}
+    for no in (175, 176, 154, *range(177, 188)):
+        plan[no] = {'dept': '램프조업사', 'holder': 'ATS'}
+    plan[154]['memo'] = '워키 ④'
+    plan[188] = {'dept': '기타', 'holder': '급유'}
+    plan[189] = {'dept': '기타', 'holder': '브리핑실'}
+    for no in (156, 164, 165, 166, 167, 171, 174):
+        plan[no]['can_call'] = True
+    return plan
+
+
 # 제주: 아이디스파워텔 2026년 11월 고지서(10월 사용분)에서 010사용료가 청구된 무전기
 TRS_CJU_CALLABLE_2611 = [*range(901, 906), *range(951, 961), *range(962, 972)]
 
@@ -1249,6 +1292,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_cju_callable] {_e}')
+            _mig_trs_gmp = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_gmp_usage_2611',)
+            ).fetchone()
+            if not _mig_trs_gmp:
+                try:
+                    _trs_apply_plan(conn, _trs_gmp_plan(), '김포 사용현황(26.11)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_gmp_usage_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_gmp_usage] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
