@@ -1108,6 +1108,19 @@ def _trs_cjj_plan():
     return plan
 
 
+def _trs_tae_plan():
+    """대구지점 TRS 보유현황(2026-10 기준): 이스타항공=총괄, WUT=여객, JAS=램프.
+    '수발신 가능'(010번호 보유) 751~754만 통화가능."""
+    plan = {751: {'dept': '총괄', 'holder': '이스타항공'}}
+    for no in range(752, 760):
+        plan[no] = {'dept': '여객조업사', 'holder': 'WUT'}
+    for no in (760, 761, 762):
+        plan[no] = {'dept': '램프조업사', 'holder': 'JAS'}
+    for no in (751, 752, 753, 754):
+        plan[no]['can_call'] = True
+    return plan
+
+
 # 제주: 아이디스파워텔 2026년 11월 고지서(10월 사용분)에서 010사용료가 청구된 무전기
 TRS_CJU_CALLABLE_2611 = [*range(901, 906), *range(951, 961), *range(962, 972)]
 
@@ -1361,6 +1374,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_cjj_usage] {_e}')
+            _mig_trs_tae = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_tae_usage_2611',)
+            ).fetchone()
+            if not _mig_trs_tae:
+                try:
+                    _trs_apply_plan(conn, _trs_tae_plan(), '대구 보유현황(26.10)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_tae_usage_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_tae_usage] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
