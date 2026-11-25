@@ -853,7 +853,8 @@ def inject_globals():
             'notif_form_supply': notif_form_supply,
             'notif_catalog': notif_catalog,
             'endpoint': request.endpoint, 'pw_expire_days': pw_expire_days,
-            'now_dt': datetime.now(_KST)}
+            'now_dt': datetime.now(_KST),
+            'can_view_trs': _trs_can_view() if 'user_id' in session else False}
 
 
 # ── IP 화이트리스트 + 세션 타임아웃 ─────────────────────────────────────────
@@ -8303,6 +8304,24 @@ def _trs_diff(old, new, bnames):
     return ' / '.join(parts)
 
 
+def _trs_can_view():
+    """TRS 메뉴 열람: 관리자 또는 국내(DOM)·화물(CARGO) 지점 계정. 지점 유형은 세션에 캐시."""
+    if session.get('role') == 'admin':
+        return True
+    btype = session.get('_branch_type')
+    if btype is None:
+        btype = ''
+        bid = session.get('branch_id')
+        if bid:
+            try:
+                row = get_db().execute('SELECT type FROM branches WHERE id=%s', (bid,)).fetchone()
+                btype = (row['type'] if row else '') or ''
+            except Exception:
+                return False  # 조회 실패 시 캐시하지 않고 이번 요청만 숨김
+        session['_branch_type'] = btype
+    return btype in ('DOM', 'CARGO')
+
+
 def _trs_admin_only():
     if session.get('role') != 'admin':
         return jsonify(ok=False, error='관리자만 수정할 수 있습니다.'), 403
@@ -8312,6 +8331,9 @@ def _trs_admin_only():
 @app.route('/trs')
 @login_required
 def trs_page():
+    if not _trs_can_view():
+        flash('TRS 무전기 메뉴는 국내 지점과 화물파트에서만 이용할 수 있습니다.', 'warning')
+        return redirect(url_for('dashboard'))
     is_admin = session.get('role') == 'admin'
     conn = get_db()
     branches = [dict(r) for r in conn.execute(
@@ -8471,6 +8493,8 @@ def trs_delete(rid):
 def trs_export():
     from openpyxl import Workbook
     from openpyxl.styles import Alignment
+    if not _trs_can_view():
+        return redirect(url_for('dashboard'))
     is_admin = session.get('role') == 'admin'
     conn = get_db()
     sql = ('SELECT t.*, b.name AS branch_name FROM trs_radios t '
