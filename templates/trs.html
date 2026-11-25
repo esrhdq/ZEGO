@@ -189,7 +189,7 @@ function renderSummary() {
   const tot = Object.fromEntries(cols.map(c => [c, 0]));
   keys.forEach(k => {
     const rs = locs[k], br = String(k);
-    h += `<tr><td class="text-start fw-semibold">${esc(bName[k] || '-')}</td>`;
+    h += `<tr><td class="text-start fw-semibold"><span class="trs-cnt" onclick='goList(${JSON.stringify({branch: br})})'>${esc(bName[k] || '-')}</span></td>`;
     cols.forEach(c => {
       const n = rs.filter(r => c === '미지정' ? !r.dept : r.dept === c).length; tot[c] += n;
       h += `<td>${cell(n, {branch: br, dept: c === '미지정' ? '__none' : c})}</td>`;
