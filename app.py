@@ -8305,21 +8305,23 @@ def _trs_diff(old, new, bnames):
 
 
 def _trs_can_view():
-    """TRS 메뉴 열람: 관리자 또는 국내(DOM)·화물(CARGO) 지점 계정. 지점 유형은 세션에 캐시."""
+    """TRS 메뉴 열람: 관리자 또는 무전기가 1대 이상 등록된 지점 계정.
+    결과는 10분간 세션에 캐시(새로 배정된 지점도 최대 10분 내 메뉴 노출)."""
     if session.get('role') == 'admin':
         return True
-    btype = session.get('_branch_type')
-    if btype is None:
-        btype = ''
-        bid = session.get('branch_id')
-        if bid:
-            try:
-                row = get_db().execute('SELECT type FROM branches WHERE id=%s', (bid,)).fetchone()
-                btype = (row['type'] if row else '') or ''
-            except Exception:
-                return False  # 조회 실패 시 캐시하지 않고 이번 요청만 숨김
-        session['_branch_type'] = btype
-    return btype in ('DOM', 'CARGO')
+    bid = session.get('branch_id')
+    if not bid:
+        return False
+    now_ts = _time.time()
+    cached = session.get('_trs_view')
+    if cached and cached[0] == bid and now_ts - cached[1] < 600:
+        return cached[2]
+    try:
+        has = get_db().execute('SELECT 1 FROM trs_radios WHERE branch_id=%s LIMIT 1', (bid,)).fetchone()
+    except Exception:
+        return False  # 조회 실패 시 캐시하지 않고 이번 요청만 숨김
+    session['_trs_view'] = [bid, now_ts, bool(has)]
+    return bool(has)
 
 
 def _trs_admin_only():
@@ -8332,7 +8334,7 @@ def _trs_admin_only():
 @login_required
 def trs_page():
     if not _trs_can_view():
-        flash('TRS 무전기 메뉴는 국내 지점과 화물파트에서만 이용할 수 있습니다.', 'warning')
+        flash('우리 지점에 등록된 TRS 무전기가 없습니다.', 'warning')
         return redirect(url_for('dashboard'))
     is_admin = session.get('role') == 'admin'
     conn = get_db()
