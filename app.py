@@ -927,6 +927,65 @@ def check_ip_and_session():
         session.permanent = True
 
 
+# ── TRS(무전기) 테이블 — init_db()가 import 시점에 실행되므로 그보다 위에 정의 ──
+
+TRS_DEPTS    = ['여객조업사', '램프조업사', '총괄', '기타']
+TRS_STATUSES = ['정상', '수리중', '고장', '분실', '예비', '반납']
+TRS_MODELS   = ['Radger +10', 'Radger +20']
+_TRS_FIELDS  = ('radio_no', 'model', 'activated_on', 'branch_id',
+                'dept', 'holder', 'can_call', 'talk_groups', 'status', 'memo')
+_TRS_LABELS  = {'radio_no': '무전번호', 'model': '단말기종',
+                'activated_on': '개통일자', 'branch_id': '지점', 'dept': '사용처',
+                'holder': '사용업체/담당', 'can_call': '통화가능', 'talk_groups': '통화그룹',
+                'status': '상태',
+                'memo': '비고'}
+
+
+def _ensure_trs_tables(conn, pg):
+    """trs_radios / trs_history 생성 + 비어 있으면 관리대장(26.08.20) 데이터 시딩."""
+    pk = 'SERIAL PRIMARY KEY' if pg else 'INTEGER PRIMARY KEY'
+    bool_t = 'BOOLEAN NOT NULL DEFAULT FALSE' if pg else 'INTEGER NOT NULL DEFAULT 0'
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS trs_radios (
+            id           {pk},
+            radio_no     TEXT NOT NULL UNIQUE,
+            model        TEXT NOT NULL DEFAULT '',
+            activated_on TEXT NOT NULL DEFAULT '',
+            branch_id    INTEGER,
+            dept         TEXT NOT NULL DEFAULT '',
+            holder       TEXT NOT NULL DEFAULT '',
+            can_call     {bool_t},
+            talk_groups  TEXT NOT NULL DEFAULT '',
+            status       TEXT NOT NULL DEFAULT '정상',
+            memo         TEXT NOT NULL DEFAULT '',
+            updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_by   TEXT NOT NULL DEFAULT ''
+        )
+    ''')
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS trs_history (
+            id         {pk},
+            radio_id   INTEGER,
+            radio_no   TEXT NOT NULL DEFAULT '',
+            action     TEXT NOT NULL DEFAULT '',
+            detail     TEXT NOT NULL DEFAULT '',
+            changed_by TEXT NOT NULL DEFAULT '',
+            changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    has_rows = conn.execute('SELECT 1 FROM trs_radios LIMIT 1').fetchone()
+    if has_rows:
+        return
+    from trs_seed import TRS_SEED
+    bmap = {r['code']: r['id'] for r in conn.execute('SELECT id, code FROM branches').fetchall()}
+    for radio_no, model, date, bcode, dept in TRS_SEED:
+        conn.execute(
+            'INSERT INTO trs_radios (radio_no, model, activated_on, branch_id, dept, updated_by) '
+            'VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (radio_no) DO NOTHING',
+            (radio_no, model, date, bmap.get(bcode), dept, '관리대장(26.08.20)')
+        )
+
+
 # ── DB 초기화 ─────────────────────────────────────────────────────────────────
 
 def init_db():
@@ -1088,6 +1147,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/item_options_table] {_e}')
+            _mig_trs = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_trs_radios',)
+            ).fetchone()
+            if not _mig_trs:
+                try:
+                    _ensure_trs_tables(conn, pg=True)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_trs_radios',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_radios] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -1682,6 +1752,17 @@ def init_db():
             ('icn', staff_pw)
         )
         conn.commit()
+
+        if USE_SQLITE:
+            try:
+                _ensure_trs_tables(conn, pg=False)
+                conn.commit()
+            except Exception as _te:
+                print(f'[init_db/trs/sqlite] {_te}')
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
 
         # catalog_defs 시딩 (SQLite — DO UPDATE로 코드 변경사항 반영)
         if USE_SQLITE:
@@ -7956,6 +8037,270 @@ def form_supply_matrix_export():
         download_name=f'양식신청현황_{sheet_title}.xlsx'
     )
 
+
+
+# ── TRS(무전기) 관리 ──────────────────────────────────────────────────────────
+
+def _trs_norm_groups(val):
+    """통화그룹: 리스트 또는 콤마 문자열 → 정렬·중복제거된 콤마 문자열."""
+    if isinstance(val, str):
+        val = val.split(',')
+    out = []
+    for g in (val or []):
+        g = str(g).strip()[:30]
+        if g and g not in out:
+            out.append(g)
+    return ','.join(out)
+
+
+def _trs_clean(data):
+    """요청 JSON → 저장용 dict (화이트리스트 필드만)."""
+    out = {}
+    for k in _TRS_FIELDS:
+        if k not in data:
+            continue
+        v = data[k]
+        if k == 'branch_id':
+            out[k] = int(v) if str(v or '').strip().isdigit() else None
+        elif k == 'can_call':
+            out[k] = v in (True, 1, '1', 'true', 'Y')
+        elif k == 'talk_groups':
+            out[k] = _trs_norm_groups(v)
+        else:
+            out[k] = str(v or '').strip()[:200]
+    if 'status' in out and out['status'] not in TRS_STATUSES:
+        out['status'] = '정상'
+    return out
+
+
+def _trs_diff(old, new, bnames):
+    def show(k, v):
+        if k == 'branch_id':
+            return bnames.get(v, '-') if v else '-'
+        if k == 'can_call':
+            return '가능' if v else '불가'
+        return v or '-'
+    parts = []
+    for k, v in new.items():
+        ov = old.get(k)
+        if k == 'can_call':
+            ov, v = bool(ov), bool(v)
+        if (ov or '') != (v or ''):
+            parts.append(f"{_TRS_LABELS[k]}: {show(k, ov)} → {show(k, v)}")
+    return ' / '.join(parts)
+
+
+def _trs_admin_only():
+    if session.get('role') != 'admin':
+        return jsonify(ok=False, error='관리자만 수정할 수 있습니다.'), 403
+    return None
+
+
+@app.route('/trs')
+@login_required
+def trs_page():
+    is_admin = session.get('role') == 'admin'
+    conn = get_db()
+    branches = [dict(r) for r in conn.execute(
+        "SELECT id, code, name, type FROM branches WHERE type IN ('DOM','CARGO') "
+        "ORDER BY CASE WHEN type='CARGO' THEN 1 ELSE 0 END, name"
+    ).fetchall()]
+    sql = ('SELECT id, radio_no, model, activated_on, branch_id, dept, holder, '
+           'can_call, talk_groups, status, memo, updated_at, updated_by FROM trs_radios')
+    params = ()
+    if not is_admin:
+        sql += ' WHERE branch_id=%s'
+        params = (session.get('branch_id') or -1,)
+    radios = []
+    for r in conn.execute(sql, params).fetchall():
+        d = dict(r)
+        d['updated_at'] = dt_filter(d.get('updated_at')) if d.get('updated_at') else ''
+        d['can_call'] = bool(d.get('can_call'))
+        radios.append(d)
+    history = []
+    if is_admin:
+        for r in conn.execute(
+            'SELECT radio_no, action, detail, changed_by, changed_at FROM trs_history '
+            'ORDER BY id DESC LIMIT 300'
+        ).fetchall():
+            d = dict(r)
+            d['changed_at'] = dt_filter(d.get('changed_at')) if d.get('changed_at') else ''
+            history.append(d)
+    conn.close()
+    radios.sort(key=lambda d: (int(d['radio_no']) if d['radio_no'].isdigit() else 99999, d['radio_no']))
+    return render_template('trs.html', radios=radios, branches=branches, history=history,
+                           is_admin=is_admin, depts=TRS_DEPTS, statuses=TRS_STATUSES,
+                           models=TRS_MODELS)
+
+
+@app.route('/trs/save', methods=['POST'])
+@login_required
+def trs_save():
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    rid  = data.get('id')
+    vals = _trs_clean(data)
+    if not vals.get('radio_no'):
+        return jsonify(ok=False, error='무전번호를 입력해 주세요.'), 400
+    if 'branch_id' in vals and not vals['branch_id']:
+        return jsonify(ok=False, error='지점을 선택해 주세요.'), 400
+    user = session.get('username', '')
+    conn = get_db()
+    try:
+        bnames = {r['id']: r['name'] for r in conn.execute('SELECT id, name FROM branches').fetchall()}
+        dup = conn.execute('SELECT id FROM trs_radios WHERE radio_no=%s', (vals['radio_no'],)).fetchone()
+        if dup and (not rid or int(dup['id']) != int(rid)):
+            return jsonify(ok=False, error=f"무전번호 {vals['radio_no']}은(는) 이미 등록되어 있습니다."), 400
+        if rid:
+            old = conn.execute('SELECT * FROM trs_radios WHERE id=%s', (int(rid),)).fetchone()
+            if not old:
+                return jsonify(ok=False, error='대상을 찾을 수 없습니다.'), 404
+            detail = _trs_diff(dict(old), vals, bnames)
+            if not detail:
+                return jsonify(ok=True, unchanged=True)
+            sets = ', '.join(f'{k}=%s' for k in vals)
+            conn.execute(f'UPDATE trs_radios SET {sets}, updated_at=NOW(), updated_by=%s WHERE id=%s',
+                         (*vals.values(), user, int(rid)))
+            action = '수정'
+        else:
+            vals.setdefault('status', '정상')
+            cols = ', '.join(vals)
+            phs  = ', '.join(['%s'] * len(vals))
+            conn.execute(f'INSERT INTO trs_radios ({cols}, updated_by) VALUES ({phs}, %s)',
+                         (*vals.values(), user))
+            rid = conn.execute('SELECT id FROM trs_radios WHERE radio_no=%s',
+                               (vals['radio_no'],)).fetchone()['id']
+            detail = _trs_diff({}, vals, bnames)
+            action = '등록'
+        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
+                     'VALUES (%s,%s,%s,%s,%s)', (int(rid), vals['radio_no'], action, detail, user))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify(ok=False, error=f'저장 중 오류: {e}'), 500
+    finally:
+        conn.close()
+    log_action(f'TRS_{action}', vals['radio_no'])
+    return jsonify(ok=True)
+
+
+@app.route('/trs/bulk', methods=['POST'])
+@login_required
+def trs_bulk():
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    ids  = [int(i) for i in (data.get('ids') or []) if str(i).isdigit()]
+    sets = _trs_clean(data.get('set') or {})
+    for k in ('radio_no', 'talk_groups'):
+        sets.pop(k, None)
+    if 'branch_id' in sets and not sets['branch_id']:
+        sets.pop('branch_id')
+    add = [g for g in _trs_norm_groups(data.get('groups_add') or []).split(',') if g]
+    rem = [g for g in _trs_norm_groups(data.get('groups_remove') or []).split(',') if g]
+    if not ids or not (sets or add or rem):
+        return jsonify(ok=False, error='변경할 무전기와 항목을 선택해 주세요.'), 400
+    user = session.get('username', '')
+    conn = get_db()
+    changed = 0
+    try:
+        bnames = {r['id']: r['name'] for r in conn.execute('SELECT id, name FROM branches').fetchall()}
+        for rid in ids:
+            old = conn.execute('SELECT * FROM trs_radios WHERE id=%s', (rid,)).fetchone()
+            if not old:
+                continue
+            old = dict(old)
+            new = dict(sets)
+            if add or rem:
+                groups = [g for g in (old.get('talk_groups') or '').split(',') if g]
+                groups = [g for g in groups if g not in rem] + [g for g in add if g not in groups]
+                new['talk_groups'] = _trs_norm_groups(groups)
+            detail = _trs_diff(old, new, bnames)
+            if not detail:
+                continue
+            cols = ', '.join(f'{k}=%s' for k in new)
+            conn.execute(f'UPDATE trs_radios SET {cols}, updated_at=NOW(), updated_by=%s WHERE id=%s',
+                         (*new.values(), user, rid))
+            conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
+                         'VALUES (%s,%s,%s,%s,%s)', (rid, old['radio_no'], '일괄수정', detail, user))
+            changed += 1
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify(ok=False, error=f'저장 중 오류: {e}'), 500
+    finally:
+        conn.close()
+    log_action('TRS_일괄수정', f'{changed}대')
+    return jsonify(ok=True, changed=changed)
+
+
+@app.route('/trs/<int:rid>/delete', methods=['POST'])
+@login_required
+def trs_delete(rid):
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    user = session.get('username', '')
+    conn = get_db()
+    try:
+        old = conn.execute('SELECT radio_no, model FROM trs_radios WHERE id=%s', (rid,)).fetchone()
+        if not old:
+            return jsonify(ok=False, error='대상을 찾을 수 없습니다.'), 404
+        conn.execute('DELETE FROM trs_radios WHERE id=%s', (rid,))
+        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
+                     'VALUES (%s,%s,%s,%s,%s)',
+                     (rid, old['radio_no'], '삭제', old['model'] or '-', user))
+        conn.commit()
+    finally:
+        conn.close()
+    log_action('TRS_삭제', old['radio_no'])
+    return jsonify(ok=True)
+
+
+@app.route('/trs/export')
+@login_required
+def trs_export():
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment
+    is_admin = session.get('role') == 'admin'
+    conn = get_db()
+    sql = ('SELECT t.*, b.name AS branch_name FROM trs_radios t '
+           'LEFT JOIN branches b ON b.id = t.branch_id')
+    params = ()
+    if not is_admin:
+        sql += ' WHERE t.branch_id=%s'
+        params = (session.get('branch_id') or -1,)
+    rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
+    conn.close()
+    rows.sort(key=lambda d: (d['branch_name'] or '', int(d['radio_no']) if d['radio_no'].isdigit() else 99999))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'TRS 무전기'
+    headers = ['순서', '지점', '무전번호', '단말기종', '개통일자', '사용처',
+               '사용업체/담당', '통화가능', '통화그룹', '상태', '비고']
+    _apply_header(ws, headers, [6, 10, 10, 13, 12, 12, 16, 9, 24, 9, 30])
+    center = Alignment(horizontal='center', vertical='center')
+    for i, d in enumerate(rows, 1):
+        vals = [i, d['branch_name'] or '-', d['radio_no'], d['model'],
+                d['activated_on'], d['dept'] or '미지정', d['holder'],
+                'O' if d['can_call'] else 'X',
+                (d['talk_groups'] or '').replace(',', ', '), d['status'], d['memo']]
+        for c, v in enumerate(vals, 1):
+            cell = ws.cell(row=i + 1, column=c, value=v)
+            cell.border = _border()
+            if c not in (7, 9, 11):
+                cell.alignment = center
+    ws.freeze_panes = 'A2'
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    today = datetime.now(_KST).strftime('%Y%m%d')
+    return send_file(buf, as_attachment=True, download_name=f'TRS_무전기_관리대장_{today}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 if __name__ == '__main__':

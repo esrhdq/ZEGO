@@ -344,6 +344,8 @@
   "nav.form_request_admin": "Manage Form Requests",
   "nav.form_period_settings": "Request Period",
   "nav.branch_emails": "Branch Emails",
+  "nav.equipment_section": "Equipment",
+  "nav.trs": "TRS Radios",
   "nav.access_logs": "Access Logs",
   "nav.guide_section": "Guide",
   "nav.manual": "Manual",

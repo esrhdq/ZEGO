@@ -464,6 +464,12 @@
       <i class="fa-solid fa-clock-rotate-left"></i>{{ T('nav.my_form_requests') }}
     </a>
 
+    <div class="section-label">{{ T('nav.equipment_section') }}</div>
+    <a href="{{ url_for('trs_page') }}"
+       class="nav-link {% if endpoint=='trs_page' %}active{% endif %}">
+      <i class="fa-solid fa-walkie-talkie"></i>{{ T('nav.trs') }}
+    </a>
+
     {% if session.role == 'admin' %}
     <div class="section-label">{{ T('nav.admin') }}</div>
     <a href="{{ url_for('manage_users') }}"

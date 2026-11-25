@@ -344,6 +344,8 @@
   "nav.form_request_admin": "양식 신청 관리",
   "nav.form_period_settings": "신청 기간 설정",
   "nav.branch_emails": "지점 이메일 관리",
+  "nav.equipment_section": "장비",
+  "nav.trs": "TRS 무전기",
   "nav.access_logs": "접근 로그",
   "nav.guide_section": "안내",
   "nav.manual": "매뉴얼",
