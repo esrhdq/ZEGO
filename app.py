@@ -1109,6 +1109,20 @@ def _trs_cjj_plan():
     return plan
 
 
+def _trs_cju_plan():
+    """제주지점 신규 TRS 관리대장(2026-11): 이스타=총괄, 여객, 램프, 급유=기타.
+    통화가능은 별도 확정 목록(trs_cju_callable_fix_2611)을 유지하므로 여기서 건드리지 않음."""
+    plan = {}
+    for no in (901, 902, 903, 951, 952, 953, 954):
+        plan[no] = {'dept': '총괄', 'holder': '이스타항공', 'memo': 'OFC'}
+    for no in (904, 905, 906, *range(955, 972)):
+        plan[no] = {'dept': '여객조업사'}
+    for no in (907, 908, 909, 910, *range(972, 990)):
+        plan[no] = {'dept': '램프조업사'}
+    plan[990] = {'dept': '기타', 'holder': '급유'}
+    return plan
+
+
 def _trs_tae_plan():
     """대구지점 TRS 보유현황(2026-10 기준): 이스타항공=총괄, WUT=여객, JAS=램프.
     '수발신 가능'(010번호 보유) 751~754만 통화가능."""
@@ -1416,6 +1430,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_cju_callable_fix] {_e}')
+            _mig_trs_cju_use = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_cju_usage_2611',)
+            ).fetchone()
+            if not _mig_trs_cju_use:
+                try:
+                    _trs_apply_plan(conn, _trs_cju_plan(), '제주 관리대장(26.11)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_cju_usage_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_cju_usage] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
