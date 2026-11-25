@@ -1386,6 +1386,20 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_tae_usage] {_e}')
+            _mig_trs_cjj_call = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_cjj_callable_fix_2611',)
+            ).fetchone()
+            if not _mig_trs_cjj_call:
+                try:
+                    # 청주 통화가능은 452·455·456·462 4대뿐 (사용현황표의 010번호 기준 20대 → 정정)
+                    _ok = {452, 455, 456, 462}
+                    _trs_apply_plan(conn, {n: {'can_call': n in _ok} for n in range(451, 471)},
+                                    '청주 통화가능 정정(26.11)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_cjj_callable_fix_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_cjj_callable_fix] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
