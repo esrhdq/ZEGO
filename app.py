@@ -987,14 +987,14 @@ def _ensure_trs_tables(conn, pg):
 
 
 def _trs_apply_icn_usage(conn):
-    """인천지점 TRS 사용현황(2026-11) 반영: 이스타항공=총괄, 프리존(노랑)=여객, 회색=램프.
+    """인천지점 TRS 사용현황(2026-11) 반영: 이스타항공=총괄, 프리죤(노랑)=여객, 회색=램프.
     전화번호(수/발신가능) O 또는 IIS 등록 = 통화가능. 559는 화물파트 소속."""
     plan = {}
     for n in range(301, 309):
         plan[str(n)] = {'dept': '총괄', 'holder': '이스타항공', 'can_call': True}
     for n in (597, 552, 561, 575, 555, 599, 562, 568, 567, 566, 596, 595, 313, 557, 554, 314,
               556, 563, 560, 565, 569, 570, 551, 553, 593, 600, 564, 309, 558):
-        plan[str(n)] = {'dept': '여객조업사', 'holder': '프리존에어포트서비스'}
+        plan[str(n)] = {'dept': '여객조업사', 'holder': '프리죤에어포트서비스'}
     plan['575']['memo'] = '램프 불출 예정'
     for n in (572, 573, 594, 574, 576, 577, 598, 571, 310, 311, 312, 550, 578, 579, 580, 581,
               582, 583, 584, 585, 586, 588, 589):
@@ -1015,6 +1015,17 @@ def _trs_apply_icn_usage(conn):
              'branch_id': '지점 → 화물파트'}[k] for k in sets)
         conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
                      'VALUES (%s,%s,%s,%s,%s)', (row['id'], radio_no, '일괄수정', detail, '인천 사용현황(26.11)'))
+
+
+def _trs_fix_freezone_name(conn):
+    """사용업체명 오기 수정: 프리존에어포트서비스 → 프리죤에어포트서비스."""
+    old, new = '프리존에어포트서비스', '프리죤에어포트서비스'
+    rows = conn.execute('SELECT id, radio_no FROM trs_radios WHERE holder=%s', (old,)).fetchall()
+    for r in rows:
+        conn.execute("UPDATE trs_radios SET holder=%s, updated_at=NOW() WHERE id=%s", (new, r['id']))
+        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
+                     'VALUES (%s,%s,%s,%s,%s)',
+                     (r['id'], r['radio_no'], '수정', f'사용업체/담당: {old} → {new}', '업체명 오기 수정'))
 
 
 # ── DB 초기화 ─────────────────────────────────────────────────────────────────
@@ -1200,6 +1211,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_icn_usage] {_e}')
+            _mig_trs_fz = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_fix_freezone_name',)
+            ).fetchone()
+            if not _mig_trs_fz:
+                try:
+                    _trs_fix_freezone_name(conn)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_fix_freezone_name',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_fix_freezone_name] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
