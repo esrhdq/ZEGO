@@ -5,10 +5,6 @@
 
 {% block content %}
 <style>
-  .trs-chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.72rem; font-weight:600;
-              background:var(--info-bg); color:var(--info); margin:1px 2px; white-space:nowrap; }
-  .trs-chip.sel { background:var(--info); color:#fff; }
-  .trs-chip.toggle { cursor:pointer; border:1px solid var(--info); }
   .trs-st { font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
   .trs-st-정상 { background:#DCFCE7; color:#15803D; }
   .trs-st-예비 { background:#E0E7FF; color:#4338CA; }
@@ -22,14 +18,11 @@
   .trs-cnt.zero { color:#D6D3D1; font-weight:400; cursor:default; text-decoration:none; }
   #trsTable td, #trsTable th { vertical-align:middle; font-size:.83rem; white-space:nowrap; }
   #trsBulk { position:sticky; top:0; z-index:5; display:none; }
-  .trs-radio-chip { display:inline-block; min-width:46px; text-align:center; padding:3px 8px; margin:2px;
-                    border-radius:8px; background:var(--bg); border:1px solid var(--border); font-size:.8rem; font-weight:600; }
-  .trs-radio-chip.bad { border-color:#FCA5A5; color:#B91C1C; }
 </style>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <p class="text-muted mb-0" style="font-size:.85rem">
-    {% if is_admin %}지점별 TRS 무전기 보유현황 · 사용처 · 통화그룹을 관리합니다. 목록에서 여러 대를 선택해 한 번에 수정할 수 있습니다.
+    {% if is_admin %}지점별 TRS 무전기 보유현황 · 사용처 · 통화가능 여부를 관리합니다. 목록에서 여러 대를 선택해 한 번에 수정할 수 있습니다.
     {% else %}우리 지점에 배정된 TRS 무전기 현황입니다. 변경이 필요하면 본사에 요청해 주세요.{% endif %}
   </p>
   <div class="d-flex gap-2">
@@ -43,7 +36,6 @@
 <ul class="nav nav-tabs mb-0" role="tablist">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabSummary">지점별 현황</button></li>
   <li class="nav-item"><button class="nav-link" id="listTabBtn" data-bs-toggle="tab" data-bs-target="#tabList">무전기 목록</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabGroups">통화그룹</button></li>
   {% if is_admin %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistory">변경이력</button></li>{% endif %}
 </ul>
 
@@ -61,8 +53,7 @@
       <div class="col-6 col-md-2"><select class="form-select form-select-sm" id="fDept"><option value="">전체 사용처</option>{% for d in depts %}<option>{{ d }}</option>{% endfor %}<option value="__none">미지정</option></select></div>
       <div class="col-6 col-md-2"><select class="form-select form-select-sm" id="fStatus"><option value="">전체 상태</option>{% for s in statuses %}<option>{{ s }}</option>{% endfor %}<option value="__bad">점검필요 (수리중·고장·분실)</option></select></div>
       <div class="col-6 col-md-2"><select class="form-select form-select-sm" id="fCall"><option value="">통화가능 전체</option><option value="1">통화가능</option><option value="0">통화불가</option></select></div>
-      <div class="col-6 col-md-2"><select class="form-select form-select-sm" id="fGroup"><option value="">전체 통화그룹</option></select></div>
-      <div class="col-12 col-md-2"><input class="form-control form-control-sm" id="fText" placeholder="무전번호 · 업체 · 비고 검색"></div>
+      <div class="col-12 col-md-4"><input class="form-control form-control-sm" id="fText" placeholder="무전번호 · 업체 · 비고 검색"></div>
     </div>
 
     {% if is_admin %}
@@ -74,8 +65,6 @@
         <select class="form-select form-select-sm w-auto" id="bStatus"><option value="">상태 (변경 안 함)</option>{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</select>
         <select class="form-select form-select-sm w-auto" id="bCall"><option value="">통화가능 (변경 안 함)</option><option value="1">통화가능</option><option value="0">통화불가</option></select>
         <input class="form-control form-control-sm w-auto" id="bHolder" placeholder="사용업체/담당 (빈칸=유지)" style="min-width:150px">
-        <input class="form-control form-control-sm w-auto" id="bGroupAdd" list="groupList" placeholder="통화그룹 추가" style="min-width:120px">
-        <input class="form-control form-control-sm w-auto" id="bGroupRem" list="groupList" placeholder="통화그룹 제거" style="min-width:120px">
         <button class="btn btn-primary btn-sm" onclick="applyBulk()">일괄 적용</button>
         <button class="btn btn-link btn-sm" onclick="clearSel()">선택 해제</button>
       </div>
@@ -90,7 +79,7 @@
         <thead class="table-light" style="position:sticky;top:0;z-index:2">
           <tr>
             {% if is_admin %}<th style="width:28px"><input type="checkbox" class="form-check-input" id="chkAll"></th>{% endif %}
-            <th>무전번호</th><th>지점</th><th>사용처</th><th>사용업체/담당</th><th>통화가능</th><th>통화그룹</th>
+            <th>무전번호</th><th>지점</th><th>사용처</th><th>사용업체/담당</th><th>통화가능</th>
             <th>상태</th><th>단말기종</th><th>개통일자</th><th>비고</th>
             {% if is_admin %}<th></th>{% endif %}
           </tr>
@@ -98,15 +87,6 @@
         <tbody></tbody>
       </table>
     </div>
-  </div>
-
-  <!-- 통화그룹 -->
-  <div class="tab-pane fade card-body" id="tabGroups">
-    <p class="text-muted mb-3" style="font-size:.8rem">
-      같은 통화그룹에 속한 무전기끼리 통화가 됩니다. 한 무전기가 여러 그룹에 속할 수 있습니다.
-      {% if is_admin %}그룹 지정은 '무전기 목록'에서 개별 수정 또는 여러 대 선택 후 '통화그룹 추가'로 합니다.{% endif %}
-    </p>
-    <div id="groupCards" class="row g-3"></div>
   </div>
 
   {% if is_admin %}
@@ -129,8 +109,6 @@
   {% endif %}
 </div>
 
-<datalist id="groupList"></datalist>
-
 {% if is_admin %}
 <!-- 등록/수정 모달 -->
 <div class="modal fade" id="editModal" tabindex="-1">
@@ -152,14 +130,6 @@
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="eCall">
               <label class="form-check-label small fw-semibold" for="eCall">통화가능 (통화 기능이 있는 무전기)</label>
-            </div>
-          </div>
-          <div class="col-12">
-            <label class="form-label small fw-semibold">통화그룹 <span class="text-muted fw-normal">(눌러서 선택/해제)</span></label>
-            <div id="eGroups" class="mb-2"></div>
-            <div class="input-group input-group-sm" style="max-width:320px">
-              <input class="form-control" id="eNewGroup" placeholder="새 그룹 이름 (예: 김포 여객)">
-              <button class="btn btn-outline-primary" type="button" onclick="addNewGroup()">추가</button>
             </div>
           </div>
           <div class="col-12"><label class="form-label small fw-semibold">비고</label><input class="form-control form-control-sm" id="eMemo"></div>
@@ -187,9 +157,7 @@ const BAD      = ['수리중', '고장', '분실'];
 const bName    = Object.fromEntries(BRANCHES.map(b => [b.id, b.name]));
 const locOf    = r => bName[r.branch_id] || '-';
 const bOrder   = Object.fromEntries(BRANCHES.map((b, i) => [b.id, i]));
-const groupsOf = r => (r.talk_groups || '').split(',').filter(Boolean);
 const esc      = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const allGroups = () => [...new Set(RADIOS.flatMap(groupsOf))].sort((a, b) => a.localeCompare(b, 'ko'));
 const selected = new Set();
 
 // ── 통계 카드 ──
@@ -239,10 +207,6 @@ function fillSelects() {
   const usedLocs = new Set(RADIOS.map(r => String(r.branch_id)));
   const fb = document.getElementById('fBranch');
   BRANCHES.filter(b => usedLocs.has(String(b.id))).forEach(b => fb.insertAdjacentHTML('beforeend', `<option value="${b.id}">${esc(b.name)}</option>`));
-  const gs = allGroups();
-  document.getElementById('fGroup').innerHTML = '<option value="">전체 통화그룹</option><option value="__none">그룹 없음</option>' +
-    gs.map(g => `<option>${esc(g)}</option>`).join('');
-  document.getElementById('groupList').innerHTML = gs.map(g => `<option value="${esc(g)}">`).join('');
   ['bBranch', 'eBranch'].forEach(id => {
     const el = document.getElementById(id); if (!el || el.dataset.filled) return;
     el.dataset.filled = 1;
@@ -252,13 +216,12 @@ function fillSelects() {
 
 function filtered() {
   const v = id => document.getElementById(id).value;
-  const fb = v('fBranch'), fd = v('fDept'), fs = v('fStatus'), fc = v('fCall'), fg = v('fGroup'), ft = v('fText').trim().toLowerCase();
+  const fb = v('fBranch'), fd = v('fDept'), fs = v('fStatus'), fc = v('fCall'), ft = v('fText').trim().toLowerCase();
   return RADIOS.filter(r =>
     (!fb || String(r.branch_id) === fb) &&
     (!fc || (fc === '1') === !!r.can_call) &&
     (!fd || (fd === '__none' ? !r.dept : r.dept === fd)) &&
     (!fs || (fs === '__bad' ? BAD.includes(r.status) : r.status === fs)) &&
-    (!fg || (fg === '__none' ? !r.talk_groups : groupsOf(r).includes(fg))) &&
     (!ft || [r.radio_no, r.holder, r.memo, r.model].join(' ').toLowerCase().includes(ft)));
 }
 
@@ -273,13 +236,12 @@ function renderList() {
       <td>${r.dept ? esc(r.dept) : '<span class="trs-dept-empty">미지정</span>'}</td>
       <td>${esc(r.holder)}</td>
       <td>${r.can_call ? '<span class="trs-call">통화가능</span>' : '<span class="text-muted">-</span>'}</td>
-      <td style="white-space:normal">${groupsOf(r).map(g => `<span class="trs-chip">${esc(g)}</span>`).join('')}</td>
       <td><span class="trs-st trs-st-${esc(r.status)}">${esc(r.status)}</span></td>
       <td>${esc(r.model)}</td>
       <td class="text-muted">${esc(r.activated_on)}</td>
       <td style="white-space:normal;min-width:120px">${esc(r.memo)}</td>
       ${IS_ADMIN ? `<td><button class="btn btn-sm btn-light py-0" onclick="openEdit(${r.id})"><i class="fa-solid fa-pen"></i></button></td>` : ''}
-    </tr>`).join('') || `<tr><td colspan="12" class="empty-state">조건에 맞는 무전기가 없습니다.</td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="11" class="empty-state">조건에 맞는 무전기가 없습니다.</td></tr>`;
   if (IS_ADMIN) {
     document.querySelectorAll('.rowchk').forEach(c => c.onchange = () => {
       const id = +c.dataset.id; c.checked ? selected.add(id) : selected.delete(id); updateBulk();
@@ -293,38 +255,13 @@ function goList(f) {
   document.getElementById('fBranch').value = f.branch || '';
   document.getElementById('fDept').value   = f.dept || '';
   document.getElementById('fStatus').value = f.status || '';
-  document.getElementById('fGroup').value  = f.group || '';
   document.getElementById('fCall').value   = f.call || '';
   document.getElementById('fText').value   = '';
   renderList();
   bootstrap.Tab.getOrCreateInstance(document.getElementById('listTabBtn')).show();
 }
 
-// ── 통화그룹 ──
-function renderGroups() {
-  const gs = allGroups();
-  const none = RADIOS.filter(r => !r.talk_groups).length;
-  let h = gs.map(g => {
-    const rs = RADIOS.filter(r => groupsOf(r).includes(g));
-    const ok = rs.filter(r => r.can_call).length;
-    const locs = [...new Set(rs.map(locOf))].join(', ');
-    return `<div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center">
-        <span><strong>${esc(g)}</strong> <span class="badge bg-secondary ms-1">${rs.length}대</span>
-        <span class="text-muted ms-1" style="font-size:.75rem">통화가능 ${ok}</span></span>
-        <span>
-          <button class="btn btn-sm btn-link p-0 me-2" onclick='goList(${JSON.stringify({group: g})})'>목록</button>
-          ${IS_ADMIN ? `<button class="btn btn-sm btn-link p-0 text-danger" onclick='dissolveGroup(${JSON.stringify(g)})'>그룹 해제</button>` : ''}
-        </span></div>
-      <div class="card-body py-2"><div class="text-muted mb-1" style="font-size:.75rem">${esc(locs)}</div>
-        ${rs.map(r => `<span class="trs-radio-chip ${BAD.includes(r.status) ? 'bad' : ''}" title="${esc(locOf(r))} · ${esc(r.dept || '미지정')} · ${r.can_call ? '통화가능' : '통화불가'} · ${esc(r.status)}">${esc(r.radio_no)}</span>`).join('')}
-      </div></div></div>`;
-  }).join('');
-  if (!gs.length) h = `<div class="col-12"><div class="empty-state">아직 통화그룹이 없습니다.${IS_ADMIN ? '<br>무전기 목록에서 무전기를 선택한 뒤 \'통화그룹 추가\'로 그룹을 만들어 주세요.' : ''}</div></div>`;
-  if (gs.length && none) h += `<div class="col-12 text-muted" style="font-size:.8rem">통화그룹이 지정되지 않은 무전기: <span class="trs-cnt" onclick='goList({"group":"__none"})'>${none}대</span></div>`;
-  document.getElementById('groupCards').innerHTML = h;
-}
-
-['fBranch', 'fDept', 'fStatus', 'fCall', 'fGroup'].forEach(id => document.getElementById(id).addEventListener('change', renderList));
+['fBranch', 'fDept', 'fStatus', 'fCall'].forEach(id => document.getElementById(id).addEventListener('change', renderList));
 document.getElementById('fText').addEventListener('input', renderList);
 
 // ── 관리자 기능 ──
@@ -359,37 +296,12 @@ async function applyBulk() {
   if (v('bStatus')) set.status = v('bStatus');
   if (v('bCall')) set.can_call = v('bCall');
   if (v('bHolder').trim()) set.holder = v('bHolder').trim();
-  const add = v('bGroupAdd').trim(), rem = v('bGroupRem').trim();
-  if (!Object.keys(set).length && !add && !rem) { alert('변경할 항목을 하나 이상 선택해 주세요.'); return; }
+  if (!Object.keys(set).length) { alert('변경할 항목을 하나 이상 선택해 주세요.'); return; }
   if (!confirm(`선택한 ${selected.size}대에 적용할까요?`)) return;
-  const j = await post('{{ url_for("trs_bulk") }}', {ids: [...selected], set, groups_add: add ? [add] : [], groups_remove: rem ? [rem] : []});
+  const j = await post('{{ url_for("trs_bulk") }}', {ids: [...selected], set});
   if (j) reloadToList();
 }
 
-async function dissolveGroup(g) {
-  const ids = RADIOS.filter(r => groupsOf(r).includes(g)).map(r => r.id);
-  if (!confirm(`'${g}' 그룹을 해제할까요? (무전기 ${ids.length}대에서 그룹이 빠집니다)`)) return;
-  const j = await post('{{ url_for("trs_bulk") }}', {ids, groups_remove: [g]});
-  if (j) location.reload();
-}
-
-let editGroups = [];
-function renderEditGroups() {
-  const gs = [...new Set([...allGroups(), ...editGroups])];
-  document.getElementById('eGroups').innerHTML = gs.length
-    ? gs.map(g => `<span class="trs-chip toggle ${editGroups.includes(g) ? 'sel' : ''}" data-g="${esc(g)}">${esc(g)}</span>`).join('')
-    : '<span class="text-muted small">아직 만들어진 그룹이 없습니다.</span>';
-  document.querySelectorAll('#eGroups .toggle').forEach(el => el.onclick = () => {
-    const g = el.dataset.g;
-    editGroups = editGroups.includes(g) ? editGroups.filter(x => x !== g) : [...editGroups, g];
-    renderEditGroups();
-  });
-}
-function addNewGroup() {
-  const el = document.getElementById('eNewGroup'), g = el.value.trim();
-  if (g && !editGroups.includes(g)) editGroups.push(g);
-  el.value = ''; renderEditGroups();
-}
 function openEdit(id) {
   const r = RADIOS.find(x => x.id === id) || {status: '정상'};
   const set = (k, v) => document.getElementById(k).value = v ?? '';
@@ -397,17 +309,15 @@ function openEdit(id) {
   set('eDate', r.activated_on); set('eBranch', r.branch_id || ''); set('eDept', r.dept);
   set('eHolder', r.holder); set('eStatus', r.status || '정상'); set('eMemo', r.memo);
   document.getElementById('eCall').checked = !!r.can_call;
-  editGroups = groupsOf(r); renderEditGroups();
   document.getElementById('editTitle').textContent = id ? `무전기 ${r.radio_no} 수정` : '무전기 등록';
   document.getElementById('eDelete').style.visibility = id ? 'visible' : 'hidden';
   bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).show();
 }
 async function saveRadio() {
   const v = id => document.getElementById(id).value;
-  if (document.getElementById('eNewGroup').value.trim()) addNewGroup();
   const body = {id: v('eId') ? +v('eId') : null, radio_no: v('eRadioNo'), model: v('eModel'),
     activated_on: v('eDate'), branch_id: v('eBranch'), dept: v('eDept'), holder: v('eHolder'),
-    status: v('eStatus'), memo: v('eMemo'), talk_groups: editGroups, can_call: document.getElementById('eCall').checked};
+    status: v('eStatus'), memo: v('eMemo'), can_call: document.getElementById('eCall').checked};
   if (!body.branch_id) { alert('지점을 선택해 주세요.'); return; }
   const j = await post('{{ url_for("trs_save") }}', body);
   if (j) reloadToList();
@@ -420,7 +330,7 @@ async function deleteRadio() {
 }
 
 // ── 초기화 ──
-fillSelects(); renderStats(); renderSummary(); renderList(); renderGroups();
+fillSelects(); renderStats(); renderSummary(); renderList();
 try {
   if (sessionStorage.getItem('trsTab') === 'list') {
     sessionStorage.removeItem('trsTab');

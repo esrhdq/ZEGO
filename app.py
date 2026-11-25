@@ -929,14 +929,14 @@ def check_ip_and_session():
 
 # ── TRS(무전기) 테이블 — init_db()가 import 시점에 실행되므로 그보다 위에 정의 ──
 
-TRS_DEPTS    = ['여객조업사', '램프조업사', '총괄', '기타']
+TRS_DEPTS    = ['총괄', '여객조업사', '램프조업사', '기타']
 TRS_STATUSES = ['정상', '수리중', '고장', '분실', '예비', '반납']
 TRS_MODELS   = ['Radger +10', 'Radger +20']
 _TRS_FIELDS  = ('radio_no', 'model', 'activated_on', 'branch_id',
-                'dept', 'holder', 'can_call', 'talk_groups', 'status', 'memo')
+                'dept', 'holder', 'can_call', 'status', 'memo')
 _TRS_LABELS  = {'radio_no': '무전번호', 'model': '단말기종',
                 'activated_on': '개통일자', 'branch_id': '지점', 'dept': '사용처',
-                'holder': '사용업체/담당', 'can_call': '통화가능', 'talk_groups': '통화그룹',
+                'holder': '사용업체/담당', 'can_call': '통화가능',
                 'status': '상태',
                 'memo': '비고'}
 
@@ -8268,18 +8268,6 @@ def form_supply_matrix_export():
 
 # ── TRS(무전기) 관리 ──────────────────────────────────────────────────────────
 
-def _trs_norm_groups(val):
-    """통화그룹: 리스트 또는 콤마 문자열 → 정렬·중복제거된 콤마 문자열."""
-    if isinstance(val, str):
-        val = val.split(',')
-    out = []
-    for g in (val or []):
-        g = str(g).strip()[:30]
-        if g and g not in out:
-            out.append(g)
-    return ','.join(out)
-
-
 def _trs_clean(data):
     """요청 JSON → 저장용 dict (화이트리스트 필드만)."""
     out = {}
@@ -8291,8 +8279,6 @@ def _trs_clean(data):
             out[k] = int(v) if str(v or '').strip().isdigit() else None
         elif k == 'can_call':
             out[k] = v in (True, 1, '1', 'true', 'Y')
-        elif k == 'talk_groups':
-            out[k] = _trs_norm_groups(v)
         else:
             out[k] = str(v or '').strip()[:200]
     if 'status' in out and out['status'] not in TRS_STATUSES:
@@ -8333,7 +8319,7 @@ def trs_page():
         "ORDER BY CASE WHEN type='CARGO' THEN 1 ELSE 0 END, name"
     ).fetchall()]
     sql = ('SELECT id, radio_no, model, activated_on, branch_id, dept, holder, '
-           'can_call, talk_groups, status, memo, updated_at, updated_by FROM trs_radios')
+           'can_call, status, memo, updated_at, updated_by FROM trs_radios')
     params = ()
     if not is_admin:
         sql += ' WHERE branch_id=%s'
@@ -8422,13 +8408,10 @@ def trs_bulk():
     data = request.get_json(silent=True) or {}
     ids  = [int(i) for i in (data.get('ids') or []) if str(i).isdigit()]
     sets = _trs_clean(data.get('set') or {})
-    for k in ('radio_no', 'talk_groups'):
-        sets.pop(k, None)
+    sets.pop('radio_no', None)
     if 'branch_id' in sets and not sets['branch_id']:
         sets.pop('branch_id')
-    add = [g for g in _trs_norm_groups(data.get('groups_add') or []).split(',') if g]
-    rem = [g for g in _trs_norm_groups(data.get('groups_remove') or []).split(',') if g]
-    if not ids or not (sets or add or rem):
+    if not ids or not sets:
         return jsonify(ok=False, error='변경할 무전기와 항목을 선택해 주세요.'), 400
     user = session.get('username', '')
     conn = get_db()
@@ -8441,10 +8424,6 @@ def trs_bulk():
                 continue
             old = dict(old)
             new = dict(sets)
-            if add or rem:
-                groups = [g for g in (old.get('talk_groups') or '').split(',') if g]
-                groups = [g for g in groups if g not in rem] + [g for g in add if g not in groups]
-                new['talk_groups'] = _trs_norm_groups(groups)
             detail = _trs_diff(old, new, bnames)
             if not detail:
                 continue
@@ -8508,18 +8487,17 @@ def trs_export():
     ws = wb.active
     ws.title = 'TRS 무전기'
     headers = ['순서', '지점', '무전번호', '단말기종', '개통일자', '사용처',
-               '사용업체/담당', '통화가능', '통화그룹', '상태', '비고']
-    _apply_header(ws, headers, [6, 10, 10, 13, 12, 12, 16, 9, 24, 9, 30])
+               '사용업체/담당', '통화가능', '상태', '비고']
+    _apply_header(ws, headers, [6, 10, 10, 13, 12, 12, 22, 9, 9, 36])
     center = Alignment(horizontal='center', vertical='center')
     for i, d in enumerate(rows, 1):
         vals = [i, d['branch_name'] or '-', d['radio_no'], d['model'],
                 d['activated_on'], d['dept'] or '미지정', d['holder'],
-                'O' if d['can_call'] else 'X',
-                (d['talk_groups'] or '').replace(',', ', '), d['status'], d['memo']]
+                'O' if d['can_call'] else 'X', d['status'], d['memo']]
         for c, v in enumerate(vals, 1):
             cell = ws.cell(row=i + 1, column=c, value=v)
             cell.border = _border()
-            if c not in (7, 9, 11):
+            if c not in (7, 10):
                 cell.alignment = center
     ws.freeze_panes = 'A2'
     buf = BytesIO()
