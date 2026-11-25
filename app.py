@@ -1017,6 +1017,22 @@ def _trs_apply_icn_usage(conn):
                      'VALUES (%s,%s,%s,%s,%s)', (row['id'], radio_no, '일괄수정', detail, '인천 사용현황(26.11)'))
 
 
+def _trs_mark_callable(conn, radio_nos, source):
+    """지정 무전번호들을 통화가능으로 표시 (이미 가능이면 건너뜀) + 변경이력 기록."""
+    for no in radio_nos:
+        row = conn.execute('SELECT id, can_call FROM trs_radios WHERE radio_no=%s', (str(no),)).fetchone()
+        if not row or row['can_call']:
+            continue
+        conn.execute('UPDATE trs_radios SET can_call=%s, updated_at=NOW(), updated_by=%s WHERE id=%s',
+                     (True, source, row['id']))
+        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
+                     'VALUES (%s,%s,%s,%s,%s)', (row['id'], str(no), '수정', '통화가능: 불가 → 가능', source))
+
+
+# 제주: 아이디스파워텔 2026년 11월 고지서(10월 사용분)에서 010사용료가 청구된 무전기
+TRS_CJU_CALLABLE_2611 = [*range(901, 906), *range(951, 961), *range(962, 972)]
+
+
 def _trs_fix_freezone_name(conn):
     """사용업체명 오기 수정: 프리존에어포트서비스 → 프리죤에어포트서비스."""
     old, new = '프리존에어포트서비스', '프리죤에어포트서비스'
@@ -1222,6 +1238,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_fix_freezone_name] {_e}')
+            _mig_trs_cju = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_cju_callable_2611',)
+            ).fetchone()
+            if not _mig_trs_cju:
+                try:
+                    _trs_mark_callable(conn, TRS_CJU_CALLABLE_2611, '제주 사용료 고지서(26.11)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_cju_callable_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_cju_callable] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
