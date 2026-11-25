@@ -51,7 +51,7 @@
   <!-- 지점별 현황 -->
   <div class="tab-pane fade show active card-body" id="tabSummary">
     <p class="text-muted mb-2" style="font-size:.8rem">숫자를 누르면 해당 무전기 목록으로 이동합니다. '통화가능'은 통화 기능이 있는 무전기 대수입니다.</p>
-    <div class="table-responsive"><table class="table table-sm table-bordered text-center mb-0" id="summaryTable"></table></div>
+    <div class="table-responsive"><table class="table table-sm table-bordered text-center mb-0" id="summaryTable" style="table-layout:fixed;min-width:640px"></table></div>
   </div>
 
   <!-- 목록 -->
@@ -216,7 +216,7 @@ function renderSummary() {
   const keys = Object.keys(locs).map(Number).sort((a, b) => (bOrder[a] ?? 999) - (bOrder[b] ?? 999));
   const cols = [...DEPTS, '미지정'];
   const cell = (n, f) => n ? `<span class="trs-cnt" onclick='goList(${JSON.stringify(f)})'>${n}</span>` : '<span class="trs-cnt zero">0</span>';
-  let h = '<thead class="table-light"><tr><th class="text-start">지점</th>' + cols.map(c => `<th>${c}</th>`).join('') +
+  let h = '<thead class="table-light"><tr><th class="text-start" style="width:16%">지점</th>' + cols.map(c => `<th>${c}</th>`).join('') +
           '<th>합계</th><th style="color:var(--success)">통화가능</th></tr></thead><tbody>';
   const tot = Object.fromEntries(cols.map(c => [c, 0]));
   keys.forEach(k => {
