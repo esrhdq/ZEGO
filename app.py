@@ -7720,7 +7720,8 @@ def form_supply_request():
 
         # qty_<form_type_id> 필드 수집
         items = []
-        for ft in conn.execute('SELECT id FROM form_types').fetchall():
+        # 활성이고 '신청 숨김'이 아닌 양식만 받음 — 숨김 전에 열어둔 화면 등으로 보내도 서버에서 걸러냄
+        for ft in conn.execute('SELECT id FROM form_types WHERE is_active AND NOT request_hidden').fetchall():
             fid = ft['id']
             raw = request.form.get(f'qty_{fid}', '').strip()
             if not raw:
@@ -7862,7 +7863,8 @@ def form_supply_request_edit(req_id):
     if request.method == 'POST':
         notes = request.form.get('notes', '').strip()
         items = []
-        for ft in conn.execute('SELECT id FROM form_types').fetchall():
+        # 활성이고 '신청 숨김'이 아닌 양식만 받음 — 숨김 전에 열어둔 화면 등으로 보내도 서버에서 걸러냄
+        for ft in conn.execute('SELECT id FROM form_types WHERE is_active AND NOT request_hidden').fetchall():
             fid = ft['id']
             raw = request.form.get(f'qty_{fid}', '').strip()
             if not raw:
@@ -7903,7 +7905,9 @@ def form_supply_request_edit(req_id):
     ).fetchall()
     existing_qty = {row['form_type_id']: row['quantity'] for row in existing}
 
-    form_types = conn.execute('SELECT * FROM form_types WHERE is_active ORDER BY sort_order').fetchall()
+    # 신청 화면과 동일하게 '신청 숨김' 양식은 수정 화면에도 표시하지 않음
+    form_types = conn.execute('SELECT * FROM form_types WHERE is_active AND NOT request_hidden '
+                              'ORDER BY sort_order').fetchall()
     conn.close()
     return render_template('form_supply_request_edit.html',
                            req=dict(req),
