@@ -1195,6 +1195,23 @@ def _ensure_trs_plan_tables(conn, pg):
                              (bmap[code], dept, qty, memo))
 
 
+def _trs_fold_common_settings(conn):
+    """'공통' 기준 폐지: 저장돼 있던 공통값을 각 국내 지점에 (그 지점이 따로 안 정한 항목만) 복사한 뒤 공통값 삭제.
+    → 지점별 결과는 그대로 유지. 여러 번 실행해도 안전."""
+    rows = conn.execute('SELECT k, v FROM trs_plan_settings').fetchall()
+    common = [(r['k'], r['v']) for r in rows if not r['k'].startswith('b')]
+    if not common:
+        return
+    have = {r['k'] for r in rows}
+    bids = [r['id'] for r in conn.execute('SELECT id, code FROM branches').fetchall() if r['code'] in DOMESTIC_AIRPORTS]
+    for bid in bids:
+        for k, v in common:
+            if f'b{bid}:{k}' not in have:
+                conn.execute('INSERT INTO trs_plan_settings (k, v) VALUES (%s,%s)', (f'b{bid}:{k}', v))
+    for k, _ in common:
+        conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (k,))
+
+
 def _trs_cju_plan():
     """제주지점 신규 TRS 관리대장(2026-11): 이스타=총괄, 여객, 램프, 급유=기타.
     통화가능은 별도 확정 목록(trs_cju_callable_fix_2611)을 유지하므로 여기서 건드리지 않음."""
@@ -1553,6 +1570,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_plan_tables] {_e}')
+            _mig_trs_fold = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_plan_fold_common',)
+            ).fetchone()
+            if not _mig_trs_fold:
+                try:
+                    _trs_fold_common_settings(conn)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_plan_fold_common',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_plan_fold_common] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -2152,6 +2180,7 @@ def init_db():
             try:
                 _ensure_trs_tables(conn, pg=False)
                 _ensure_trs_plan_tables(conn, pg=False)
+                _trs_fold_common_settings(conn)
                 conn.commit()
             except Exception as _te:
                 print(f'[init_db/trs/sqlite] {_te}')
@@ -8925,12 +8954,14 @@ def trs_plan_settings_save():
     bid = data.get('branch_id')
     bid = int(bid) if str(bid or '').isdigit() else None
     values = data.get('values') or {}
+    if not bid:
+        return jsonify(ok=False, error='지점을 선택해 주세요.'), 400
     conn = get_db()
     try:
-        if bid and data.get('reset'):
+        if data.get('reset'):
             conn.execute("DELETE FROM trs_plan_settings WHERE k LIKE %s", (f'b{bid}:%',))
             conn.commit()
-            log_action('TRS_적정수량_기준변경', f'지점 {bid} 공통값으로 되돌림')
+            log_action('TRS_적정수량_기준변경', f'지점 {bid} 초기값으로 되돌림')
             return jsonify(ok=True)
         common, _ = _trs_plan_settings(conn)
         clean = {}
@@ -8968,8 +8999,8 @@ def trs_plan_settings_save():
         for k, v in clean.items():
             key = f'b{bid}:{k}' if bid else k
             conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (key,))
-            # 지점 값이 공통값과 같으면 저장하지 않음 → 계속 공통값을 따라감
-            if bid and float(v) == float(common[k]):
+            # 초기값과 같으면 따로 저장하지 않음 (저장 안 된 항목 = 초기값)
+            if float(v) == float(common[k]):
                 continue
             conn.execute('INSERT INTO trs_plan_settings (k, v) VALUES (%s,%s)', (key, str(v)))
         conn.commit()
