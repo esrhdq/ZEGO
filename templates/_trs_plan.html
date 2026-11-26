@@ -125,14 +125,19 @@
   <div class="col-lg-6">
     <div class="card h-100"><div class="card-header fw-semibold">운항 스케줄 반영</div>
       <div class="card-body" style="font-size:.83rem">
-        <p class="text-muted mb-2">출발편 스케줄 엑셀 파일(.xlsx, .csv)을 올려주세요.
-          <b>양식</b>(편명·출발·도착·일자·출발시각) 또는 <b>DCS 출발편 목록</b>(Flight·Route·Date·Departure/Arrival)을
-          그대로 붙여넣은 엑셀 모두 읽을 수 있습니다. 여러 지점을 한 파일에 넣어도 되며,
-          출발 공항별로 해당 지점 스케줄을 <b>통째로 교체</b>합니다. 결항(Cancelled/결항) 편은 자동 제외됩니다.
-          하계 증편 등 미래 스케줄을 올리면 그 기준으로 미리 판정해볼 수 있습니다.</p>
-        <input type="file" class="form-control form-control-sm mb-2" id="schedFile" accept=".xlsx,.xlsm,.csv">
-        <div class="d-flex justify-content-between align-items-center">
-          <a href="{{ url_for('trs_plan_schedule_template') }}" class="btn btn-link btn-sm p-0"><i class="fa-solid fa-file-excel me-1"></i>양식 다운로드</a>
+        <p class="text-muted mb-2">사용 중인 <b>운항 시간표 엑셀</b>(.xlsx, .csv)을 그대로 올려주세요.
+          운항기간·운항요일·미운항기간이 있는 시즌 시간표는 <b>기준일에 실제 운항하는 편만</b> 골라 반영합니다.
+          편명·운항구간(또는 출발/도착)·출발시간 열만 있으면 다른 형식도 읽습니다.
+          출발 공항별로 <b>국내선·국제선을 따로</b> 교체하므로 국내선 시간표만 올려도 국제선 스케줄은 유지됩니다.
+          증편 시즌 날짜를 기준일로 넣으면 그 기준으로 미리 판정해볼 수 있습니다.</p>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <input type="file" class="form-control form-control-sm" style="flex:1;min-width:200px" id="schedFile" accept=".xlsx,.xlsm,.csv">
+          <div class="input-group input-group-sm" style="width:200px">
+            <span class="input-group-text">기준일</span>
+            <input type="date" class="form-control" id="schedDate" value="{{ now_dt.strftime('%Y-%m-%d') }}">
+          </div>
+        </div>
+        <div class="text-end">
           <button class="btn btn-primary btn-sm" id="schedBtn" onclick="saveSchedule()">업로드 · 반영</button>
         </div>
       </div></div>
@@ -151,6 +156,7 @@ async function saveSchedule() {
   if (!file) { alert('엑셀 파일을 선택해 주세요.'); return; }
   const btn = document.getElementById('schedBtn'), fd = new FormData();
   fd.append('file', file);
+  fd.append('date', document.getElementById('schedDate').value);
   btn.disabled = true;
   let j;
   try {
@@ -159,7 +165,7 @@ async function saveSchedule() {
   } catch (e) { j = {ok: false, error: '네트워크 오류: ' + e.message}; }
   btn.disabled = false;
   if (!j.ok) { alert(j.error || '반영에 실패했습니다.'); return; }
-  let msg = '반영 완료\n' + Object.entries(j.saved).map(([k, v]) => `· ${k}: ${v}편`).join('\n');
+  let msg = (j.timetable ? `반영 완료 (${j.date} 운항편 기준)\n` : '반영 완료\n') + Object.entries(j.saved).map(([k, v]) => `· ${k}: ${v}편`).join('\n');
   if (j.skipped) msg += `\n(결항 ${j.skipped}편 제외)`;
   if (j.unknown.length) msg += `\n(ZEGO에 없는 출발공항 무시: ${j.unknown.join(', ')})`;
   alert(msg); reloadToPlan();

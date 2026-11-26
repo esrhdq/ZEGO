@@ -8799,7 +8799,7 @@ def _trs_plan_analysis(conn):
         tot_need = sum(r['need'] for r in rows)
         out.append({
             'branch_id': bid, 'name': bnames.get(bid, ('?', ''))[0],
-            'basis_date': fl[0]['basis_date'] if fl else '',
+            'basis_date': ' / '.join(sorted({f['basis_date'] for f in fl if f['basis_date']})),
             'n_dom': sum(1 for f in fl if not f['is_intl']), 'n_intl': sum(1 for f in fl if f['is_intl']),
             'peak_pax': pk_pax, 'peak_ramp': pk_ramp, 'rows': rows,
             'tot_have': tot_have, 'tot_need': tot_need, 'tot_diff': tot_have - tot_need,
@@ -8911,14 +8911,23 @@ def _cell_text(v):
 
 
 _HDR_KEYS = {
-    'flight': ('편명', 'flight', 'flt', 'flt no', '항공편'),
-    'route':  ('route', '구간', '노선'),
-    'org':    ('출발', '출발지', '출발공항', 'from', 'org', 'origin', 'dep apt', 'dep'),
-    'dest':   ('도착', '도착지', '도착공항', 'to', 'dest', 'destination', 'arr apt', 'arr'),
-    'std':    ('출발시각', '출발시간', 'std', 'etd', 'departure', 'departure/arrival', 'dep time'),
-    'date':   ('일자', '날짜', 'date', '운항일'),
-    'status': ('status', '상태', '비고'),
+    'flight':  ('편명', 'flight', 'flt', 'flt no', '항공편'),
+    'route':   ('운항구간', 'route', '구간', '노선', 'sector'),
+    'org':     ('출발', '출발지', '출발공항', 'from', 'org', 'origin', 'dep apt', 'dep'),
+    'dest':    ('도착', '도착지', '도착공항', 'to', 'dest', 'destination', 'arr apt', 'arr'),
+    'std':     ('출발시각', '출발시간', 'std', 'etd', 'departure', 'departure/arrival', 'dep time'),
+    'exclude': ('미운항기간', '미운항', '운휴기간', '휴항기간'),
+    'period':  ('운항기간', '기간', 'period', 'effective', '유효기간'),
+    'days':    ('운항요일', '요일', 'days', 'dow', 'frequency', 'freq'),
+    'date':    ('일자', '날짜', 'date', '운항일'),
+    'status':  ('status', '상태', '비고'),
 }
+_ROUTE_KO = {'김포': 'GMP', '제주': 'CJU', '청주': 'CJJ', '김해': 'PUS', '부산': 'PUS', '대구': 'TAE',
+             '인천': 'ICN', '광주': 'KWJ', '여수': 'RSU', '울산': 'USN', '포항': 'KPO', '무안': 'MWX',
+             '양양': 'YNY', '원주': 'WJU', '군산': 'KUV'}
+_RANGE_RE = re.compile(r'(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})\s*[~∼〜\-–]\s*(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})')
+_DATE_RE = re.compile(r'(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})')
+_WEEKDAY_KO = '월화수목금토일'
 
 
 def _match_header(row):
@@ -8940,10 +8949,99 @@ def _match_header(row):
     return None
 
 
-def _parse_schedule_rows(sheets):
-    """엑셀/CSV 행 → {출발공항: [편...]}. 헤더 양식을 우선 해석하고, 없으면 DCS 화면 형식으로 해석."""
+def _to_date(y, m, d):
+    from datetime import date as _date
+    y = int(y)
+    if y < 100:
+        y += 2000
+    try:
+        return _date(y, int(m), int(d))
+    except ValueError:
+        return None
+
+
+def _date_ranges(v):
+    """'2026.10.25~2026.11.01\n2026.11.30~2027.03.06' → [(시작, 끝), ...]. 단일 날짜는 (d, d)."""
+    from datetime import date as _date
+    if isinstance(v, datetime):
+        return [(v.date(), v.date())]
+    if isinstance(v, _date):
+        return [(v, v)]
+    text = str(v or '')
+    out = []
+    for m in _RANGE_RE.finditer(text):
+        a, b = _to_date(*m.groups()[:3]), _to_date(*m.groups()[3:])
+        if a and b:
+            out.append((a, b))
+    if not out:
+        for m in _DATE_RE.finditer(text):
+            d = _to_date(*m.groups())
+            if d:
+                out.append((d, d))
+    return out
+
+
+def _weekdays(v):
+    """'월화수목금토일' / '1357' / '매일' → {0..6} (월=0). 비어 있으면 None(=매일)."""
+    t = str(v or '').strip()
+    if not t:
+        return None
+    if '매일' in t or 'daily' in t.lower():
+        return set(range(7))
+    ko = {i for i, ch in enumerate(_WEEKDAY_KO) if ch in t}
+    if ko:
+        return ko
+    num = {int(ch) - 1 for ch in t if ch in '1234567'}
+    return num or None
+
+
+def _hhmm(v):
+    """출발시간 셀 → 'HH:MM'. '0645', 645, '06:45', 시각 객체, 엑셀 시각 숫자 모두 처리."""
+    from datetime import time as _dtime
+    if v is None or v == '':
+        return None
+    if isinstance(v, (datetime, _dtime)):
+        return v.strftime('%H:%M')
+    if isinstance(v, float) and 0 <= v < 1:
+        m = round(v * 1440)
+        return f'{m // 60:02d}:{m % 60:02d}'
+    if isinstance(v, (int, float)):
+        v = str(int(v))
+    t = str(v).strip()
+    m = re.search(r'(\d{1,2}):(\d{2})', t)
+    if not m:
+        m = re.fullmatch(r'(\d{1,2})(\d{2})', t)
+    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+        return None
+    return f'{int(m.group(1)):02d}:{m.group(2)}'
+
+
+def _route_codes(text):
+    """'GMP-CJU' / 'GMP to CJU' / '김포-제주' → ['GMP', 'CJU']."""
+    codes = re.findall(r'(?<![A-Z])([A-Z]{3})(?![A-Z])', str(text or '').upper())
+    if len(codes) >= 2:
+        return codes[:2]
+    t = str(text or '')
+    hits = sorted((t.find(k), v) for k, v in _ROUTE_KO.items() if k in t)
+    return [v for _, v in hits][:2]
+
+
+def _parse_schedule_rows(sheets, target):
+    """엑셀/CSV 행 → ({출발공항: [편...]}, 결항 제외 수, 시즌 시간표 여부).
+    - 시즌 시간표(운항기간·운항요일·미운항기간 열): target 날짜에 실제 운항하는 편만
+    - 일반 목록(편명·출발·도착·출발시각): 그대로
+    - 헤더가 없으면 DCS 출발편 화면 형식으로 해석"""
     year = datetime.now(_KST).year
-    out, skipped = {}, 0
+    out, skipped, timetable = {}, 0, False
+    seen = set()
+
+    def add(org, fno, dest, std, basis):
+        if (org, fno) in seen:
+            return
+        seen.add((org, fno))
+        out.setdefault(org, []).append({'flight_no': fno, 'dest': dest, 'std': std, 'basis_date': basis,
+                                        'is_intl': 0 if dest in DOMESTIC_AIRPORTS else 1})
+
     for rows in sheets:
         hdr, hdr_idx = None, -1
         for i, r in enumerate(rows[:15]):
@@ -8954,68 +9052,67 @@ def _parse_schedule_rows(sheets):
         if not hdr:
             text = '\n'.join(' '.join(_cell_text(c) for c in r if c is not None) for r in rows)
             p, s = _parse_dcs_schedule(text)
-            for k, v in p.items():
-                out.setdefault(k, []).extend(v)
+            for org, fl in p.items():
+                for f in fl:
+                    add(org, f['flight_no'], f['dest'], f['std'], f['basis_date'])
             skipped += s
             continue
-        get = lambda r, role: _cell_text(r[hdr[role]]) if role in hdr and hdr[role] < len(r) else ''
+        is_tt = 'period' in hdr or 'days' in hdr
+        timetable = timetable or is_tt
+        raw = lambda r, role: r[hdr[role]] if role in hdr and hdr[role] < len(r) else None
+        get = lambda r, role: _cell_text(raw(r, role))
+        cur_route = cur_fno = cur_days = None
         for r in rows[hdr_idx + 1:]:
-            line = ' '.join(_cell_text(c) for c in r)
-            fno = re.search(r'(\d{2,4})', get(r, 'flight'))
-            tm = re.search(r'(\d{1,2}):(\d{2})', get(r, 'std'))
-            if not fno or not tm:
+            # 병합 셀(운항구간·편명)은 첫 행에만 값이 있으므로 이어받음
+            if get(r, 'route'):
+                cur_route = get(r, 'route')
+            fcell = get(r, 'flight')
+            fno_m = re.search(r'(\d{2,4})', fcell)
+            carried = False
+            if fno_m:
+                cur_fno = fno_m.group(1)
+            elif not fcell and cur_fno:
+                carried = True
+            else:
                 continue
+            std = _hhmm(raw(r, 'std'))
+            if not std or not cur_fno:
+                continue
+            line = ' '.join(_cell_text(c) for c in r)
             if 'cancel' in line.lower() or '결항' in line:
                 skipped += 1
                 continue
             org, dest = get(r, 'org').upper(), get(r, 'dest').upper()
-            if 'route' in hdr and not (org and dest):
-                rt = re.findall(r'\b([A-Z]{3})\b', get(r, 'route').upper())
-                if len(rt) >= 2:
-                    org, dest = rt[0], rt[1]
-            if not re.fullmatch(r'[A-Z]{3}', org or '') or not re.fullmatch(r'[A-Z]{3}', dest or ''):
-                continue
-            basis = ''
-            dm = re.search(r'(\d{4})[-./](\d{1,2})[-./](\d{1,2})', get(r, 'date'))
-            if dm:
-                basis = f'{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}'
+            if not (re.fullmatch(r'[A-Z]{3}', org) and re.fullmatch(r'[A-Z]{3}', dest)):
+                rc = _route_codes(get(r, 'route') or cur_route)
+                if len(rc) < 2:
+                    continue
+                org, dest = rc
+            if is_tt:
+                days = _weekdays(raw(r, 'days'))
+                if days is None and carried:
+                    days = cur_days
+                cur_days = days
+                periods = _date_ranges(raw(r, 'period'))
+                excludes = _date_ranges(raw(r, 'exclude'))
+                if periods and not any(a <= target <= b for a, b in periods):
+                    continue
+                if days is not None and target.weekday() not in days:
+                    continue
+                if any(a <= target <= b for a, b in excludes):
+                    continue
+                add(org, cur_fno, dest, std, target.strftime('%Y-%m-%d'))
             else:
-                dm = re.search(r'(\d{1,2})\s*([A-Za-z]{3})', get(r, 'date'))
-                if dm and dm.group(2).upper() in _MONTHS:
-                    basis = f'{year}-{_MONTHS[dm.group(2).upper()]:02d}-{int(dm.group(1)):02d}'
-            out.setdefault(org, []).append({'flight_no': fno.group(1), 'dest': dest,
-                                            'std': f'{int(tm.group(1)):02d}:{tm.group(2)}',
-                                            'basis_date': basis,
-                                            'is_intl': 0 if dest in DOMESTIC_AIRPORTS else 1})
-    return out, skipped
-
-
-@app.route('/trs/plan/schedule/template')
-@login_required
-def trs_plan_schedule_template():
-    if session.get('role') != 'admin':
-        return redirect(url_for('trs_page'))
-    from openpyxl import Workbook
-    hdr, widths = ['편명', '출발', '도착', '일자', '출발시각', '상태'], [10, 8, 8, 12, 10, 12]
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '출발편 스케줄'
-    _apply_header(ws, hdr, widths)
-    ex = wb.create_sheet('작성 예시')   # 업로드 시 읽지 않는 시트
-    _apply_header(ex, hdr, widths)
-    for i, row in enumerate([('ZE202', 'CJU', 'GMP', '2026-11-26', '07:50', ''),
-                             ('ZE885', 'CJU', 'TPE', '2026-11-26', '22:40', ''),
-                             ('ZE987', 'PUS', 'TPE', '2026-11-26', '22:10', 'Cancelled')], 2):
-        for c, v in enumerate(row, 1):
-            ex.cell(row=i, column=c, value=v).border = _border()
-    ex.cell(row=6, column=1, value="※ '출발편 스케줄' 시트에 작성하세요. 이 시트는 업로드 시 읽지 않습니다.")
-    ex.cell(row=7, column=1, value='※ 출발 공항별로 해당 지점 스케줄을 통째로 교체합니다. 여러 지점을 한 파일에 넣어도 됩니다. '
-                                   '상태가 Cancelled/결항인 편은 제외됩니다.')
-    buf = BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    return send_file(buf, as_attachment=True, download_name='TRS_출발편_스케줄_양식.xlsx',
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                basis = ''
+                dm = re.search(r'(\d{4})[-./](\d{1,2})[-./](\d{1,2})', get(r, 'date'))
+                if dm:
+                    basis = f'{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}'
+                else:
+                    dm = re.search(r'(\d{1,2})\s*([A-Za-z]{3})', get(r, 'date'))
+                    if dm and dm.group(2).upper() in _MONTHS:
+                        basis = f'{year}-{_MONTHS[dm.group(2).upper()]:02d}-{int(dm.group(1)):02d}'
+                add(org, cur_fno, dest, std, basis)
+    return out, skipped, timetable
 
 
 @app.route('/trs/plan/schedule', methods=['POST'])
@@ -9028,15 +9125,21 @@ def trs_plan_schedule_save():
     if not f or not f.filename:
         return jsonify(ok=False, error='엑셀 파일을 선택해 주세요.'), 400
     try:
+        target = datetime.strptime(request.form.get('date', ''), '%Y-%m-%d').date()
+    except ValueError:
+        target = datetime.now(_KST).date()
+    try:
         rows = _read_sheet_rows(f.filename, f.read())
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
     except Exception:
         return jsonify(ok=False, error='파일을 읽지 못했습니다. 엑셀(.xlsx) 파일인지 확인해 주세요.'), 400
-    parsed, skipped = _parse_schedule_rows(rows)
+    parsed, skipped, timetable = _parse_schedule_rows(rows, target)
     if not parsed:
-        return jsonify(ok=False, error='편명을 하나도 찾지 못했습니다. 양식(편명·출발·도착·출발시각) 또는 '
-                                       'DCS 출발편 목록 형식인지 확인해 주세요.'), 400
+        msg = (f'{target.strftime("%Y-%m-%d")}에 운항하는 편이 없습니다. 기준일이 시간표 기간 안에 있는지 확인해 주세요.'
+               if timetable else
+               '편명을 찾지 못했습니다. 편명·운항구간(또는 출발/도착)·출발시간 열이 있는 시트인지 확인해 주세요.')
+        return jsonify(ok=False, error=msg), 400
     conn = get_db()
     saved, unknown = {}, []
     try:
@@ -9046,19 +9149,25 @@ def trs_plan_schedule_save():
                 unknown.append(org)
                 continue
             bid, bname = bmap[org]
-            basis = next((f['basis_date'] for f in flights if f['basis_date']), '') or \
-                datetime.now(_KST).strftime('%Y-%m-%d')
-            conn.execute('DELETE FROM trs_sched WHERE branch_id=%s', (bid,))
-            for f in flights:
-                conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) '
-                             'VALUES (%s,%s,%s,%s,%s,%s)',
-                             (bid, f['flight_no'], f['dest'], f['std'], f['is_intl'], basis))
-            saved[bname] = len(flights)
+            # 국내선/국제선을 따로 교체 — 국내선 시간표만 올려도 국제선 스케줄은 유지
+            for intl in (0, 1):
+                grp = [x for x in flights if x['is_intl'] == intl]
+                if not grp:
+                    continue
+                basis = next((x['basis_date'] for x in grp if x['basis_date']), '') or \
+                    datetime.now(_KST).strftime('%Y-%m-%d')
+                conn.execute('DELETE FROM trs_sched WHERE branch_id=%s AND is_intl=%s', (bid, intl))
+                for x in grp:
+                    conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) '
+                                 'VALUES (%s,%s,%s,%s,%s,%s)',
+                                 (bid, x['flight_no'], x['dest'], x['std'], intl, basis))
+                saved[f"{bname} {'국제' if intl else '국내'}"] = len(grp)
         conn.commit()
     finally:
         conn.close()
     log_action('TRS_스케줄반영', ', '.join(f'{k} {v}편' for k, v in saved.items()))
-    return jsonify(ok=True, saved=saved, skipped=skipped, unknown=unknown)
+    return jsonify(ok=True, saved=saved, skipped=skipped, unknown=unknown,
+                   timetable=timetable, date=target.strftime('%Y-%m-%d'))
 
 
 @app.route('/trs/plan/adjust', methods=['POST'])
