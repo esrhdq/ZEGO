@@ -8944,6 +8944,25 @@ def trs_plan_settings_save():
             if v < 0 or v > 1000:
                 return jsonify(ok=False, error='0~1000 사이 값으로 입력해 주세요.'), 400
             clean[k] = int(v) if v == int(v) else v
+        # 지점별 추가 항목 (드롭다운 총괄/여객/램프 + 수량 + 내용) — 보낸 목록으로 통째로 교체
+        adjusts = None
+        if bid and isinstance(data.get('adjusts'), list):
+            adjusts = []
+            for a in data['adjusts']:
+                dept = (a or {}).get('dept')
+                memo = str((a or {}).get('memo') or '').strip()[:200]
+                try:
+                    qty = int((a or {}).get('qty'))
+                except (TypeError, ValueError):
+                    return jsonify(ok=False, error='추가 항목의 수량을 정수로 입력해 주세요.'), 400
+                if dept not in ('총괄', '여객조업사', '램프조업사') or not qty or not memo or abs(qty) > 999:
+                    return jsonify(ok=False, error='추가 항목의 구분·수량·내용을 확인해 주세요.'), 400
+                adjusts.append((dept, qty, memo))
+        if adjusts is not None:
+            conn.execute('DELETE FROM trs_adjust WHERE branch_id=%s', (bid,))
+            for dept, qty, memo in adjusts:
+                conn.execute('INSERT INTO trs_adjust (branch_id, dept, qty, memo) VALUES (%s,%s,%s,%s)',
+                             (bid, dept, qty, memo))
         # 예전 단일 항목(여객 고정 합계)은 이 탭을 저장하면 새 항목 값으로 대체되므로 삭제
         conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (f'b{bid}:pax_fixed' if bid else 'pax_fixed',))
         for k, v in clean.items():
@@ -9386,46 +9405,6 @@ def _trs_plan_schedule_save_inner():
     log_action('TRS_스케줄반영', f'{d_from}~{d_to} ' + ', '.join(f'{k} {v}' for k, v in saved.items()))
     return jsonify(ok=True, saved=saved, skipped=skipped, unknown=unknown, timetable=True,
                    date_from=d_from.strftime('%Y-%m-%d'), date_to=d_to.strftime('%Y-%m-%d'))
-
-
-@app.route('/trs/plan/adjust', methods=['POST'])
-@login_required
-def trs_plan_adjust_add():
-    denied = _trs_admin_only()
-    if denied:
-        return denied
-    data = request.get_json(silent=True) or {}
-    dept = data.get('dept')
-    memo = str(data.get('memo') or '').strip()[:200]
-    try:
-        bid, qty = int(data.get('branch_id')), int(data.get('qty'))
-    except (TypeError, ValueError):
-        return jsonify(ok=False, error='지점과 수량을 확인해 주세요.'), 400
-    if dept not in ('총괄', '여객조업사', '램프조업사') or not qty or not memo:
-        return jsonify(ok=False, error='사용처·수량·내용을 모두 입력해 주세요.'), 400
-    conn = get_db()
-    try:
-        conn.execute('INSERT INTO trs_adjust (branch_id, dept, qty, memo) VALUES (%s,%s,%s,%s)',
-                     (bid, dept, qty, memo))
-        conn.commit()
-    finally:
-        conn.close()
-    return jsonify(ok=True)
-
-
-@app.route('/trs/plan/adjust/<int:aid>/delete', methods=['POST'])
-@login_required
-def trs_plan_adjust_delete(aid):
-    denied = _trs_admin_only()
-    if denied:
-        return denied
-    conn = get_db()
-    try:
-        conn.execute('DELETE FROM trs_adjust WHERE id=%s', (aid,))
-        conn.commit()
-    finally:
-        conn.close()
-    return jsonify(ok=True)
 
 
 if __name__ == '__main__':
