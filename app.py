@@ -8867,16 +8867,176 @@ def trs_plan_settings_save():
     return jsonify(ok=True)
 
 
+def _read_sheet_rows(filename, data):
+    """.xlsx/.xlsm/.csv → 시트별 행(셀 값 리스트)의 리스트."""
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    if len(data) > 5 * 1024 * 1024:
+        raise ValueError('파일이 너무 큽니다 (5MB 이하).')
+    if ext == 'xls':
+        raise ValueError('예전 엑셀 형식(.xls)은 읽을 수 없습니다. 엑셀에서 "다른 이름으로 저장 → .xlsx"로 저장해 주세요.')
+    if ext == 'csv':
+        import csv
+        for enc in ('utf-8-sig', 'cp949'):
+            try:
+                return [list(csv.reader(data.decode(enc).splitlines()))]
+            except UnicodeDecodeError:
+                continue
+        raise ValueError('CSV 파일 인코딩을 읽지 못했습니다.')
+    if ext not in ('xlsx', 'xlsm'):
+        raise ValueError('엑셀(.xlsx) 또는 CSV 파일만 올릴 수 있습니다.')
+    from openpyxl import load_workbook
+    wb = load_workbook(BytesIO(data), read_only=True, data_only=True)
+    # 양식의 '작성 예시' 시트는 읽지 않음 (그대로 올려도 예시 편이 반영되지 않도록)
+    return [[list(r) for r in ws.iter_rows(values_only=True)] for ws in wb.worksheets
+            if '예시' not in (ws.title or '')]
+
+
+def _cell_text(v):
+    """셀 값 → 문자열 (시각/날짜 객체는 HH:MM / DDMon 으로)."""
+    from datetime import time as _dtime, date as _date
+    if v is None:
+        return ''
+    if isinstance(v, datetime):
+        if v.hour or v.minute:
+            return v.strftime('%H:%M')
+        return v.strftime('%d%b')
+    if isinstance(v, _dtime):
+        return v.strftime('%H:%M')
+    if isinstance(v, _date):
+        return v.strftime('%d%b')
+    if isinstance(v, float) and 0 <= v < 1:   # 엑셀 시각 숫자 (하루의 비율)
+        m = round(v * 1440)
+        return f'{m // 60:02d}:{m % 60:02d}'
+    return str(v).strip()
+
+
+_HDR_KEYS = {
+    'flight': ('편명', 'flight', 'flt', 'flt no', '항공편'),
+    'route':  ('route', '구간', '노선'),
+    'org':    ('출발', '출발지', '출발공항', 'from', 'org', 'origin', 'dep apt', 'dep'),
+    'dest':   ('도착', '도착지', '도착공항', 'to', 'dest', 'destination', 'arr apt', 'arr'),
+    'std':    ('출발시각', '출발시간', 'std', 'etd', 'departure', 'departure/arrival', 'dep time'),
+    'date':   ('일자', '날짜', 'date', '운항일'),
+    'status': ('status', '상태', '비고'),
+}
+
+
+def _match_header(row):
+    """헤더 행이면 {역할: 열번호} 반환. 정확히 일치하는 이름을 우선."""
+    cells = [_cell_text(c).lower() for c in row]
+    found = {}
+    for exact in (True, False):
+        for role, keys in _HDR_KEYS.items():
+            if role in found:
+                continue
+            for i, c in enumerate(cells):
+                if not c or i in found.values():
+                    continue
+                if (c in keys) if exact else any(k in c for k in keys if len(k) > 2):
+                    found[role] = i
+                    break
+    if 'flight' in found and 'std' in found and ('org' in found or 'route' in found):
+        return found
+    return None
+
+
+def _parse_schedule_rows(sheets):
+    """엑셀/CSV 행 → {출발공항: [편...]}. 헤더 양식을 우선 해석하고, 없으면 DCS 화면 형식으로 해석."""
+    year = datetime.now(_KST).year
+    out, skipped = {}, 0
+    for rows in sheets:
+        hdr, hdr_idx = None, -1
+        for i, r in enumerate(rows[:15]):
+            hdr = _match_header(r)
+            if hdr:
+                hdr_idx = i
+                break
+        if not hdr:
+            text = '\n'.join(' '.join(_cell_text(c) for c in r if c is not None) for r in rows)
+            p, s = _parse_dcs_schedule(text)
+            for k, v in p.items():
+                out.setdefault(k, []).extend(v)
+            skipped += s
+            continue
+        get = lambda r, role: _cell_text(r[hdr[role]]) if role in hdr and hdr[role] < len(r) else ''
+        for r in rows[hdr_idx + 1:]:
+            line = ' '.join(_cell_text(c) for c in r)
+            fno = re.search(r'(\d{2,4})', get(r, 'flight'))
+            tm = re.search(r'(\d{1,2}):(\d{2})', get(r, 'std'))
+            if not fno or not tm:
+                continue
+            if 'cancel' in line.lower() or '결항' in line:
+                skipped += 1
+                continue
+            org, dest = get(r, 'org').upper(), get(r, 'dest').upper()
+            if 'route' in hdr and not (org and dest):
+                rt = re.findall(r'\b([A-Z]{3})\b', get(r, 'route').upper())
+                if len(rt) >= 2:
+                    org, dest = rt[0], rt[1]
+            if not re.fullmatch(r'[A-Z]{3}', org or '') or not re.fullmatch(r'[A-Z]{3}', dest or ''):
+                continue
+            basis = ''
+            dm = re.search(r'(\d{4})[-./](\d{1,2})[-./](\d{1,2})', get(r, 'date'))
+            if dm:
+                basis = f'{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}'
+            else:
+                dm = re.search(r'(\d{1,2})\s*([A-Za-z]{3})', get(r, 'date'))
+                if dm and dm.group(2).upper() in _MONTHS:
+                    basis = f'{year}-{_MONTHS[dm.group(2).upper()]:02d}-{int(dm.group(1)):02d}'
+            out.setdefault(org, []).append({'flight_no': fno.group(1), 'dest': dest,
+                                            'std': f'{int(tm.group(1)):02d}:{tm.group(2)}',
+                                            'basis_date': basis,
+                                            'is_intl': 0 if dest in DOMESTIC_AIRPORTS else 1})
+    return out, skipped
+
+
+@app.route('/trs/plan/schedule/template')
+@login_required
+def trs_plan_schedule_template():
+    if session.get('role') != 'admin':
+        return redirect(url_for('trs_page'))
+    from openpyxl import Workbook
+    hdr, widths = ['편명', '출발', '도착', '일자', '출발시각', '상태'], [10, 8, 8, 12, 10, 12]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = '출발편 스케줄'
+    _apply_header(ws, hdr, widths)
+    ex = wb.create_sheet('작성 예시')   # 업로드 시 읽지 않는 시트
+    _apply_header(ex, hdr, widths)
+    for i, row in enumerate([('ZE202', 'CJU', 'GMP', '2026-11-26', '07:50', ''),
+                             ('ZE885', 'CJU', 'TPE', '2026-11-26', '22:40', ''),
+                             ('ZE987', 'PUS', 'TPE', '2026-11-26', '22:10', 'Cancelled')], 2):
+        for c, v in enumerate(row, 1):
+            ex.cell(row=i, column=c, value=v).border = _border()
+    ex.cell(row=6, column=1, value="※ '출발편 스케줄' 시트에 작성하세요. 이 시트는 업로드 시 읽지 않습니다.")
+    ex.cell(row=7, column=1, value='※ 출발 공항별로 해당 지점 스케줄을 통째로 교체합니다. 여러 지점을 한 파일에 넣어도 됩니다. '
+                                   '상태가 Cancelled/결항인 편은 제외됩니다.')
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name='TRS_출발편_스케줄_양식.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 @app.route('/trs/plan/schedule', methods=['POST'])
 @login_required
 def trs_plan_schedule_save():
     denied = _trs_admin_only()
     if denied:
         return denied
-    data = request.get_json(silent=True) or {}
-    parsed, skipped = _parse_dcs_schedule(data.get('text', ''))
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify(ok=False, error='엑셀 파일을 선택해 주세요.'), 400
+    try:
+        rows = _read_sheet_rows(f.filename, f.read())
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except Exception:
+        return jsonify(ok=False, error='파일을 읽지 못했습니다. 엑셀(.xlsx) 파일인지 확인해 주세요.'), 400
+    parsed, skipped = _parse_schedule_rows(rows)
     if not parsed:
-        return jsonify(ok=False, error='편명을 하나도 찾지 못했습니다. DCS 출발편 목록을 그대로 복사해 붙여넣어 주세요.'), 400
+        return jsonify(ok=False, error='편명을 하나도 찾지 못했습니다. 양식(편명·출발·도착·출발시각) 또는 '
+                                       'DCS 출발편 목록 형식인지 확인해 주세요.'), 400
     conn = get_db()
     saved, unknown = {}, []
     try:

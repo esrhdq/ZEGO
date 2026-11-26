@@ -125,12 +125,16 @@
   <div class="col-lg-6">
     <div class="card h-100"><div class="card-header fw-semibold">운항 스케줄 반영</div>
       <div class="card-body" style="font-size:.83rem">
-        <p class="text-muted mb-2">DCS 출발편 목록 화면을 드래그해 복사한 뒤 그대로 붙여넣으세요. 여러 지점을 한 번에 넣어도 되며,
-          출발 공항별로 해당 지점 스케줄을 <b>통째로 교체</b>합니다. 결항(Cancelled) 편은 자동 제외됩니다.
-          하계 증편 등 미래 스케줄을 넣으면 그 기준으로 미리 판정해볼 수 있습니다.</p>
-        <textarea class="form-control form-control-sm mb-2" id="schedText" rows="8"
-          placeholder="1  ZE 202  CJU to GMP  26Nov  07:50 - 09:05  3A  Closed ..."></textarea>
-        <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveSchedule()">스케줄 반영</button></div>
+        <p class="text-muted mb-2">출발편 스케줄 엑셀 파일(.xlsx, .csv)을 올려주세요.
+          <b>양식</b>(편명·출발·도착·일자·출발시각) 또는 <b>DCS 출발편 목록</b>(Flight·Route·Date·Departure/Arrival)을
+          그대로 붙여넣은 엑셀 모두 읽을 수 있습니다. 여러 지점을 한 파일에 넣어도 되며,
+          출발 공항별로 해당 지점 스케줄을 <b>통째로 교체</b>합니다. 결항(Cancelled/결항) 편은 자동 제외됩니다.
+          하계 증편 등 미래 스케줄을 올리면 그 기준으로 미리 판정해볼 수 있습니다.</p>
+        <input type="file" class="form-control form-control-sm mb-2" id="schedFile" accept=".xlsx,.xlsm,.csv">
+        <div class="d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('trs_plan_schedule_template') }}" class="btn btn-link btn-sm p-0"><i class="fa-solid fa-file-excel me-1"></i>양식 다운로드</a>
+          <button class="btn btn-primary btn-sm" id="schedBtn" onclick="saveSchedule()">업로드 · 반영</button>
+        </div>
       </div></div>
   </div>
 </div>
@@ -143,10 +147,18 @@ async function savePlanSettings() {
   if (await post('{{ url_for("trs_plan_settings_save") }}', body)) reloadToPlan();
 }
 async function saveSchedule() {
-  const text = document.getElementById('schedText').value;
-  if (!text.trim()) { alert('스케줄을 붙여넣어 주세요.'); return; }
-  const j = await post('{{ url_for("trs_plan_schedule_save") }}', {text});
-  if (!j) return;
+  const file = document.getElementById('schedFile').files[0];
+  if (!file) { alert('엑셀 파일을 선택해 주세요.'); return; }
+  const btn = document.getElementById('schedBtn'), fd = new FormData();
+  fd.append('file', file);
+  btn.disabled = true;
+  let j;
+  try {
+    const res = await fetch('{{ url_for("trs_plan_schedule_save") }}', {method: 'POST', body: fd});
+    j = await res.json().catch(() => ({ok: false, error: `서버 오류 (${res.status})`}));
+  } catch (e) { j = {ok: false, error: '네트워크 오류: ' + e.message}; }
+  btn.disabled = false;
+  if (!j.ok) { alert(j.error || '반영에 실패했습니다.'); return; }
   let msg = '반영 완료\n' + Object.entries(j.saved).map(([k, v]) => `· ${k}: ${v}편`).join('\n');
   if (j.skipped) msg += `\n(결항 ${j.skipped}편 제외)`;
   if (j.unknown.length) msg += `\n(ZEGO에 없는 출발공항 무시: ${j.unknown.join(', ')})`;
