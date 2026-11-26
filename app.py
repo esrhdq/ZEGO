@@ -1110,14 +1110,16 @@ def _trs_cjj_plan():
 
 
 # ── TRS 적정 수량 분석 (운항 스케줄 기반) ────────────────────────────────────────
-# 기준: 대구 TRS 배포(안) — 1편 운항 지점 12대 = 총괄 1 + 여객(고정 4 + 편당 4) + 램프(고정 2 + 편당 1)
+# 기준: 대구 TRS 배포(안) — 1편 운항 지점 12대 = 총괄 1 + 여객(고정 4 + 편당 4) + 램프(관리자 1 + 편당 2)
 TRS_PLAN_DEFAULTS = {
     'chief_fixed': 1,      # 총괄 — 지점장 (고정)
     'chief_staff': 0,      # 총괄 — 출근 인원 수 (지점 직원 근무 인원, 1인 1대)
-    'pax_fixed': 4,        # 여객 고정: CNTR MGR, OFC(EDI&LD), SPVR, I/B
-    'pax_per': 4,          # 여객 동시 1편당: CNTR FLR 1, GATE AGT 2, L/L 1
-    'ramp_fixed': 2,       # 램프 고정: RAMP 관리자, BSA
-    'ramp_per': 1,         # 램프 동시 1편당: RAMP
+    'pax_cntr_mgr': 1,     # 여객 고정 — CNTR MGR
+    'pax_cntr_agt': 2,     # 여객 고정 — CNTR AGT
+    'pax_gate_mgr': 1,     # 여객 고정 — GATE MGR
+    'pax_per': 4,          # 여객 동시 1편당 — GATE AGT
+    'ramp_fixed': 1,       # 램프 고정 — 관리자
+    'ramp_per': 2,         # 램프 동시 1편당
     'win_pax_dom': 60,     # 여객 처리 시간(분): 국내선 출발 전
     'win_pax_intl': 120,   # 여객 처리 시간(분): 국제선 출발 전
     'win_ramp': 60,        # 램프 처리 시간(분): 출발 전 (턴어라운드)
@@ -8716,20 +8718,39 @@ def _trs_num(v):
 def _trs_plan_settings(conn):
     """(공통 기준, {지점id: {항목: 값}}). 지점 값은 키 'b<지점id>:<항목>'으로 저장된 덮어쓰기."""
     st, ovr = dict(TRS_PLAN_DEFAULTS), {}
+    legacy = {}     # 예전 단일 항목 '여객 고정(pax_fixed)' 값: {None(공통) 또는 지점id: 값}
+    stored = set()  # 실제로 저장된 (지점id|None, 항목)
     try:
         for r in conn.execute('SELECT k, v FROM trs_plan_settings').fetchall():
             k = r['k']
+            bid, key = None, k
+            if k.startswith('b') and ':' in k:
+                b, key = k[1:].split(':', 1)
+                if not b.isdigit():
+                    continue
+                bid = int(b)
             try:
-                if k in st:
-                    st[k] = _trs_num(r['v'])
-                elif k.startswith('b') and ':' in k:
-                    bid, key = k[1:].split(':', 1)
-                    if key in TRS_PLAN_DEFAULTS and bid.isdigit():
-                        ovr.setdefault(int(bid), {})[key] = _trs_num(r['v'])
+                val = _trs_num(r['v'])
             except ValueError:
-                pass
+                continue
+            if key == 'pax_fixed':
+                legacy[bid] = val
+            elif key in TRS_PLAN_DEFAULTS:
+                stored.add((bid, key))
+                if bid is None:
+                    st[key] = val
+                else:
+                    ovr.setdefault(bid, {})[key] = val
     except Exception:
         pass
+    # 예전 '여객 고정' 합계는 새 항목으로 옮겨 해석: CNTR AGT = 합계 − CNTR MGR − GATE MGR
+    # (새 항목 CNTR AGT를 이미 저장했으면 그 값을 우선)
+    for bid in sorted(legacy, key=lambda b: b is not None):     # 공통 먼저
+        if (bid, 'pax_cntr_agt') in stored:
+            continue
+        tgt = st if bid is None else ovr.setdefault(bid, {})
+        base = st if bid is None else {**st, **tgt}
+        tgt['pax_cntr_agt'] = max(legacy[bid] - base['pax_cntr_mgr'] - base['pax_gate_mgr'], 0)
     return st, ovr
 
 
@@ -8816,11 +8837,15 @@ def _trs_plan_analysis(conn):
             pk_ramp = _trs_peak(fl, lambda f: sb['win_ramp'])
             needs = {}
             for dept, base, per, peak in (('총괄', sb['chief_fixed'] + sb['chief_staff'], 0, 0),
-                                          ('여객조업사', sb['pax_fixed'], sb['pax_per'], pk_pax[0]),
+                                          ('여객조업사', sb['pax_cntr_mgr'] + sb['pax_cntr_agt'] + sb['pax_gate_mgr'],
+                                           sb['pax_per'], pk_pax[0]),
                                           ('램프조업사', sb['ramp_fixed'], sb['ramp_per'], pk_ramp[0])):
-                head = (f"지점장 {sb['chief_fixed']} + 출근 인원 {sb['chief_staff']}" if dept == '총괄'
-                        else f'고정 {base}')
-                formula = head + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
+                head = {'총괄': f"지점장 {sb['chief_fixed']} + 출근 인원 {sb['chief_staff']}",
+                        '여객조업사': f"CNTR MGR {sb['pax_cntr_mgr']} + CNTR AGT {sb['pax_cntr_agt']}"
+                                     f" + GATE MGR {sb['pax_gate_mgr']}",
+                        '램프조업사': f"관리자 {sb['ramp_fixed']}"}[dept]
+                per_lbl = 'GATE AGT' if dept == '여객조업사' else '편당'
+                formula = head + (f' + {per_lbl} {per} × 동시 {peak}편' if per else '') + \
                           (f' × 예비 {sb["spare_pct"]}%' if sb['spare_pct'] else '') + \
                           (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
                 needs[dept] = (math.ceil((base + per * peak) * spare - 1e-9) + adj_sum(dept), formula)
@@ -8919,6 +8944,8 @@ def trs_plan_settings_save():
             if v < 0 or v > 1000:
                 return jsonify(ok=False, error='0~1000 사이 값으로 입력해 주세요.'), 400
             clean[k] = int(v) if v == int(v) else v
+        # 예전 단일 항목(여객 고정 합계)은 이 탭을 저장하면 새 항목 값으로 대체되므로 삭제
+        conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (f'b{bid}:pax_fixed' if bid else 'pax_fixed',))
         for k, v in clean.items():
             key = f'b{bid}:{k}' if bid else k
             conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (key,))
