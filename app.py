@@ -1112,7 +1112,8 @@ def _trs_cjj_plan():
 # ── TRS 적정 수량 분석 (운항 스케줄 기반) ────────────────────────────────────────
 # 기준: 대구 TRS 배포(안) — 1편 운항 지점 12대 = 총괄 1 + 여객(고정 4 + 편당 4) + 램프(고정 2 + 편당 1)
 TRS_PLAN_DEFAULTS = {
-    'chief_fixed': 1,      # 총괄 (지점 고정)
+    'chief_fixed': 1,      # 총괄 — 지점장 (고정)
+    'chief_staff': 0,      # 총괄 — 출근 인원 수 (지점 직원 근무 인원, 1인 1대)
     'pax_fixed': 4,        # 여객 고정: CNTR MGR, OFC(EDI&LD), SPVR, I/B
     'pax_per': 4,          # 여객 동시 1편당: CNTR FLR 1, GATE AGT 2, L/L 1
     'ramp_fixed': 2,       # 램프 고정: RAMP 관리자, BSA
@@ -8814,10 +8815,12 @@ def _trs_plan_analysis(conn):
             pk_pax = _trs_peak(fl, lambda f: sb['win_pax_intl'] if f['is_intl'] else sb['win_pax_dom'])
             pk_ramp = _trs_peak(fl, lambda f: sb['win_ramp'])
             needs = {}
-            for dept, base, per, peak in (('총괄', sb['chief_fixed'], 0, 0),
+            for dept, base, per, peak in (('총괄', sb['chief_fixed'] + sb['chief_staff'], 0, 0),
                                           ('여객조업사', sb['pax_fixed'], sb['pax_per'], pk_pax[0]),
                                           ('램프조업사', sb['ramp_fixed'], sb['ramp_per'], pk_ramp[0])):
-                formula = f'고정 {base}' + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
+                head = (f"지점장 {sb['chief_fixed']} + 출근 인원 {sb['chief_staff']}" if dept == '총괄'
+                        else f'고정 {base}')
+                formula = head + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
                           (f' × 예비 {sb["spare_pct"]}%' if sb['spare_pct'] else '') + \
                           (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
                 needs[dept] = (math.ceil((base + per * peak) * spare - 1e-9) + adj_sum(dept), formula)
