@@ -9246,6 +9246,21 @@ def trs_plan_schedule_save():
     denied = _trs_admin_only()
     if denied:
         return denied
+    # 파일 업로드(multipart)는 전역 오류 핸들러가 HTML을 돌려줘 화면에 '서버 오류 (500)'만 보이므로,
+    # 여기서 직접 잡아 실제 원인을 JSON으로 알려준다 (관리자 전용 기능).
+    try:
+        return _trs_plan_schedule_save_inner()
+    except Exception as e:
+        import traceback
+        print(f'[trs_plan_schedule_save] {traceback.format_exc()}')
+        try:
+            get_db().rollback()
+        except Exception:
+            pass
+        return jsonify(ok=False, error=f'처리 중 오류가 발생했습니다: {type(e).__name__}: {e}'), 500
+
+
+def _trs_plan_schedule_save_inner():
     f = request.files.get('file')
     if not f or not f.filename:
         return jsonify(ok=False, error='엑셀 파일을 선택해 주세요.'), 400
@@ -9295,11 +9310,14 @@ def trs_plan_schedule_save():
             bid, bname = bmap[org]
             # 국내선/국제선을 따로 교체 — 국내선 시간표만 올려도 국제선 스케줄은 유지
             conn.execute('DELETE FROM trs_sched WHERE branch_id=%s AND is_intl=%s', (bid, intl))
-            for date_s, grp in by_date.items():
-                for x in grp:
-                    conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) '
-                                 'VALUES (%s,%s,%s,%s,%s,%s)',
-                                 (bid, x['flight_no'], x['dest'], x['std'], intl, date_s))
+            # 여러 행을 한 번에 INSERT (운영 DB는 행마다 네트워크 왕복이라 한 줄씩 넣으면 수백 번 왕복 → 시간 초과)
+            vals = [(bid, x['flight_no'], x['dest'], x['std'], intl, date_s)
+                    for date_s, grp in by_date.items() for x in grp]
+            for i in range(0, len(vals), 150):      # SQLite 변수 999개 제한 대비 150행씩
+                chunk = vals[i:i + 150]
+                conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) VALUES '
+                             + ','.join(['(%s,%s,%s,%s,%s,%s)'] * len(chunk)),
+                             tuple(v for row in chunk for v in row))
             counts = [len(g) for g in by_date.values()]
             lo, hi = min(counts), max(counts)
             saved[f"{bname} {'국제' if intl else '국내'}"] = f'{lo}편' if lo == hi else f'{lo}~{hi}편'
