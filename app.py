@@ -1441,6 +1441,21 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_cju_usage] {_e}')
+            _mig_trs_cju_call2 = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_cju_callable_ledger_2611',)
+            ).fetchone()
+            if not _mig_trs_cju_call2:
+                try:
+                    # 제주 신규 관리대장(26.11) 기준 통화가능 27대: 901~906, 951~971
+                    _ok = {*range(901, 907), *range(951, 972)}
+                    _cju = [*range(901, 911), *range(951, 991)]
+                    _trs_apply_plan(conn, {n: {'can_call': n in _ok} for n in _cju},
+                                    '제주 관리대장(26.11)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_cju_callable_ledger_2611',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_cju_callable_ledger] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
