@@ -1,0 +1,163 @@
+{# TRS 적정 수량 분석 탭 (관리자 전용) — trs.html 에서 include #}
+<style>
+  .pv { display:inline-block; min-width:44px; text-align:center; font-size:.72rem; font-weight:700;
+        padding:2px 8px; border-radius:999px; }
+  .pv-부족 { background:#FEE2E2; color:#B91C1C; }
+  .pv-적정 { background:#DCFCE7; color:#15803D; }
+  .pv-여유 { background:#DBEAFE; color:#1D4ED8; }
+  #planTable td, #planTable th { vertical-align:middle; font-size:.83rem; }
+  .plan-row { cursor:pointer; }
+  .plan-row:hover td { background:var(--bg); }
+  .plan-detail td { background:#FCFBF9 !important; font-size:.8rem; }
+  .plan-flt { display:inline-block; padding:1px 7px; margin:2px; border-radius:6px; font-size:.75rem;
+              border:1px solid var(--border); background:#fff; }
+  .plan-flt.intl { border-color:#BFDBFE; color:#1D4ED8; }
+  .plan-flt.peak { border-color:#FCA5A5; background:#FEF2F2; font-weight:700; }
+  .plan-num { font-weight:700; }
+  .plan-set input { max-width:90px; }
+</style>
+
+<p class="text-muted mb-3" style="font-size:.8rem">
+  지점별 하루 출발편 스케줄로 <b>가장 바쁜 시간대에 동시에 처리하는 편수</b>를 구하고,
+  <b>필요 대수 = 고정 + 동시 1편당 × 피크 편수 + 지점별 추가 항목</b>으로 계산해 보유 대수와 비교합니다.
+  사용처가 정해진 정상·예비 무전기만 보유로 셉니다. 행을 누르면 계산 근거가 펼쳐집니다.
+</p>
+
+{% if plan %}
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-bordered text-center mb-0" id="planTable">
+    <thead class="table-light">
+      <tr>
+        <th rowspan="2" class="text-start">지점</th><th rowspan="2">기준 스케줄</th><th rowspan="2">동시 처리 피크</th>
+        <th colspan="2">총괄</th><th colspan="2">여객조업사</th><th colspan="2">램프조업사</th><th rowspan="2">종합</th>
+      </tr>
+      <tr><th>보유/필요</th><th>판정</th><th>보유/필요</th><th>판정</th><th>보유/필요</th><th>판정</th></tr>
+    </thead>
+    <tbody>
+    {% for p in plan %}
+      <tr class="plan-row" data-bs-toggle="collapse" data-bs-target="#pd{{ p.branch_id }}">
+        <td class="text-start fw-semibold"><i class="fa-solid fa-chevron-down me-1" style="font-size:.65rem;color:var(--text-muted)"></i>{{ p.name }}</td>
+        <td><div>{{ p.n_dom + p.n_intl }}편</div><div class="text-muted" style="font-size:.72rem">국내 {{ p.n_dom }} · 국제 {{ p.n_intl }} · {{ p.basis_date }}</div></td>
+        <td><div>여객 <b>{{ p.peak_pax[0] }}</b>편 · 램프 <b>{{ p.peak_ramp[0] }}</b>편</div>
+            <div class="text-muted" style="font-size:.72rem">{{ p.peak_pax[1] }}~{{ p.peak_pax[2] }}</div></td>
+        {% for r in p.rows %}
+        <td><span class="plan-num">{{ r.have }}</span> / {{ r.need }}</td>
+        <td><span class="pv pv-{{ r.verdict }}">{{ r.verdict }}{% if r.diff < 0 %} {{ -r.diff }}{% elif r.verdict == '여유' %} +{{ r.diff }}{% endif %}</span></td>
+        {% endfor %}
+        <td>{% if p.short %}<span class="pv pv-부족">{{ p.short }}대 부족</span>
+            {% else %}<span class="pv pv-적정">충족</span>{% endif %}
+            <div class="text-muted" style="font-size:.72rem">{{ p.tot_have }} / {{ p.tot_need }}</div></td>
+      </tr>
+      <tr class="collapse plan-detail" id="pd{{ p.branch_id }}">
+        <td colspan="10" class="text-start p-3">
+          <div class="row g-3">
+            <div class="col-lg-5">
+              <div class="fw-semibold mb-1">계산 근거</div>
+              {% for r in p.rows %}
+              <div>· {{ r.dept }}: {{ r.formula }} = <b>{{ r.need }}</b>대 (보유 {{ r.have }})</div>
+              {% endfor %}
+              <div class="text-muted mt-1">
+                여객 피크 {{ p.peak_pax[1] }}~{{ p.peak_pax[2] }}: {{ p.peak_pax[3]|join(', ') }}<br>
+                램프 피크 {{ p.peak_ramp[1] }}~{{ p.peak_ramp[2] }}: {{ p.peak_ramp[3]|join(', ') }}
+              </div>
+              {% if p.unassigned or p.other or p.unusable %}
+              <div class="mt-1" style="color:var(--warning)">
+                계산 제외 — {% if p.unassigned %}사용처 미지정 {{ p.unassigned }}대 {% endif %}{% if p.other %}기타 {{ p.other }}대 {% endif %}{% if p.unusable %}수리·고장·분실·반납 {{ p.unusable }}대{% endif %}
+              </div>
+              {% endif %}
+            </div>
+            <div class="col-lg-7">
+              <div class="fw-semibold mb-1">지점별 추가 항목 <span class="text-muted fw-normal">(RAMP BUS, 청사 분리 등 공식에 없는 고정 수요)</span></div>
+              {% for a in p.adjusts %}
+              <div class="d-flex align-items-center gap-2">
+                <span>· {{ a.dept }} <b>{{ '%+d'|format(a.qty) }}</b> — {{ a.memo }}</span>
+                <button class="btn btn-link btn-sm p-0 text-danger" onclick="event.stopPropagation();delAdjust({{ a.id }})">삭제</button>
+              </div>
+              {% else %}<div class="text-muted">없음</div>{% endfor %}
+              <div class="d-flex flex-wrap gap-1 mt-2" onclick="event.stopPropagation()">
+                <select class="form-select form-select-sm w-auto" id="adjDept{{ p.branch_id }}">
+                  <option>여객조업사</option><option>램프조업사</option><option>총괄</option></select>
+                <input type="number" class="form-control form-control-sm" style="width:70px" id="adjQty{{ p.branch_id }}" placeholder="+1">
+                <input class="form-control form-control-sm" style="width:220px" id="adjMemo{{ p.branch_id }}" placeholder="내용 (예: RAMP BUS 2대 추가)">
+                <button class="btn btn-outline-primary btn-sm" onclick="addAdjust({{ p.branch_id }})">추가</button>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="fw-semibold mb-1">출발편 ({{ p.basis_date }}) <span class="text-muted fw-normal">빨간 테두리 = 여객 피크 시각에 처리 중인 편, 파란 글씨 = 국제선</span></div>
+              {% for f in p.flights %}<span class="plan-flt {% if f.is_intl %}intl{% endif %} {% if ('ZE' ~ f.flight_no) in p.peak_pax[3] %}peak{% endif %}">{{ f.std }} ZE{{ f.flight_no }} {{ f.dest }}</span>{% endfor %}
+            </div>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state mb-4">아직 분석할 운항 스케줄이 없습니다. 아래에서 DCS 출발편 목록을 붙여넣어 주세요.</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header fw-semibold">기준 설정 <span class="text-muted fw-normal" style="font-size:.78rem">기본값 = 대구 TRS 배포(안)</span></div>
+      <div class="card-body plan-set" style="font-size:.83rem">
+        {% set fields = [
+          ('chief_fixed', '총괄 — 지점 고정', '대'),
+          ('pax_fixed', '여객 — 고정 (CNTR MGR·OFC·SPVR·I/B)', '대'),
+          ('pax_per', '여객 — 동시 1편당 (CNTR FLR·GATE 2·L/L)', '대'),
+          ('ramp_fixed', '램프 — 고정 (관리자·BSA)', '대'),
+          ('ramp_per', '램프 — 동시 1편당 (RAMP)', '대'),
+          ('win_pax_dom', '여객 처리시간 — 국내선 출발 전', '분'),
+          ('win_pax_intl', '여객 처리시간 — 국제선 출발 전', '분'),
+          ('win_ramp', '램프 처리시간 — 출발 전', '분'),
+          ('spare_pct', '예비율', '%'),
+          ('ok_margin', "필요보다 몇 대 넘게 많으면 '여유'", '대'),
+        ] %}
+        {% for k, label, unit in fields %}
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+          <label for="ps_{{ k }}">{{ label }}</label>
+          <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end" id="ps_{{ k }}" data-k="{{ k }}" value="{{ plan_st[k] if plan_st else '' }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
+        </div>
+        {% endfor %}
+        <div class="text-end mt-2"><button class="btn btn-primary btn-sm" onclick="savePlanSettings()">기준 저장</button></div>
+      </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header fw-semibold">운항 스케줄 반영</div>
+      <div class="card-body" style="font-size:.83rem">
+        <p class="text-muted mb-2">DCS 출발편 목록 화면을 드래그해 복사한 뒤 그대로 붙여넣으세요. 여러 지점을 한 번에 넣어도 되며,
+          출발 공항별로 해당 지점 스케줄을 <b>통째로 교체</b>합니다. 결항(Cancelled) 편은 자동 제외됩니다.
+          하계 증편 등 미래 스케줄을 넣으면 그 기준으로 미리 판정해볼 수 있습니다.</p>
+        <textarea class="form-control form-control-sm mb-2" id="schedText" rows="8"
+          placeholder="1  ZE 202  CJU to GMP  26Nov  07:50 - 09:05  3A  Closed ..."></textarea>
+        <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveSchedule()">스케줄 반영</button></div>
+      </div></div>
+  </div>
+</div>
+
+<script>
+function reloadToPlan() { try { sessionStorage.setItem('trsTab', 'plan'); } catch (e) {} location.reload(); }
+async function savePlanSettings() {
+  const body = {};
+  document.querySelectorAll('.plan-set input[data-k]').forEach(el => body[el.dataset.k] = el.value);
+  if (await post('{{ url_for("trs_plan_settings_save") }}', body)) reloadToPlan();
+}
+async function saveSchedule() {
+  const text = document.getElementById('schedText').value;
+  if (!text.trim()) { alert('스케줄을 붙여넣어 주세요.'); return; }
+  const j = await post('{{ url_for("trs_plan_schedule_save") }}', {text});
+  if (!j) return;
+  let msg = '반영 완료\n' + Object.entries(j.saved).map(([k, v]) => `· ${k}: ${v}편`).join('\n');
+  if (j.skipped) msg += `\n(결항 ${j.skipped}편 제외)`;
+  if (j.unknown.length) msg += `\n(ZEGO에 없는 출발공항 무시: ${j.unknown.join(', ')})`;
+  alert(msg); reloadToPlan();
+}
+async function addAdjust(bid) {
+  const g = id => document.getElementById(id + bid).value;
+  if (await post('{{ url_for("trs_plan_adjust_add") }}', {branch_id: bid, dept: g('adjDept'), qty: g('adjQty'), memo: g('adjMemo')})) reloadToPlan();
+}
+async function delAdjust(id) {
+  if (!confirm('이 추가 항목을 삭제할까요?')) return;
+  if (await post(`/trs/plan/adjust/${id}/delete`)) reloadToPlan();
+}
+</script>

@@ -1109,6 +1109,89 @@ def _trs_cjj_plan():
     return plan
 
 
+# ── TRS 적정 수량 분석 (운항 스케줄 기반) ────────────────────────────────────────
+# 기준: 대구 TRS 배포(안) — 1편 운항 지점 12대 = 총괄 1 + 여객(고정 4 + 편당 4) + 램프(고정 2 + 편당 1)
+TRS_PLAN_DEFAULTS = {
+    'chief_fixed': 1,      # 총괄 (지점 고정)
+    'pax_fixed': 4,        # 여객 고정: CNTR MGR, OFC(EDI&LD), SPVR, I/B
+    'pax_per': 4,          # 여객 동시 1편당: CNTR FLR 1, GATE AGT 2, L/L 1
+    'ramp_fixed': 2,       # 램프 고정: RAMP 관리자, BSA
+    'ramp_per': 1,         # 램프 동시 1편당: RAMP
+    'win_pax_dom': 60,     # 여객 처리 시간(분): 국내선 출발 전
+    'win_pax_intl': 120,   # 여객 처리 시간(분): 국제선 출발 전
+    'win_ramp': 60,        # 램프 처리 시간(분): 출발 전 (턴어라운드)
+    'spare_pct': 0,        # 예비율(%)
+    'ok_margin': 2,        # 필요 대비 N대 초과 보유 시 '여유'
+}
+DOMESTIC_AIRPORTS = {'GMP', 'CJU', 'PUS', 'CJJ', 'TAE', 'ICN', 'KWJ', 'RSU', 'USN', 'KPO',
+                     'MWX', 'YNY', 'WJU', 'HIN', 'KUV'}
+
+# 초기 스케줄: 2026-11-26 DCS 출발편 (결항 제외), 대구는 11-27
+_TRS_SCHED_SEED = {
+    'CJU': ('2026-11-26', [('202', 'GMP', '07:50'), ('712', 'CJJ', '08:40'), ('252', 'GMP', '09:05'),
+            ('282', 'GMP', '09:05'), ('272', 'GMP', '09:25'), ('206', 'GMP', '10:00'), ('208', 'GMP', '11:55'),
+            ('210', 'GMP', '12:45'), ('274', 'GMP', '13:15'), ('214', 'GMP', '14:45'), ('284', 'GMP', '16:40'),
+            ('276', 'GMP', '17:10'), ('714', 'CJJ', '17:20'), ('216', 'GMP', '17:40'), ('220', 'GMP', '18:35'),
+            ('222', 'GMP', '20:30'), ('718', 'CJJ', '20:35'), ('278', 'GMP', '21:10'), ('224', 'GMP', '21:20'),
+            ('716', 'CJJ', '21:45'), ('885', 'TPE', '22:40')]),
+    'GMP': ('2026-11-26', [('201', 'CJU', '06:45'), ('271', 'CJU', '07:20'), ('205', 'CJU', '08:00'),
+            ('293', 'PUS', '09:45'), ('207', 'CJU', '09:50'), ('281', 'CJU', '10:55'), ('273', 'CJU', '11:20'),
+            ('887', 'TSA', '11:25'), ('211', 'CJU', '12:50'), ('213', 'CJU', '13:50'), ('215', 'CJU', '14:40'),
+            ('275', 'CJU', '15:10'), ('219', 'CJU', '16:40'), ('221', 'CJU', '18:30'), ('283', 'CJU', '18:40'),
+            ('277', 'CJU', '19:15'), ('223', 'CJU', '19:35'), ('227', 'CJU', '20:30')]),
+    'CJJ': ('2026-11-26', [('711', 'CJU', '06:50'), ('717', 'CJU', '07:10'), ('713', 'CJU', '10:35'),
+            ('715', 'CJU', '19:35'), ('781', 'TPE', '23:55')]),
+    'PUS': ('2026-11-26', [('292', 'GMP', '06:50'), ('913', 'KIX', '07:55'), ('963', 'OKA', '08:30'),
+            ('941', 'FUK', '09:40'), ('975', 'XMN', '11:00'), ('967', 'KMJ', '11:55'), ('915', 'KIX', '14:20'),
+            ('951', 'CTS', '14:30'), ('943', 'FUK', '15:50'), ('917', 'CNX', '17:55'), ('981', 'PQC', '19:35'),
+            ('921', 'HKG', '21:30'), ('983', 'TPE', '22:00')]),
+    'ICN': ('2026-11-26', [('605', 'NRT', '07:15'), ('817', 'YNT', '07:20'), ('621', 'CTS', '07:40'),
+            ('645', 'FUK', '08:40'), ('601', 'NRT', '08:40'), ('611', 'KIX', '09:05'), ('625', 'CTS', '09:10'),
+            ('891', 'XMN', '09:30'), ('615', 'KIX', '09:55'), ('671', 'TKS', '10:10'), ('631', 'OKA', '11:25'),
+            ('647', 'FUK', '12:40'), ('623', 'CTS', '14:35'), ('613', 'KIX', '15:05'), ('603', 'NRT', '15:20'),
+            ('651', 'KOJ', '15:35'), ('607', 'NRT', '16:10'), ('511', 'BKK', '17:05'), ('581', 'PQC', '17:20'),
+            ('517', 'CNX', '17:25'), ('649', 'FUK', '18:15'), ('861', 'HKG', '19:15'), ('535', 'MDC', '20:25'),
+            ('561', 'CXR', '20:50'), ('593', 'DAD', '20:55'), ('871', 'PVG', '23:30')]),
+    'TAE': ('2026-11-27', [('351', 'DYG', '11:15')]),
+}
+# 지점별 추가 항목 (김해·인천 TRS 추가 리스 요청 문서 기준)
+_TRS_ADJ_SEED = [
+    ('PUS', '램프조업사', 5, 'RAMP BUS 5대 (버스 1대당 1대)'),
+    ('PUS', '램프조업사', 1, 'BSA 국내/국제 청사 분리'),
+    ('PUS', '램프조업사', 1, 'CLEANING TEAM'),
+    ('PUS', '여객조업사', 1, 'CNTR MGR 국내/국제 청사 분리'),
+    ('ICN', '램프조업사', 3, 'CLEANING TEAM 3'),
+    ('ICN', '램프조업사', 5, 'BSA 총 6대 (여객동/탑승동 분리, 41·44·50~52 벨트) — 기본 1 제외'),
+]
+
+
+def _ensure_trs_plan_tables(conn, pg):
+    pk = 'SERIAL PRIMARY KEY' if pg else 'INTEGER PRIMARY KEY'
+    conn.execute('''CREATE TABLE IF NOT EXISTS trs_plan_settings (
+                        k TEXT PRIMARY KEY, v TEXT NOT NULL DEFAULT '')''')
+    conn.execute(f'''CREATE TABLE IF NOT EXISTS trs_sched (
+                        id {pk}, branch_id INTEGER NOT NULL, flight_no TEXT NOT NULL DEFAULT '',
+                        dest TEXT NOT NULL DEFAULT '', std TEXT NOT NULL DEFAULT '',
+                        is_intl INTEGER NOT NULL DEFAULT 0, basis_date TEXT NOT NULL DEFAULT '')''')
+    conn.execute(f'''CREATE TABLE IF NOT EXISTS trs_adjust (
+                        id {pk}, branch_id INTEGER NOT NULL, dept TEXT NOT NULL DEFAULT '',
+                        qty INTEGER NOT NULL DEFAULT 0, memo TEXT NOT NULL DEFAULT '')''')
+    bmap = {r['code']: r['id'] for r in conn.execute('SELECT id, code FROM branches').fetchall()}
+    if not conn.execute('SELECT 1 FROM trs_sched LIMIT 1').fetchone():
+        for code, (basis, flights) in _TRS_SCHED_SEED.items():
+            if code not in bmap:
+                continue
+            for fno, dest, std in flights:
+                conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) '
+                             'VALUES (%s,%s,%s,%s,%s,%s)',
+                             (bmap[code], fno, dest, std, 0 if dest in DOMESTIC_AIRPORTS else 1, basis))
+    if not conn.execute('SELECT 1 FROM trs_adjust LIMIT 1').fetchone():
+        for code, dept, qty, memo in _TRS_ADJ_SEED:
+            if code in bmap:
+                conn.execute('INSERT INTO trs_adjust (branch_id, dept, qty, memo) VALUES (%s,%s,%s,%s)',
+                             (bmap[code], dept, qty, memo))
+
+
 def _trs_cju_plan():
     """제주지점 신규 TRS 관리대장(2026-11): 이스타=총괄, 여객, 램프, 급유=기타.
     통화가능은 별도 확정 목록(trs_cju_callable_fix_2611)을 유지하므로 여기서 건드리지 않음."""
@@ -1456,6 +1539,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_cju_callable_ledger] {_e}')
+            _mig_trs_plan = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('add_trs_plan_tables',)
+            ).fetchone()
+            if not _mig_trs_plan:
+                try:
+                    _ensure_trs_plan_tables(conn, pg=True)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('add_trs_plan_tables',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_plan_tables] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -2054,6 +2148,7 @@ def init_db():
         if USE_SQLITE:
             try:
                 _ensure_trs_tables(conn, pg=False)
+                _ensure_trs_plan_tables(conn, pg=False)
                 conn.commit()
             except Exception as _te:
                 print(f'[init_db/trs/sqlite] {_te}')
@@ -8433,11 +8528,17 @@ def trs_page():
             d = dict(r)
             d['changed_at'] = dt_filter(d.get('changed_at')) if d.get('changed_at') else ''
             history.append(d)
+    plan_st, plan = (None, [])
+    if is_admin:
+        try:
+            plan_st, plan = _trs_plan_analysis(conn)
+        except Exception as e:
+            print(f'[trs_plan_analysis] {e}')
     conn.close()
     radios.sort(key=lambda d: (int(d['radio_no']) if d['radio_no'].isdigit() else 99999, d['radio_no']))
     return render_template('trs.html', radios=radios, branches=branches, history=history,
                            is_admin=is_admin, depts=TRS_DEPTS, statuses=TRS_STATUSES,
-                           models=TRS_MODELS)
+                           models=TRS_MODELS, plan=plan, plan_st=plan_st)
 
 
 @app.route('/trs/save', methods=['POST'])
@@ -8602,6 +8703,242 @@ def trs_export():
     today = datetime.now(_KST).strftime('%Y%m%d')
     return send_file(buf, as_attachment=True, download_name=f'TRS_무전기_관리대장_{today}.xlsx',
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ── TRS 적정 수량 분석 ───────────────────────────────────────────────────────
+
+def _trs_plan_settings(conn):
+    st = dict(TRS_PLAN_DEFAULTS)
+    try:
+        for r in conn.execute('SELECT k, v FROM trs_plan_settings').fetchall():
+            if r['k'] in st:
+                try:
+                    st[r['k']] = float(r['v']) if '.' in str(r['v']) else int(r['v'])
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+    return st
+
+
+def _hm(m):
+    m %= 1440
+    return f'{m // 60:02d}:{m % 60:02d}'
+
+
+def _trs_peak(flights, win_of):
+    """동시 처리 최대 편수. 각 편은 [STD-창, STD) 동안 처리 중으로 봄.
+    반환: (피크 편수, 피크 시작, 피크 끝, 피크 시각 처리 중인 편명 목록)"""
+    if not flights:
+        return 0, '', '', []
+    ivs = []
+    for f in flights:
+        h, m = map(int, f['std'].split(':'))
+        end = h * 60 + m
+        ivs.append((end - win_of(f), end, f))
+    events = sorted([(s, 1) for s, _, _ in ivs] + [(e, -1) for _, e, _ in ivs],
+                    key=lambda x: (x[0], x[1]))   # 같은 시각이면 종료(-1) 먼저
+    cur = best = 0
+    best_s = best_e = None
+    for i, (t, d) in enumerate(events):
+        cur += d
+        if cur > best:
+            best, best_s = cur, t
+            best_e = next((t2 for t2, _ in events[i + 1:] if t2 > t), t)
+    active = [f"ZE{f['flight_no']}" for s, e, f in ivs if s <= best_s < e]
+    return best, _hm(best_s), _hm(best_e), active
+
+
+def _trs_plan_analysis(conn):
+    import math
+    st = _trs_plan_settings(conn)
+    bnames = {r['id']: (r['name'], r['code']) for r in conn.execute('SELECT id, name, code FROM branches').fetchall()}
+    have, unassigned, unusable = {}, {}, {}
+    for r in conn.execute('SELECT branch_id, dept, status, COUNT(*) AS n FROM trs_radios '
+                          'GROUP BY branch_id, dept, status').fetchall():
+        bid = r['branch_id']
+        if r['status'] not in ('정상', '예비'):
+            unusable[bid] = unusable.get(bid, 0) + r['n']
+        elif not r['dept']:
+            unassigned[bid] = unassigned.get(bid, 0) + r['n']
+        else:
+            have.setdefault(bid, {})[r['dept']] = have.get(bid, {}).get(r['dept'], 0) + r['n']
+    sched = {}
+    for r in conn.execute('SELECT branch_id, flight_no, dest, std, is_intl, basis_date FROM trs_sched '
+                          'ORDER BY std').fetchall():
+        sched.setdefault(r['branch_id'], []).append(dict(r))
+    adjs = {}
+    for r in conn.execute('SELECT id, branch_id, dept, qty, memo FROM trs_adjust ORDER BY id').fetchall():
+        adjs.setdefault(r['branch_id'], []).append(dict(r))
+
+    spare = 1 + float(st['spare_pct']) / 100
+    margin = st['ok_margin']
+    out = []
+    order = ['GMP', 'TAE', 'PUS', 'ICN', 'CJU', 'CJJ']
+    for bid in sorted(sched, key=lambda b: (order.index(bnames[b][1]) if bnames.get(b, ('', ''))[1] in order else 99)):
+        fl = sched[bid]
+        pk_pax = _trs_peak(fl, lambda f: st['win_pax_intl'] if f['is_intl'] else st['win_pax_dom'])
+        pk_ramp = _trs_peak(fl, lambda f: st['win_ramp'])
+        adj = adjs.get(bid, [])
+        adj_sum = lambda d: sum(a['qty'] for a in adj if a['dept'] == d)
+        rows = []
+        for dept, base, per, peak in (('총괄', st['chief_fixed'], 0, 0),
+                                      ('여객조업사', st['pax_fixed'], st['pax_per'], pk_pax[0]),
+                                      ('램프조업사', st['ramp_fixed'], st['ramp_per'], pk_ramp[0])):
+            calc = math.ceil((base + per * peak) * spare - 1e-9)
+            need = calc + adj_sum(dept)
+            h = have.get(bid, {}).get(dept, 0)
+            diff = h - need
+            verdict = '부족' if diff < 0 else ('여유' if diff > margin else '적정')
+            formula = f'고정 {base}' + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
+                      (f' × 예비 {st["spare_pct"]}%' if st['spare_pct'] else '') + \
+                      (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
+            rows.append({'dept': dept, 'have': h, 'need': need, 'diff': diff,
+                         'verdict': verdict, 'formula': formula})
+        tot_have = sum(r['have'] for r in rows)
+        tot_need = sum(r['need'] for r in rows)
+        out.append({
+            'branch_id': bid, 'name': bnames.get(bid, ('?', ''))[0],
+            'basis_date': fl[0]['basis_date'] if fl else '',
+            'n_dom': sum(1 for f in fl if not f['is_intl']), 'n_intl': sum(1 for f in fl if f['is_intl']),
+            'peak_pax': pk_pax, 'peak_ramp': pk_ramp, 'rows': rows,
+            'tot_have': tot_have, 'tot_need': tot_need, 'tot_diff': tot_have - tot_need,
+            'short': sum(-r['diff'] for r in rows if r['diff'] < 0),
+            'other': have.get(bid, {}).get('기타', 0),
+            'unassigned': unassigned.get(bid, 0), 'unusable': unusable.get(bid, 0),
+            'adjusts': adj, 'flights': fl,
+        })
+    return st, out
+
+
+_SCHED_LINE_RE = re.compile(
+    r'ZE\s*(\d{2,4})\D{0,20}?\b([A-Z]{3})\s*(?:to|->|→|-)\s*([A-Z]{3})\b\s*'
+    r'(?:(\d{1,2})\s*([A-Za-z]{3})\s+)?(\d{1,2}):(\d{2})')
+_MONTHS = {m: i for i, m in enumerate(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG',
+                                       'SEP', 'OCT', 'NOV', 'DEC'], 1)}
+
+
+def _parse_dcs_schedule(text):
+    """DCS 출발편 화면을 복사한 텍스트 → {출발공항: [편...]}. 결항(Cancel) 줄은 제외."""
+    out, skipped = {}, 0
+    year = datetime.now(_KST).year
+    for line in (text or '').splitlines():
+        m = _SCHED_LINE_RE.search(line)
+        if not m:
+            continue
+        if 'cancel' in line.lower():
+            skipped += 1
+            continue
+        fno, org, dest, dd, mon, hh, mm = m.groups()
+        basis = ''
+        if dd and mon and mon.upper() in _MONTHS:
+            basis = f'{year}-{_MONTHS[mon.upper()]:02d}-{int(dd):02d}'
+        out.setdefault(org, []).append({'flight_no': fno, 'dest': dest,
+                                        'std': f'{int(hh):02d}:{mm}', 'basis_date': basis,
+                                        'is_intl': 0 if dest in DOMESTIC_AIRPORTS else 1})
+    return out, skipped
+
+
+@app.route('/trs/plan/settings', methods=['POST'])
+@login_required
+def trs_plan_settings_save():
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        for k in TRS_PLAN_DEFAULTS:
+            if k not in data:
+                continue
+            try:
+                v = float(data[k])
+            except (TypeError, ValueError):
+                return jsonify(ok=False, error=f'숫자를 입력해 주세요: {k}'), 400
+            if v < 0 or v > 1000:
+                return jsonify(ok=False, error='0~1000 사이 값으로 입력해 주세요.'), 400
+            v = str(int(v)) if v == int(v) else str(v)
+            conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (k,))
+            conn.execute('INSERT INTO trs_plan_settings (k, v) VALUES (%s,%s)', (k, v))
+        conn.commit()
+    finally:
+        conn.close()
+    log_action('TRS_적정수량_기준변경')
+    return jsonify(ok=True)
+
+
+@app.route('/trs/plan/schedule', methods=['POST'])
+@login_required
+def trs_plan_schedule_save():
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    parsed, skipped = _parse_dcs_schedule(data.get('text', ''))
+    if not parsed:
+        return jsonify(ok=False, error='편명을 하나도 찾지 못했습니다. DCS 출발편 목록을 그대로 복사해 붙여넣어 주세요.'), 400
+    conn = get_db()
+    saved, unknown = {}, []
+    try:
+        bmap = {r['code']: (r['id'], r['name']) for r in conn.execute('SELECT id, code, name FROM branches').fetchall()}
+        for org, flights in parsed.items():
+            if org not in bmap:
+                unknown.append(org)
+                continue
+            bid, bname = bmap[org]
+            basis = next((f['basis_date'] for f in flights if f['basis_date']), '') or \
+                datetime.now(_KST).strftime('%Y-%m-%d')
+            conn.execute('DELETE FROM trs_sched WHERE branch_id=%s', (bid,))
+            for f in flights:
+                conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) '
+                             'VALUES (%s,%s,%s,%s,%s,%s)',
+                             (bid, f['flight_no'], f['dest'], f['std'], f['is_intl'], basis))
+            saved[bname] = len(flights)
+        conn.commit()
+    finally:
+        conn.close()
+    log_action('TRS_스케줄반영', ', '.join(f'{k} {v}편' for k, v in saved.items()))
+    return jsonify(ok=True, saved=saved, skipped=skipped, unknown=unknown)
+
+
+@app.route('/trs/plan/adjust', methods=['POST'])
+@login_required
+def trs_plan_adjust_add():
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    dept = data.get('dept')
+    memo = str(data.get('memo') or '').strip()[:200]
+    try:
+        bid, qty = int(data.get('branch_id')), int(data.get('qty'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='지점과 수량을 확인해 주세요.'), 400
+    if dept not in ('총괄', '여객조업사', '램프조업사') or not qty or not memo:
+        return jsonify(ok=False, error='사용처·수량·내용을 모두 입력해 주세요.'), 400
+    conn = get_db()
+    try:
+        conn.execute('INSERT INTO trs_adjust (branch_id, dept, qty, memo) VALUES (%s,%s,%s,%s)',
+                     (bid, dept, qty, memo))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify(ok=True)
+
+
+@app.route('/trs/plan/adjust/<int:aid>/delete', methods=['POST'])
+@login_required
+def trs_plan_adjust_delete(aid):
+    denied = _trs_admin_only()
+    if denied:
+        return denied
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM trs_adjust WHERE id=%s', (aid,))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify(ok=True)
 
 
 if __name__ == '__main__':

@@ -38,6 +38,7 @@
 <ul class="nav nav-tabs mb-0" role="tablist">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabSummary">지점별 현황</button></li>
   <li class="nav-item"><button class="nav-link" id="listTabBtn" data-bs-toggle="tab" data-bs-target="#tabList">무전기 목록</button></li>
+  {% if is_admin %}<li class="nav-item"><button class="nav-link" id="planTabBtn" data-bs-toggle="tab" data-bs-target="#tabPlan">적정 수량 분석</button></li>{% endif %}
   {% if is_admin %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistory">변경이력</button></li>{% endif %}
 </ul>
 
@@ -92,6 +93,11 @@
   </div>
 
   {% if is_admin %}
+  <!-- 적정 수량 분석 -->
+  <div class="tab-pane fade card-body" id="tabPlan">
+    {% include '_trs_plan.html' %}
+  </div>
+
   <!-- 변경이력 -->
   <div class="tab-pane fade card-body" id="tabHistory">
     {% if history %}
@@ -347,10 +353,10 @@ async function deleteRadio() {
 // ── 초기화 ──
 fillSelects(); renderStats(); renderSummary(); renderList();
 try {
-  if (sessionStorage.getItem('trsTab') === 'list') {
-    sessionStorage.removeItem('trsTab');
-    bootstrap.Tab.getOrCreateInstance(document.getElementById('listTabBtn')).show();
-  }
+  const t = sessionStorage.getItem('trsTab');
+  sessionStorage.removeItem('trsTab');
+  const btn = t === 'list' ? 'listTabBtn' : t === 'plan' ? 'planTabBtn' : null;
+  if (btn && document.getElementById(btn)) bootstrap.Tab.getOrCreateInstance(document.getElementById(btn)).show();
 } catch (e) {}
 </script>
 {% endblock %}
