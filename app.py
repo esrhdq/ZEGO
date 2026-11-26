@@ -8708,18 +8708,28 @@ def trs_export():
 
 # ── TRS 적정 수량 분석 ───────────────────────────────────────────────────────
 
+def _trs_num(v):
+    return float(v) if '.' in str(v) else int(v)
+
+
 def _trs_plan_settings(conn):
-    st = dict(TRS_PLAN_DEFAULTS)
+    """(공통 기준, {지점id: {항목: 값}}). 지점 값은 키 'b<지점id>:<항목>'으로 저장된 덮어쓰기."""
+    st, ovr = dict(TRS_PLAN_DEFAULTS), {}
     try:
         for r in conn.execute('SELECT k, v FROM trs_plan_settings').fetchall():
-            if r['k'] in st:
-                try:
-                    st[r['k']] = float(r['v']) if '.' in str(r['v']) else int(r['v'])
-                except ValueError:
-                    pass
+            k = r['k']
+            try:
+                if k in st:
+                    st[k] = _trs_num(r['v'])
+                elif k.startswith('b') and ':' in k:
+                    bid, key = k[1:].split(':', 1)
+                    if key in TRS_PLAN_DEFAULTS and bid.isdigit():
+                        ovr.setdefault(int(bid), {})[key] = _trs_num(r['v'])
+            except ValueError:
+                pass
     except Exception:
         pass
-    return st
+    return st, ovr
 
 
 def _hm(m):
@@ -8754,7 +8764,7 @@ def _trs_plan_analysis(conn):
     """지점별·날짜별로 필요 대수를 계산하고, 기간 중 가장 많이 필요한 날 기준으로 판정."""
     import math
     from collections import defaultdict
-    st = _trs_plan_settings(conn)
+    st, ovr = _trs_plan_settings(conn)
     bnames = {r['id']: (r['name'], r['code']) for r in conn.execute('SELECT id, name, code FROM branches').fetchall()}
     have, unassigned, unusable = {}, {}, {}
     for r in conn.execute('SELECT branch_id, dept, status, COUNT(*) AS n FROM trs_radios '
@@ -8775,14 +8785,15 @@ def _trs_plan_analysis(conn):
     for r in conn.execute('SELECT id, branch_id, dept, qty, memo FROM trs_adjust ORDER BY id').fetchall():
         adjs.setdefault(r['branch_id'], []).append(dict(r))
 
-    spare = 1 + float(st['spare_pct']) / 100
-    margin = st['ok_margin']
     wd = '월화수목금토일'
     out = []
     order = ['GMP', 'TAE', 'PUS', 'ICN', 'CJU', 'CJJ']
     for bid in sorted(sched, key=lambda b: (order.index(bnames[b][1]) if bnames.get(b, ('', ''))[1] in order else 99)):
         if bnames.get(bid, ('', ''))[1] not in DOMESTIC_AIRPORTS:
             continue                         # 국내 공항 지점만 분석
+        sb = {**st, **ovr.get(bid, {})}      # 지점별 기준 = 공통 + 지점 덮어쓰기
+        spare = 1 + float(sb['spare_pct']) / 100
+        margin = sb['ok_margin']
         groups = sched[bid]
         adj = adjs.get(bid, [])
         adj_sum = lambda d: sum(a['qty'] for a in adj if a['dept'] == d)
@@ -8800,14 +8811,14 @@ def _trs_plan_analysis(conn):
         days = []
         for d in dates:
             fl = flights_on(d)
-            pk_pax = _trs_peak(fl, lambda f: st['win_pax_intl'] if f['is_intl'] else st['win_pax_dom'])
-            pk_ramp = _trs_peak(fl, lambda f: st['win_ramp'])
+            pk_pax = _trs_peak(fl, lambda f: sb['win_pax_intl'] if f['is_intl'] else sb['win_pax_dom'])
+            pk_ramp = _trs_peak(fl, lambda f: sb['win_ramp'])
             needs = {}
-            for dept, base, per, peak in (('총괄', st['chief_fixed'], 0, 0),
-                                          ('여객조업사', st['pax_fixed'], st['pax_per'], pk_pax[0]),
-                                          ('램프조업사', st['ramp_fixed'], st['ramp_per'], pk_ramp[0])):
+            for dept, base, per, peak in (('총괄', sb['chief_fixed'], 0, 0),
+                                          ('여객조업사', sb['pax_fixed'], sb['pax_per'], pk_pax[0]),
+                                          ('램프조업사', sb['ramp_fixed'], sb['ramp_per'], pk_ramp[0])):
                 formula = f'고정 {base}' + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
-                          (f' × 예비 {st["spare_pct"]}%' if st['spare_pct'] else '') + \
+                          (f' × 예비 {sb["spare_pct"]}%' if sb['spare_pct'] else '') + \
                           (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
                 needs[dept] = (math.ceil((base + per * peak) * spare - 1e-9) + adj_sum(dept), formula)
             try:
@@ -8843,7 +8854,7 @@ def _trs_plan_analysis(conn):
             'short': sum(-r['diff'] for r in rows if r['diff'] < 0),
             'other': have.get(bid, {}).get('기타', 0),
             'unassigned': unassigned.get(bid, 0), 'unusable': unusable.get(bid, 0),
-            'adjusts': adj,
+            'adjusts': adj, 'st': sb, 'custom': sorted(ovr.get(bid, {})),
         })
     return st, out
 
@@ -8883,24 +8894,39 @@ def trs_plan_settings_save():
     if denied:
         return denied
     data = request.get_json(silent=True) or {}
+    bid = data.get('branch_id')
+    bid = int(bid) if str(bid or '').isdigit() else None
+    values = data.get('values') or {}
     conn = get_db()
     try:
+        if bid and data.get('reset'):
+            conn.execute("DELETE FROM trs_plan_settings WHERE k LIKE %s", (f'b{bid}:%',))
+            conn.commit()
+            log_action('TRS_적정수량_기준변경', f'지점 {bid} 공통값으로 되돌림')
+            return jsonify(ok=True)
+        common, _ = _trs_plan_settings(conn)
+        clean = {}
         for k in TRS_PLAN_DEFAULTS:
-            if k not in data:
+            if k not in values:
                 continue
             try:
-                v = float(data[k])
+                v = float(values[k])
             except (TypeError, ValueError):
-                return jsonify(ok=False, error=f'숫자를 입력해 주세요: {k}'), 400
+                return jsonify(ok=False, error='숫자를 입력해 주세요.'), 400
             if v < 0 or v > 1000:
                 return jsonify(ok=False, error='0~1000 사이 값으로 입력해 주세요.'), 400
-            v = str(int(v)) if v == int(v) else str(v)
-            conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (k,))
-            conn.execute('INSERT INTO trs_plan_settings (k, v) VALUES (%s,%s)', (k, v))
+            clean[k] = int(v) if v == int(v) else v
+        for k, v in clean.items():
+            key = f'b{bid}:{k}' if bid else k
+            conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (key,))
+            # 지점 값이 공통값과 같으면 저장하지 않음 → 계속 공통값을 따라감
+            if bid and float(v) == float(common[k]):
+                continue
+            conn.execute('INSERT INTO trs_plan_settings (k, v) VALUES (%s,%s)', (key, str(v)))
         conn.commit()
     finally:
         conn.close()
-    log_action('TRS_적정수량_기준변경')
+    log_action('TRS_적정수량_기준변경', f'지점 {bid}' if bid else '공통')
     return jsonify(ok=True)
 
 

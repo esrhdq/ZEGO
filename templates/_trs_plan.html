@@ -16,6 +16,10 @@
   .plan-num { font-weight:700; }
   .plan-sub { font-size:.72rem; color:var(--text-muted); }
   .plan-set input { max-width:90px; }
+  .plan-set input.pset-own { background:#FEF9C3; border-color:#EAB308; font-weight:700; }
+  .pset-own-legend { background:#FEF9C3; border:1px solid #EAB308; padding:0 4px; border-radius:4px; }
+  .pset-dot { color:#EAB308; font-size:.6rem; vertical-align:middle; }
+  .plan-own-tag { font-size:.62rem; font-weight:700; color:#A16207; background:#FEF9C3; border-radius:4px; padding:0 4px; margin-left:4px; }
   .plan-days { font-size:.78rem; }
   .plan-days td, .plan-days th { padding:2px 8px !important; }
   .plan-days tr.rep td { background:#FEF2F2 !important; font-weight:700; }
@@ -42,7 +46,7 @@
     {% for p in plan %}
       {% set rep = p.rep %}
       <tr class="plan-row" data-bs-toggle="collapse" data-bs-target="#pd{{ p.branch_id }}">
-        <td class="text-start fw-semibold"><i class="fa-solid fa-chevron-down me-1" style="font-size:.65rem;color:var(--text-muted)"></i>{{ p.name }}</td>
+        <td class="text-start fw-semibold"><i class="fa-solid fa-chevron-down me-1" style="font-size:.65rem;color:var(--text-muted)"></i>{{ p.name }}{% if p.custom %}<span class="plan-own-tag" title="이 지점은 전용 기준을 사용합니다">지점 기준</span>{% endif %}</td>
         <td><div>{% if p.n_min == p.n_max %}{{ p.n_max }}{% else %}{{ p.n_min }}~{{ p.n_max }}{% endif %}편/일</div>
             <div class="plan-sub">{{ p.period }}{% if p.n_days > 1 %} ({{ p.n_days }}일){% endif %}</div></td>
         <td><div>{{ rep.date[5:] }}({{ rep.wday }}) · {{ rep.flights|length }}편</div>
@@ -126,8 +130,8 @@
 
 <div class="row g-3">
   <div class="col-lg-6">
-    <div class="card h-100"><div class="card-header fw-semibold">기준 설정 <span class="text-muted fw-normal" style="font-size:.78rem">기본값 = 대구 TRS 배포(안)</span></div>
-      <div class="card-body plan-set" style="font-size:.83rem">
+    <div class="card h-100"><div class="card-header fw-semibold">기준 설정 <span class="text-muted fw-normal" style="font-size:.78rem">지점마다 따로 정할 수 있습니다</span></div>
+      <div class="card-body" style="font-size:.83rem">
         {% set fields = [
           ('chief_fixed', '총괄 — 지점 고정', '대'),
           ('pax_fixed', '여객 — 고정 (CNTR MGR·OFC·SPVR·I/B)', '대'),
@@ -140,13 +144,43 @@
           ('spare_pct', '예비율', '%'),
           ('ok_margin', "필요보다 몇 대 넘게 많으면 '여유'", '대'),
         ] %}
-        {% for k, label, unit in fields %}
-        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-          <label for="ps_{{ k }}">{{ label }}</label>
-          <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end" id="ps_{{ k }}" data-k="{{ k }}" value="{{ plan_st[k] if plan_st else '' }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
+        <ul class="nav nav-pills mb-3 flex-wrap gap-1" id="psetTabs" style="font-size:.8rem">
+          <li class="nav-item"><button class="nav-link active py-1 px-3" data-bs-toggle="pill" data-bs-target="#pset-common" data-key="common">공통</button></li>
+          {% for p in plan %}
+          <li class="nav-item"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pset-{{ p.branch_id }}" data-key="{{ p.branch_id }}">{{ p.name }}{% if p.custom %} <span class="pset-dot" title="지점 기준 사용 중">●</span>{% endif %}</button></li>
+          {% endfor %}
+        </ul>
+        <div class="tab-content">
+          {# 공통 #}
+          <div class="tab-pane fade show active plan-set" id="pset-common">
+            <p class="text-muted mb-2" style="font-size:.75rem">모든 지점의 기본값입니다. 지점 탭에서 따로 바꾸지 않은 항목은 이 값을 따릅니다. (처음 값 = 대구 TRS 배포(안))</p>
+            {% for k, label, unit in fields %}
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+              <label>{{ label }}</label>
+              <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end" data-k="{{ k }}" value="{{ plan_st[k] if plan_st else '' }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
+            </div>
+            {% endfor %}
+            <div class="text-end mt-2"><button class="btn btn-primary btn-sm" onclick="savePlanSettings(null, this)">공통 기준 저장</button></div>
+          </div>
+          {# 지점별 #}
+          {% for p in plan %}
+          <div class="tab-pane fade plan-set" id="pset-{{ p.branch_id }}">
+            <p class="text-muted mb-2" style="font-size:.75rem"><b>{{ p.name }}</b>에만 적용됩니다.
+              <span class="pset-own-legend">노란 칸</span> = {{ p.name }} 전용 값, 나머지는 공통값을 따릅니다.
+              공통값과 같게 저장하면 다시 공통값을 따라갑니다.</p>
+            {% for k, label, unit in fields %}
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+              <label>{{ label }}{% if k in p.custom %} <span class="text-muted" style="font-size:.7rem">(공통 {{ plan_st[k] }})</span>{% endif %}</label>
+              <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end {% if k in p.custom %}pset-own{% endif %}" data-k="{{ k }}" value="{{ p.st[k] }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
+            </div>
+            {% endfor %}
+            <div class="d-flex justify-content-between mt-2">
+              <button class="btn btn-link btn-sm p-0 text-danger" {% if not p.custom %}disabled{% endif %} onclick="resetPlanSettings({{ p.branch_id }}, '{{ p.name }}')">공통값으로 되돌리기</button>
+              <button class="btn btn-primary btn-sm" onclick="savePlanSettings({{ p.branch_id }}, this)">{{ p.name }} 기준 저장</button>
+            </div>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
-        <div class="text-end mt-2"><button class="btn btn-primary btn-sm" onclick="savePlanSettings()">기준 저장</button></div>
       </div></div>
   </div>
   <div class="col-lg-6">
@@ -175,11 +209,27 @@
 
 <script>
 function reloadToPlan() { try { sessionStorage.setItem('trsTab', 'plan'); } catch (e) {} location.reload(); }
-async function savePlanSettings() {
-  const body = {};
-  document.querySelectorAll('.plan-set input[data-k]').forEach(el => body[el.dataset.k] = el.value);
-  if (await post('{{ url_for("trs_plan_settings_save") }}', body)) reloadToPlan();
+function rememberPset(key) { try { sessionStorage.setItem('trsPset', key); } catch (e) {} }
+async function savePlanSettings(bid, btn) {
+  const values = {};
+  btn.closest('.plan-set').querySelectorAll('input[data-k]').forEach(el => values[el.dataset.k] = el.value);
+  rememberPset(bid || 'common');
+  if (await post('{{ url_for("trs_plan_settings_save") }}', {branch_id: bid, values})) reloadToPlan();
 }
+async function resetPlanSettings(bid, name) {
+  if (!confirm(`${name}의 전용 기준을 지우고 공통값을 따르게 할까요?`)) return;
+  rememberPset(bid);
+  if (await post('{{ url_for("trs_plan_settings_save") }}', {branch_id: bid, reset: true})) reloadToPlan();
+}
+// 저장 후 새로고침해도 보던 지점 탭 유지 (부트스트랩 스크립트가 로드된 뒤 실행)
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const k = sessionStorage.getItem('trsPset');
+    sessionStorage.removeItem('trsPset');
+    const b = k && document.querySelector(`#psetTabs [data-key="${k}"]`);
+    if (b) bootstrap.Tab.getOrCreateInstance(b).show();
+  } catch (e) {}
+});
 async function saveSchedule() {
   const file = document.getElementById('schedFile').files[0];
   if (!file) { alert('엑셀 파일을 선택해 주세요.'); return; }
