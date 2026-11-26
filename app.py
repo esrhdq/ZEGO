@@ -1168,6 +1168,16 @@ _TRS_ADJ_SEED = [
 ]
 
 
+def _ensure_adjust_per_flight(conn, pg):
+    """추가 항목의 유형 열(0=고정, 1=동시 1편당) — 기존 테이블에 없으면 추가."""
+    if pg:
+        conn.execute('ALTER TABLE trs_adjust ADD COLUMN IF NOT EXISTS per_flight INTEGER NOT NULL DEFAULT 0')
+    else:
+        cols = [r[1] for r in conn.execute('PRAGMA table_info(trs_adjust)').fetchall()]
+        if 'per_flight' not in cols:
+            conn.execute('ALTER TABLE trs_adjust ADD COLUMN per_flight INTEGER NOT NULL DEFAULT 0')
+
+
 def _ensure_trs_plan_tables(conn, pg):
     pk = 'SERIAL PRIMARY KEY' if pg else 'INTEGER PRIMARY KEY'
     conn.execute('''CREATE TABLE IF NOT EXISTS trs_plan_settings (
@@ -1178,7 +1188,9 @@ def _ensure_trs_plan_tables(conn, pg):
                         is_intl INTEGER NOT NULL DEFAULT 0, basis_date TEXT NOT NULL DEFAULT '')''')
     conn.execute(f'''CREATE TABLE IF NOT EXISTS trs_adjust (
                         id {pk}, branch_id INTEGER NOT NULL, dept TEXT NOT NULL DEFAULT '',
-                        qty INTEGER NOT NULL DEFAULT 0, memo TEXT NOT NULL DEFAULT '')''')
+                        qty INTEGER NOT NULL DEFAULT 0, memo TEXT NOT NULL DEFAULT '',
+                        per_flight INTEGER NOT NULL DEFAULT 0)''')
+    _ensure_adjust_per_flight(conn, pg)
     bmap = {r['code']: r['id'] for r in conn.execute('SELECT id, code FROM branches').fetchall()}
     if not conn.execute('SELECT 1 FROM trs_sched LIMIT 1').fetchone():
         for code, (basis, flights) in _TRS_SCHED_SEED.items():
@@ -1581,6 +1593,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_plan_fold_common] {_e}')
+            _mig_trs_adjpf = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_adjust_per_flight',)
+            ).fetchone()
+            if not _mig_trs_adjpf:
+                try:
+                    _ensure_adjust_per_flight(conn, pg=True)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_adjust_per_flight',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_adjust_per_flight] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -8833,8 +8856,10 @@ def _trs_plan_analysis(conn):
                           'ORDER BY std').fetchall():
         sched[r['branch_id']][int(r['is_intl'])][r['basis_date']].append(dict(r))
     adjs = {}
-    for r in conn.execute('SELECT id, branch_id, dept, qty, memo FROM trs_adjust ORDER BY id').fetchall():
-        adjs.setdefault(r['branch_id'], []).append(dict(r))
+    for r in conn.execute('SELECT id, branch_id, dept, qty, memo, per_flight FROM trs_adjust ORDER BY id').fetchall():
+        d = dict(r)
+        d['per_flight'] = int(d.get('per_flight') or 0)
+        adjs.setdefault(r['branch_id'], []).append(d)
 
     wd = '월화수목금토일'
     out = []
@@ -8847,7 +8872,9 @@ def _trs_plan_analysis(conn):
         margin = sb['ok_margin']
         groups = sched[bid]
         adj = adjs.get(bid, [])
-        adj_sum = lambda d: sum(a['qty'] for a in adj if a['dept'] == d)
+        # 추가 항목: 구분별 (내용, 수량) — 고정 / 동시 1편당
+        adj_fix = lambda d: [(a['memo'], a['qty']) for a in adj if a['dept'] == d and not a['per_flight']]
+        adj_per = lambda d: [(a['memo'], a['qty']) for a in adj if a['dept'] == d and a['per_flight']]
         dates = sorted({d for g in groups.values() for d in g})
 
         def flights_on(d):
@@ -8865,19 +8892,27 @@ def _trs_plan_analysis(conn):
             pk_pax = _trs_peak(fl, lambda f: sb['win_pax_intl'] if f['is_intl'] else sb['win_pax_dom'])
             pk_ramp = _trs_peak(fl, lambda f: sb['win_ramp'])
             needs = {}
-            for dept, base, per, peak in (('총괄', sb['chief_fixed'] + sb['chief_staff'], 0, 0),
-                                          ('여객조업사', sb['pax_cntr_mgr'] + sb['pax_cntr_agt'] + sb['pax_gate_mgr'],
-                                           sb['pax_per'], pk_pax[0]),
-                                          ('램프조업사', sb['ramp_fixed'], sb['ramp_per'], pk_ramp[0])):
-                head = {'총괄': f"지점장 {sb['chief_fixed']} + 출근 인원 {sb['chief_staff']}",
-                        '여객조업사': f"CNTR MGR {sb['pax_cntr_mgr']} + CNTR AGT {sb['pax_cntr_agt']}"
-                                     f" + GATE MGR {sb['pax_gate_mgr']}",
-                        '램프조업사': f"관리자 {sb['ramp_fixed']}"}[dept]
-                per_lbl = 'GATE AGT' if dept == '여객조업사' else '편당'
-                formula = head + (f' + {per_lbl} {per} × 동시 {peak}편' if per else '') + \
-                          (f' × 예비 {sb["spare_pct"]}%' if sb['spare_pct'] else '') + \
-                          (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
-                needs[dept] = (math.ceil((base + per * peak) * spare - 1e-9) + adj_sum(dept), formula)
+            # 구분별 (고정 항목들, 동시 1편당 항목들, 적용 피크) — 총괄의 '동시 1편당'은 여객·램프 피크 중 큰 값
+            spec = {
+                '총괄': ([('지점장', sb['chief_fixed']), ('출근 인원', sb['chief_staff'])], [],
+                         max(pk_pax[0], pk_ramp[0])),
+                '여객조업사': ([('CNTR MGR', sb['pax_cntr_mgr']), ('CNTR AGT', sb['pax_cntr_agt']),
+                               ('GATE MGR', sb['pax_gate_mgr'])], [('GATE AGT', sb['pax_per'])], pk_pax[0]),
+                '램프조업사': ([('관리자', sb['ramp_fixed'])], [('램프', sb['ramp_per'])], pk_ramp[0]),
+            }
+            for dept, (fixed, per_items, peak) in spec.items():
+                fixed = fixed + adj_fix(dept)
+                per_items = [x for x in per_items if x[1]] + adj_per(dept)
+                fix_sum = sum(q for _, q in fixed)
+                per_sum = sum(q for _, q in per_items)
+                fmt = lambda items: ' + '.join(f'{n} {q}' for n, q in items)
+                formula = fmt(fixed)
+                if per_items:
+                    p_txt = fmt(per_items)
+                    formula += f' + ({p_txt}) × 동시 {peak}편' if len(per_items) > 1 else f' + {p_txt} × 동시 {peak}편'
+                if sb['spare_pct']:
+                    formula += f' × 예비 {sb["spare_pct"]}%'
+                needs[dept] = (max(math.ceil((fix_sum + per_sum * peak) * spare - 1e-9), 0), formula)
             try:
                 wday = wd[datetime.strptime(d, '%Y-%m-%d').weekday()]
             except ValueError:
@@ -8975,25 +9010,27 @@ def trs_plan_settings_save():
             if v < 0 or v > 1000:
                 return jsonify(ok=False, error='0~1000 사이 값으로 입력해 주세요.'), 400
             clean[k] = int(v) if v == int(v) else v
-        # 지점별 추가 항목 (드롭다운 총괄/여객/램프 + 수량 + 내용) — 보낸 목록으로 통째로 교체
+        # 지점별 추가 항목 (구분 총괄/여객/램프 + 유형 고정/동시 1편당 + 내용(필수) + 수량) — 보낸 목록으로 통째로 교체
         adjusts = None
         if bid and isinstance(data.get('adjusts'), list):
             adjusts = []
             for a in data['adjusts']:
-                dept = (a or {}).get('dept')
-                memo = str((a or {}).get('memo') or '').strip()[:200]
+                a = a or {}
+                dept = a.get('dept')
+                memo = str(a.get('memo') or '').strip()[:100]
+                per_flight = 1 if a.get('per_flight') in (True, 1, '1', 'true') else 0
                 try:
-                    qty = int((a or {}).get('qty'))
+                    qty = int(a.get('qty'))
                 except (TypeError, ValueError):
                     return jsonify(ok=False, error='추가 항목의 수량을 정수로 입력해 주세요.'), 400
                 if dept not in ('총괄', '여객조업사', '램프조업사') or not qty or not memo or abs(qty) > 999:
-                    return jsonify(ok=False, error='추가 항목의 구분·수량·내용을 확인해 주세요.'), 400
-                adjusts.append((dept, qty, memo))
+                    return jsonify(ok=False, error='추가 항목의 구분·유형·내용·수량을 확인해 주세요.'), 400
+                adjusts.append((dept, qty, memo, per_flight))
         if adjusts is not None:
             conn.execute('DELETE FROM trs_adjust WHERE branch_id=%s', (bid,))
-            for dept, qty, memo in adjusts:
-                conn.execute('INSERT INTO trs_adjust (branch_id, dept, qty, memo) VALUES (%s,%s,%s,%s)',
-                             (bid, dept, qty, memo))
+            for dept, qty, memo, per_flight in adjusts:
+                conn.execute('INSERT INTO trs_adjust (branch_id, dept, qty, memo, per_flight) '
+                             'VALUES (%s,%s,%s,%s,%s)', (bid, dept, qty, memo, per_flight))
         # 예전 단일 항목(여객 고정 합계)은 이 탭을 저장하면 새 항목 값으로 대체되므로 삭제
         conn.execute('DELETE FROM trs_plan_settings WHERE k=%s', (f'b{bid}:pax_fixed' if bid else 'pax_fixed',))
         for k, v in clean.items():
