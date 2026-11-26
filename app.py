@@ -8538,7 +8538,8 @@ def trs_page():
     radios.sort(key=lambda d: (int(d['radio_no']) if d['radio_no'].isdigit() else 99999, d['radio_no']))
     return render_template('trs.html', radios=radios, branches=branches, history=history,
                            is_admin=is_admin, depts=TRS_DEPTS, statuses=TRS_STATUSES,
-                           models=TRS_MODELS, plan=plan, plan_st=plan_st)
+                           models=TRS_MODELS, plan=plan, plan_st=plan_st,
+                           plan_default_to=(datetime.now(_KST) + timedelta(days=6)).strftime('%Y-%m-%d'))
 
 
 @app.route('/trs/save', methods=['POST'])
@@ -8750,7 +8751,9 @@ def _trs_peak(flights, win_of):
 
 
 def _trs_plan_analysis(conn):
+    """지점별·날짜별로 필요 대수를 계산하고, 기간 중 가장 많이 필요한 날 기준으로 판정."""
     import math
+    from collections import defaultdict
     st = _trs_plan_settings(conn)
     bnames = {r['id']: (r['name'], r['code']) for r in conn.execute('SELECT id, name, code FROM branches').fetchall()}
     have, unassigned, unusable = {}, {}, {}
@@ -8763,50 +8766,82 @@ def _trs_plan_analysis(conn):
             unassigned[bid] = unassigned.get(bid, 0) + r['n']
         else:
             have.setdefault(bid, {})[r['dept']] = have.get(bid, {}).get(r['dept'], 0) + r['n']
-    sched = {}
+    # sched[지점][국내0/국제1][날짜] = [편...]
+    sched = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for r in conn.execute('SELECT branch_id, flight_no, dest, std, is_intl, basis_date FROM trs_sched '
                           'ORDER BY std').fetchall():
-        sched.setdefault(r['branch_id'], []).append(dict(r))
+        sched[r['branch_id']][int(r['is_intl'])][r['basis_date']].append(dict(r))
     adjs = {}
     for r in conn.execute('SELECT id, branch_id, dept, qty, memo FROM trs_adjust ORDER BY id').fetchall():
         adjs.setdefault(r['branch_id'], []).append(dict(r))
 
     spare = 1 + float(st['spare_pct']) / 100
     margin = st['ok_margin']
+    wd = '월화수목금토일'
     out = []
     order = ['GMP', 'TAE', 'PUS', 'ICN', 'CJU', 'CJJ']
     for bid in sorted(sched, key=lambda b: (order.index(bnames[b][1]) if bnames.get(b, ('', ''))[1] in order else 99)):
-        fl = sched[bid]
-        pk_pax = _trs_peak(fl, lambda f: st['win_pax_intl'] if f['is_intl'] else st['win_pax_dom'])
-        pk_ramp = _trs_peak(fl, lambda f: st['win_ramp'])
+        groups = sched[bid]
         adj = adjs.get(bid, [])
         adj_sum = lambda d: sum(a['qty'] for a in adj if a['dept'] == d)
+        dates = sorted({d for g in groups.values() for d in g})
+
+        def flights_on(d):
+            fl = []
+            for g in groups.values():
+                if d in g:
+                    fl += g[d]
+                elif len(g) == 1:          # 하루치만 있는 구분(예: 국제선 1일 스케줄)은 매일 같다고 봄
+                    fl += next(iter(g.values()))
+            return sorted(fl, key=lambda f: f['std'])
+
+        days = []
+        for d in dates:
+            fl = flights_on(d)
+            pk_pax = _trs_peak(fl, lambda f: st['win_pax_intl'] if f['is_intl'] else st['win_pax_dom'])
+            pk_ramp = _trs_peak(fl, lambda f: st['win_ramp'])
+            needs = {}
+            for dept, base, per, peak in (('총괄', st['chief_fixed'], 0, 0),
+                                          ('여객조업사', st['pax_fixed'], st['pax_per'], pk_pax[0]),
+                                          ('램프조업사', st['ramp_fixed'], st['ramp_per'], pk_ramp[0])):
+                formula = f'고정 {base}' + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
+                          (f' × 예비 {st["spare_pct"]}%' if st['spare_pct'] else '') + \
+                          (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
+                needs[dept] = (math.ceil((base + per * peak) * spare - 1e-9) + adj_sum(dept), formula)
+            try:
+                wday = wd[datetime.strptime(d, '%Y-%m-%d').weekday()]
+            except ValueError:
+                wday = ''
+            days.append({'date': d, 'wday': wday, 'flights': fl,
+                         'n_dom': sum(1 for f in fl if not f['is_intl']), 'n_intl': sum(1 for f in fl if f['is_intl']),
+                         'peak_pax': pk_pax, 'peak_ramp': pk_ramp, 'needs': needs,
+                         'need_total': sum(n for n, _ in needs.values())})
+        if not days:
+            continue
+        # 대표일 = 필요 대수 합계가 가장 큰 날 (같으면 편수 많은 날, 그다음 이른 날)
+        rep = max(days, key=lambda x: (x['need_total'], len(x['flights']), -dates.index(x['date'])))
         rows = []
-        for dept, base, per, peak in (('총괄', st['chief_fixed'], 0, 0),
-                                      ('여객조업사', st['pax_fixed'], st['pax_per'], pk_pax[0]),
-                                      ('램프조업사', st['ramp_fixed'], st['ramp_per'], pk_ramp[0])):
-            calc = math.ceil((base + per * peak) * spare - 1e-9)
-            need = calc + adj_sum(dept)
+        for dept in ('총괄', '여객조업사', '램프조업사'):
+            worst = max(days, key=lambda x: (x['needs'][dept][0], -dates.index(x['date'])))
+            need, formula = worst['needs'][dept]
             h = have.get(bid, {}).get(dept, 0)
             diff = h - need
-            verdict = '부족' if diff < 0 else ('여유' if diff > margin else '적정')
-            formula = f'고정 {base}' + (f' + 편당 {per} × 동시 {peak}편' if per else '') + \
-                      (f' × 예비 {st["spare_pct"]}%' if st['spare_pct'] else '') + \
-                      (f' + 추가 {adj_sum(dept)}' if adj_sum(dept) else '')
-            rows.append({'dept': dept, 'have': h, 'need': need, 'diff': diff,
-                         'verdict': verdict, 'formula': formula})
+            rows.append({'dept': dept, 'have': h, 'need': need, 'diff': diff, 'formula': formula,
+                         'date': worst['date'], 'wday': worst['wday'],
+                         'verdict': '부족' if diff < 0 else ('여유' if diff > margin else '적정')})
+        counts = [len(x['flights']) for x in days]
         tot_have = sum(r['have'] for r in rows)
         tot_need = sum(r['need'] for r in rows)
         out.append({
             'branch_id': bid, 'name': bnames.get(bid, ('?', ''))[0],
-            'basis_date': ' / '.join(sorted({f['basis_date'] for f in fl if f['basis_date']})),
-            'n_dom': sum(1 for f in fl if not f['is_intl']), 'n_intl': sum(1 for f in fl if f['is_intl']),
-            'peak_pax': pk_pax, 'peak_ramp': pk_ramp, 'rows': rows,
+            'period': dates[0] if len(dates) == 1 else f'{dates[0]} ~ {dates[-1]}', 'n_days': len(dates),
+            'n_min': min(counts), 'n_max': max(counts),
+            'rep': rep, 'days': days, 'rows': rows,
             'tot_have': tot_have, 'tot_need': tot_need, 'tot_diff': tot_have - tot_need,
             'short': sum(-r['diff'] for r in rows if r['diff'] < 0),
             'other': have.get(bid, {}).get('기타', 0),
             'unassigned': unassigned.get(bid, 0), 'unusable': unusable.get(bid, 0),
-            'adjusts': adj, 'flights': fl,
+            'adjusts': adj,
         })
     return st, out
 
@@ -9124,19 +9159,41 @@ def trs_plan_schedule_save():
     f = request.files.get('file')
     if not f or not f.filename:
         return jsonify(ok=False, error='엑셀 파일을 선택해 주세요.'), 400
+    today = datetime.now(_KST).date()
     try:
-        target = datetime.strptime(request.form.get('date', ''), '%Y-%m-%d').date()
+        d_from = datetime.strptime(request.form.get('date_from', ''), '%Y-%m-%d').date()
     except ValueError:
-        target = datetime.now(_KST).date()
+        d_from = today
+    try:
+        d_to = datetime.strptime(request.form.get('date_to', ''), '%Y-%m-%d').date()
+    except ValueError:
+        d_to = d_from
+    if d_to < d_from:
+        return jsonify(ok=False, error='종료일이 시작일보다 빠릅니다.'), 400
+    n_days = (d_to - d_from).days + 1
+    if n_days > 93:
+        return jsonify(ok=False, error='기간은 최대 93일(약 3개월)까지 지정할 수 있습니다.'), 400
     try:
         rows = _read_sheet_rows(f.filename, f.read())
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
     except Exception:
         return jsonify(ok=False, error='파일을 읽지 못했습니다. 엑셀(.xlsx) 파일인지 확인해 주세요.'), 400
-    parsed, skipped, timetable = _parse_schedule_rows(rows, target)
-    if not parsed:
-        msg = (f'{target.strftime("%Y-%m-%d")}에 운항하는 편이 없습니다. 기준일이 시간표 기간 안에 있는지 확인해 주세요.'
+
+    # 날짜별 운항편: {(출발공항, 국내0/국제1): {날짜: [편...]}}
+    per_day, skipped = {}, 0
+    parsed, skipped, timetable = _parse_schedule_rows(rows, d_from)
+    day_list = [d_from + timedelta(days=i) for i in range(n_days)] if timetable else [None]
+    for i, d in enumerate(day_list):
+        if d is not None and i > 0:
+            parsed, _, _ = _parse_schedule_rows(rows, d)
+        for org, flights in parsed.items():
+            for x in flights:
+                key = (org, x['is_intl'])
+                date_s = d.strftime('%Y-%m-%d') if d else (x['basis_date'] or today.strftime('%Y-%m-%d'))
+                per_day.setdefault(key, {}).setdefault(date_s, []).append(x)
+    if not per_day:
+        msg = (f'{d_from}~{d_to} 기간에 운항하는 편이 없습니다. 기간이 시간표 기간 안에 있는지 확인해 주세요.'
                if timetable else
                '편명을 찾지 못했습니다. 편명·운항구간(또는 출발/도착)·출발시간 열이 있는 시트인지 확인해 주세요.')
         return jsonify(ok=False, error=msg), 400
@@ -9144,30 +9201,28 @@ def trs_plan_schedule_save():
     saved, unknown = {}, []
     try:
         bmap = {r['code']: (r['id'], r['name']) for r in conn.execute('SELECT id, code, name FROM branches').fetchall()}
-        for org, flights in parsed.items():
+        for (org, intl), by_date in per_day.items():
             if org not in bmap:
-                unknown.append(org)
+                if org not in unknown:
+                    unknown.append(org)
                 continue
             bid, bname = bmap[org]
             # 국내선/국제선을 따로 교체 — 국내선 시간표만 올려도 국제선 스케줄은 유지
-            for intl in (0, 1):
-                grp = [x for x in flights if x['is_intl'] == intl]
-                if not grp:
-                    continue
-                basis = next((x['basis_date'] for x in grp if x['basis_date']), '') or \
-                    datetime.now(_KST).strftime('%Y-%m-%d')
-                conn.execute('DELETE FROM trs_sched WHERE branch_id=%s AND is_intl=%s', (bid, intl))
+            conn.execute('DELETE FROM trs_sched WHERE branch_id=%s AND is_intl=%s', (bid, intl))
+            for date_s, grp in by_date.items():
                 for x in grp:
                     conn.execute('INSERT INTO trs_sched (branch_id, flight_no, dest, std, is_intl, basis_date) '
                                  'VALUES (%s,%s,%s,%s,%s,%s)',
-                                 (bid, x['flight_no'], x['dest'], x['std'], intl, basis))
-                saved[f"{bname} {'국제' if intl else '국내'}"] = len(grp)
+                                 (bid, x['flight_no'], x['dest'], x['std'], intl, date_s))
+            counts = [len(g) for g in by_date.values()]
+            lo, hi = min(counts), max(counts)
+            saved[f"{bname} {'국제' if intl else '국내'}"] = f'{lo}편' if lo == hi else f'{lo}~{hi}편'
         conn.commit()
     finally:
         conn.close()
-    log_action('TRS_스케줄반영', ', '.join(f'{k} {v}편' for k, v in saved.items()))
-    return jsonify(ok=True, saved=saved, skipped=skipped, unknown=unknown,
-                   timetable=timetable, date=target.strftime('%Y-%m-%d'))
+    log_action('TRS_스케줄반영', f'{d_from}~{d_to} ' + ', '.join(f'{k} {v}' for k, v in saved.items()))
+    return jsonify(ok=True, saved=saved, skipped=skipped, unknown=unknown, timetable=timetable,
+                   date_from=d_from.strftime('%Y-%m-%d'), date_to=d_to.strftime('%Y-%m-%d'))
 
 
 @app.route('/trs/plan/adjust', methods=['POST'])
