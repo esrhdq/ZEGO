@@ -19,14 +19,19 @@
   .plan-set .pset-new input { max-width:none; }
   .pset-grp + .pset-grp { margin-top:6px; padding-top:6px; border-top:1px dotted var(--border); }
   .pset-grp-title { font-weight:700; font-size:.78rem; color:var(--text-secondary); margin:2px 0 3px; }
-  .it-row .it-per, .it-head .h-per { width:150px; flex:none; }
-  .it-row .it-memo, .it-head .h-memo { flex:1.2; min-width:90px; }
-  .it-row .it-qty, .it-head .h-qty { width:64px; flex:none; }
-  .it-row .it-note, .it-head .h-note { flex:1; min-width:80px; }
-  .it-head .h-del { width:28px; flex:none; }
-  .it-head span { font-size:.7rem; color:var(--text-muted); font-weight:600; }
-  .it-row.it-new { background:#F0F9FF; border-radius:6px; }
-  .plan-set .it-row input, .plan-set .it-row select, .plan-set .pset-new input { max-width:none; }
+  .it-text { min-width:0; }
+  .it-note-view { display:block; font-size:.7rem; color:var(--text-muted); }
+  .it-note-view:empty { display:none; }
+  .it-btn { width:30px; height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; flex:none; }
+  .plan-set .it-row .it-qty { width:70px; }
+  .it-edit { display:none; background:var(--bg); border-radius:8px; padding:6px; }
+  .it-row.editing .it-edit { display:flex; }
+  .it-row.editing .it-view { opacity:.55; }
+  .it-edit .it-per { width:150px; flex:none; }
+  .it-edit .it-memo { flex:1.2; min-width:90px; }
+  .it-edit .it-note { flex:1; min-width:80px; }
+  .it-row.it-new .it-view { background:#F0F9FF; border-radius:6px; }
+  .plan-set .it-edit input, .plan-set .it-edit select, .plan-set .pset-new input { max-width:none; }
   .plan-days { font-size:.78rem; }
   .plan-days td, .plan-days th { padding:2px 8px !important; }
   .plan-days tr.rep td { background:#FEF2F2 !important; font-weight:700; }
@@ -125,16 +130,26 @@
 <div class="empty-state mb-4">아직 분석할 운항 스케줄이 없습니다. 아래에서 운항 시간표 엑셀을 올려주세요.</div>
 {% endif %}
 
-{% macro item_row(a) %}
-<div class="it-row d-flex align-items-center gap-1 mb-1">
-  <select class="form-select form-select-sm it-per" title="유형">
-    <option value="0" {% if not a.per_flight %}selected{% endif %}>고정 ×1</option>
-    <option value="1" {% if a.per_flight %}selected{% endif %}>동시 1편당 ×편수</option>
-  </select>
-  <input class="form-control form-control-sm it-memo" value="{{ a.memo }}" placeholder="이름 (필수)" maxlength="100">
-  <input type="number" step="1" class="form-control form-control-sm text-end it-qty" value="{{ a.qty }}" title="수량">
-  <input class="form-control form-control-sm it-note" value="{{ a.note }}" placeholder="비고" maxlength="200">
-  <button class="btn btn-link btn-sm px-1 text-danger it-del" type="button" title="삭제" onclick="delItem(this)"><i class="fa-solid fa-xmark"></i></button>
+{% macro item_row(a, short) %}
+<div class="it-row mb-1">
+  <div class="it-view d-flex align-items-center justify-content-between gap-2">
+    <label class="it-text"><span class="it-label">{{ short }} — {{ '동시 1편당' if a.per_flight else '고정' }} {{ a.memo }}</span>
+      <span class="it-note-view">{{ a.note }}</span></label>
+    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+      <input type="number" step="1" class="form-control form-control-sm text-end it-qty" value="{{ a.qty }}" title="수량"><span class="text-muted" style="width:16px">대</span>
+      <button class="btn btn-sm btn-outline-secondary it-btn" type="button" title="수정" onclick="editItem(this)"><i class="fa-solid fa-pen-to-square"></i></button>
+      <button class="btn btn-sm btn-outline-danger it-btn" type="button" title="삭제" onclick="delItem(this)"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>
+  <div class="it-edit gap-1 mt-1">
+    <select class="form-select form-select-sm it-per" title="유형">
+      <option value="0" {% if not a.per_flight %}selected{% endif %}>고정 ×1</option>
+      <option value="1" {% if a.per_flight %}selected{% endif %}>동시 1편당 ×편수</option>
+    </select>
+    <input class="form-control form-control-sm it-memo" value="{{ a.memo }}" placeholder="이름 (필수)" maxlength="100">
+    <input class="form-control form-control-sm it-note" value="{{ a.note }}" placeholder="비고" maxlength="200">
+    <button class="btn btn-sm btn-primary it-btn" type="button" title="수정 완료" onclick="doneItem(this)"><i class="fa-solid fa-check"></i></button>
+  </div>
 </div>
 {% endmacro %}
 <div class="row g-3">
@@ -162,12 +177,11 @@
           <div class="tab-pane fade {% if loop.first %}show active{% endif %} plan-set" id="pset-{{ p.branch_id }}">
             <p class="text-muted mb-2" style="font-size:.75rem"><b>{{ p.name }}</b> 기준입니다. 저장하면 {{ p.name }}에만 적용됩니다.
               <b>고정</b> = 수량 × 1, <b>동시 1편당</b> = 수량 × 그 시간대 동시 처리 편수. 비고는 계산에 영향 없음.</p>
-            <div class="it-head d-flex gap-1 mb-1"><span class="h-per">유형</span><span class="h-memo">이름</span><span class="h-qty">수량</span><span class="h-note">비고</span><span class="h-del"></span></div>
             {% for dept, short in depts %}
-            <div class="pset-grp" data-dept="{{ dept }}">
+            <div class="pset-grp" data-dept="{{ dept }}" data-short="{{ short }}">
               <div class="pset-grp-title">{{ short }}</div>
               <div class="it-rows">
-                {% for a in p['items'] if a.dept == dept %}{{ item_row(a) }}{% endfor %}
+                {% for a in p['items'] if a.dept == dept %}{{ item_row(a, short) }}{% endfor %}
               </div>
             </div>
             {% endfor %}
@@ -237,16 +251,48 @@ document.addEventListener('input', e => {
   const pane = e.target.closest && e.target.closest('.plan-set');
   if (pane && !e.target.closest('.pset-new')) markDirty(pane);
 });
-function delItem(btn) { const pane = btn.closest('.plan-set'); btn.closest('.it-row').remove(); markDirty(pane); }
-function itemRowHtml(per, memo, qty, note) {
-  return `<div class="it-row it-new d-flex align-items-center gap-1 mb-1">
-    <select class="form-select form-select-sm it-per" title="유형">
-      <option value="0" ${per === '1' ? '' : 'selected'}>고정 ×1</option><option value="1" ${per === '1' ? 'selected' : ''}>동시 1편당 ×편수</option>
-    </select>
-    <input class="form-control form-control-sm it-memo" value="${_escAttr(memo)}" placeholder="이름 (필수)" maxlength="100">
-    <input type="number" step="1" class="form-control form-control-sm text-end it-qty" value="${_escAttr(qty)}" title="수량">
-    <input class="form-control form-control-sm it-note" value="${_escAttr(note)}" placeholder="비고" maxlength="200">
-    <button class="btn btn-link btn-sm px-1 text-danger it-del" type="button" title="삭제" onclick="delItem(this)"><i class="fa-solid fa-xmark"></i></button>
+function rowLabel(row) {
+  const short = row.closest('.pset-grp').dataset.short;
+  return `${short} — ${row.querySelector('.it-per').value === '1' ? '동시 1편당' : '고정'} ${row.querySelector('.it-memo').value.trim()}`;
+}
+function editItem(btn) {
+  const row = btn.closest('.it-row');
+  row.classList.toggle('editing');
+  if (row.classList.contains('editing')) row.querySelector('.it-memo').focus();
+}
+function doneItem(btn) {
+  const row = btn.closest('.it-row'), memoEl = row.querySelector('.it-memo');
+  if (!memoEl.value.trim()) { alert('이름을 입력해 주세요 (필수).'); memoEl.focus(); return false; }
+  row.querySelector('.it-label').textContent = rowLabel(row);
+  row.querySelector('.it-note-view').textContent = row.querySelector('.it-note').value.trim();
+  row.classList.remove('editing');
+  markDirty(row.closest('.plan-set'));
+  return true;
+}
+function delItem(btn) {
+  const row = btn.closest('.it-row'), pane = row.closest('.plan-set');
+  if (!confirm(`'${rowLabel(row)}' 항목을 삭제할까요?`)) return;
+  row.remove(); markDirty(pane);
+}
+function itemRowHtml(short, per, memo, qty, note) {
+  const label = `${_escAttr(short)} — ${per === '1' ? '동시 1편당' : '고정'} ${_escAttr(memo)}`;
+  return `<div class="it-row it-new mb-1">
+    <div class="it-view d-flex align-items-center justify-content-between gap-2">
+      <label class="it-text"><span class="it-label">${label}</span><span class="it-note-view">${_escAttr(note)}</span></label>
+      <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        <input type="number" step="1" class="form-control form-control-sm text-end it-qty" value="${_escAttr(qty)}" title="수량"><span class="text-muted" style="width:16px">대</span>
+        <button class="btn btn-sm btn-outline-secondary it-btn" type="button" title="수정" onclick="editItem(this)"><i class="fa-solid fa-pen-to-square"></i></button>
+        <button class="btn btn-sm btn-outline-danger it-btn" type="button" title="삭제" onclick="delItem(this)"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+    <div class="it-edit gap-1 mt-1">
+      <select class="form-select form-select-sm it-per" title="유형">
+        <option value="0" ${per === '1' ? '' : 'selected'}>고정 ×1</option><option value="1" ${per === '1' ? 'selected' : ''}>동시 1편당 ×편수</option>
+      </select>
+      <input class="form-control form-control-sm it-memo" value="${_escAttr(memo)}" placeholder="이름 (필수)" maxlength="100">
+      <input class="form-control form-control-sm it-note" value="${_escAttr(note)}" placeholder="비고" maxlength="200">
+      <button class="btn btn-sm btn-primary it-btn" type="button" title="수정 완료" onclick="doneItem(this)"><i class="fa-solid fa-check"></i></button>
+    </div>
   </div>`;
 }
 // '항목 추가' 줄(구분·유형·내용·비고·수량)을 위 해당 구분 목록에 한 줄로 넣음. 반환: 성공 여부
@@ -256,8 +302,8 @@ function addItem(btn) {
   const memo = g('.new-memo').value.trim(), qty = g('.new-qty').value.trim(), note = g('.new-note').value.trim();
   if (!memo) { alert('내용을 입력해 주세요 (필수).'); g('.new-memo').focus(); return false; }
   if (!qty || !Number.isInteger(+qty)) { alert('수량을 정수로 입력해 주세요 (빼려면 음수).'); g('.new-qty').focus(); return false; }
-  pane.querySelector(`.pset-grp[data-dept="${g('.new-dept').value}"] .it-rows`)
-      .insertAdjacentHTML('beforeend', itemRowHtml(g('.new-per').value, memo, +qty, note));
+  const grp = pane.querySelector(`.pset-grp[data-dept="${g('.new-dept').value}"]`);
+  grp.querySelector('.it-rows').insertAdjacentHTML('beforeend', itemRowHtml(grp.dataset.short, g('.new-per').value, memo, +qty, note));
   g('.new-memo').value = ''; g('.new-qty').value = ''; g('.new-note').value = '';
   markDirty(pane);
   return true;
@@ -274,7 +320,7 @@ async function savePlanSettings(bid, btn) {
   for (const row of pane.querySelectorAll('.it-row')) {
     const memoEl = row.querySelector('.it-memo'), qEl = row.querySelector('.it-qty');
     const memo = memoEl.value.trim(), qty = qEl.value.trim();
-    if (!memo) { alert('항목 이름을 입력해 주세요 (필수). 필요 없는 항목은 ✕로 삭제하세요.'); memoEl.focus(); return; }
+    if (!memo) { row.classList.add('editing'); alert('항목 이름을 입력해 주세요 (필수). 필요 없는 항목은 삭제 버튼으로 지우세요.'); memoEl.focus(); return; }
     if (qty === '' || !Number.isInteger(+qty)) { alert(`'${memo}' 수량을 정수로 입력해 주세요.`); qEl.focus(); return; }
     items.push({dept: row.closest('.pset-grp').dataset.dept, per_flight: row.querySelector('.it-per').value === '1',
                 memo, qty: +qty, note: row.querySelector('.it-note').value.trim()});
