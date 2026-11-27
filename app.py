@@ -1197,6 +1197,13 @@ TRS_DEFAULT_ITEMS = [
 TRS_ITEMS_MARKER = 'items_v2'     # 'b<지점id>:items_v2' 가 있으면 그 지점은 기준 항목을 전부 trs_adjust 행으로 관리
 
 
+def _trs_dedupe_items(conn):
+    """같은 지점에 완전히 같은 기준 항목(구분·이름·수량·유형·비고)이 여러 줄이면 첫 줄만 남김.
+    (기준 저장 요청이 동시에 두 번 처리돼 목록이 통째로 두 배가 된 경우 복구용)"""
+    conn.execute('DELETE FROM trs_adjust WHERE id NOT IN ('
+                 'SELECT MIN(id) FROM trs_adjust GROUP BY branch_id, dept, memo, qty, per_flight, note)')
+
+
 def _trs_items_unify(conn, pg):
     """기본 기준 항목(지점장·CNTR MGR…)도 지점별 편집 가능한 행으로 전환 (1회, 지점별 표시로 중복 방지).
     각 국내 지점의 현재 값(초기값 + 지점 저장값, 예전 '여객 고정' 합계 포함)을 그대로 행으로 옮겨 결과 불변."""
@@ -1667,6 +1674,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_items_unify] {_e}')
+            _mig_trs_dedupe = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_adjust_dedupe_1127',)
+            ).fetchone()
+            if not _mig_trs_dedupe:
+                try:
+                    _trs_dedupe_items(conn)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_adjust_dedupe_1127',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_adjust_dedupe] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -9065,6 +9083,10 @@ def trs_plan_settings_save():
         return jsonify(ok=False, error='지점을 선택해 주세요.'), 400
     conn = get_db()
     try:
+        # 같은 지점 기준 저장이 동시에 두 번 들어오면(더블클릭·재전송) '삭제 후 다시 넣기'가 겹쳐 목록이 두 배가 됨
+        # → 지점별 잠금으로 한 번에 하나씩 처리 (트랜잭션 끝(commit/rollback)에 자동 해제)
+        if not USE_SQLITE:
+            conn.execute('SELECT pg_advisory_xact_lock(%s, %s)', (7307, bid))
         if data.get('reset'):
             # 기준 항목·처리시간 등 이 지점의 기준 전체를 초기값(대구 TRS 배포안)으로
             conn.execute("DELETE FROM trs_plan_settings WHERE k LIKE %s", (f'b{bid}:%',))

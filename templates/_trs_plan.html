@@ -309,6 +309,7 @@ function addItem(btn) {
   return true;
 }
 async function savePlanSettings(bid, btn) {
+  if (btn.disabled) return;                       // 저장 중 두 번 눌러도 한 번만 보냄
   const pane = btn.closest('.plan-set'), values = {}, body = {branch_id: bid, values};
   // '항목 추가' 칸에 적어두고 [추가]를 안 눌렀으면 저장 전에 자동으로 추가
   const box = pane.querySelector('.pset-new');
@@ -327,7 +328,11 @@ async function savePlanSettings(bid, btn) {
   }
   body.items = items;
   rememberPset(bid);
-  if (await post('{{ url_for("trs_plan_settings_save") }}', body)) reloadToPlan();
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = '저장 중…';
+  if (await post('{{ url_for("trs_plan_settings_save") }}', body)) { reloadToPlan(); return; }
+  btn.disabled = false; btn.textContent = label;   // 실패 시 다시 누를 수 있게
 }
 async function resetPlanSettings(bid, name) {
   if (!confirm(`${name}의 기준(항목·처리시간 등) 전체를 초기값(대구 TRS 배포안)으로 되돌릴까요? 직접 추가한 항목도 지워집니다.`)) return;
