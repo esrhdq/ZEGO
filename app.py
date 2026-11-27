@@ -9097,7 +9097,7 @@ def _parse_dcs_schedule(text):
 @app.route('/trs/plan/settings', methods=['POST'])
 @login_required
 def trs_plan_settings_save():
-    denied = _trs_admin_only()
+    scope, denied = _trs_editor()
     if denied:
         return denied
     data = request.get_json(silent=True) or {}
@@ -9106,6 +9106,8 @@ def trs_plan_settings_save():
     values = data.get('values') or {}
     if not bid:
         return jsonify(ok=False, error='지점을 선택해 주세요.'), 400
+    if scope and bid != scope:  # 지점 계정은 자기 지점 기준만
+        return jsonify(ok=False, error='우리 지점 기준만 수정할 수 있습니다.'), 403
     conn = get_db()
     try:
         # 같은 지점 기준 저장이 동시에 두 번 들어오면(더블클릭·재전송) '삭제 후 다시 넣기'가 겹쳐 목록이 두 배가 됨
