@@ -17,9 +17,16 @@
   .plan-sub { font-size:.72rem; color:var(--text-muted); }
   .plan-set input { max-width:90px; }
   .plan-set .pset-new input { max-width:none; }
-  .pset-add-badge { font-size:.62rem; font-weight:700; color:#1D4ED8; background:#DBEAFE; border-radius:4px; padding:0 4px; }
-  .adj-row.adj-new { background:#F0F9FF; border-radius:6px; }
   .pset-grp + .pset-grp { margin-top:6px; padding-top:6px; border-top:1px dotted var(--border); }
+  .pset-grp-title { font-weight:700; font-size:.78rem; color:var(--text-secondary); margin:2px 0 3px; }
+  .it-row .it-per, .it-head .h-per { width:150px; flex:none; }
+  .it-row .it-memo, .it-head .h-memo { flex:1.2; min-width:90px; }
+  .it-row .it-qty, .it-head .h-qty { width:64px; flex:none; }
+  .it-row .it-note, .it-head .h-note { flex:1; min-width:80px; }
+  .it-head .h-del { width:28px; flex:none; }
+  .it-head span { font-size:.7rem; color:var(--text-muted); font-weight:600; }
+  .it-row.it-new { background:#F0F9FF; border-radius:6px; }
+  .plan-set .it-row input, .plan-set .it-row select, .plan-set .pset-new input { max-width:none; }
   .plan-days { font-size:.78rem; }
   .plan-days td, .plan-days th { padding:2px 8px !important; }
   .plan-days tr.rep td { background:#FEF2F2 !important; font-weight:700; }
@@ -27,7 +34,7 @@
 
 <p class="text-muted mb-3" style="font-size:.8rem">
   기간 안의 날짜마다 <b>가장 바쁜 시간대에 동시에 처리하는 편수</b>를 구하고,
-  <b>필요 대수 = 고정 + 동시 1편당 × 피크 편수 + 지점별 추가 항목</b>을 계산합니다.
+  <b>필요 대수 = 고정 항목 합 + 동시 1편당 항목 합 × 피크 편수</b>를 계산합니다.
   편수가 날마다 달라지므로 <b>기간 중 가장 많이 필요한 날</b>을 기준으로 보유 대수와 비교합니다.
   사용처가 정해진 정상·예비 무전기만 보유로 셉니다. 행을 누르면 날짜별 내역과 계산 근거가 펼쳐집니다.
 </p>
@@ -78,9 +85,9 @@
               {% endif %}
             </div>
             <div class="col-lg-7">
-              <div class="fw-semibold mb-1">지점별 추가 항목 <span class="text-muted fw-normal">(아래 '기준 설정 → {{ p.name }}' 탭에서 추가·수정)</span></div>
-              {% for a in p.adjusts %}
-              <div>· {{ {'총괄': '총괄', '여객조업사': '여객', '램프조업사': '램프'}[a.dept] or a.dept }} {{ '동시 1편당' if a.per_flight else '고정' }} {{ a.memo }} <b>{{ '%+d'|format(a.qty) }}</b></div>
+              <div class="fw-semibold mb-1">항목 비고 <span class="text-muted fw-normal">(기준 설정 → {{ p.name }} 탭에서 수정)</span></div>
+              {% for a in p['items'] if a.note %}
+              <div>· {{ {'총괄': '총괄', '여객조업사': '여객', '램프조업사': '램프'}[a.dept] or a.dept }} {{ a.memo }} — {{ a.note }}</div>
               {% else %}<div class="text-muted">없음</div>{% endfor %}
             </div>
             {% if p.n_days > 1 %}
@@ -118,16 +125,23 @@
 <div class="empty-state mb-4">아직 분석할 운항 스케줄이 없습니다. 아래에서 운항 시간표 엑셀을 올려주세요.</div>
 {% endif %}
 
+{% macro item_row(a) %}
+<div class="it-row d-flex align-items-center gap-1 mb-1">
+  <select class="form-select form-select-sm it-per" title="유형">
+    <option value="0" {% if not a.per_flight %}selected{% endif %}>고정 ×1</option>
+    <option value="1" {% if a.per_flight %}selected{% endif %}>동시 1편당 ×편수</option>
+  </select>
+  <input class="form-control form-control-sm it-memo" value="{{ a.memo }}" placeholder="이름 (필수)" maxlength="100">
+  <input type="number" step="1" class="form-control form-control-sm text-end it-qty" value="{{ a.qty }}" title="수량">
+  <input class="form-control form-control-sm it-note" value="{{ a.note }}" placeholder="비고" maxlength="200">
+  <button class="btn btn-link btn-sm px-1 text-danger it-del" type="button" title="삭제" onclick="delItem(this)"><i class="fa-solid fa-xmark"></i></button>
+</div>
+{% endmacro %}
 <div class="row g-3">
-  <div class="col-lg-6">
-    <div class="card h-100"><div class="card-header fw-semibold">기준 설정 <span class="text-muted fw-normal" style="font-size:.78rem">지점마다 따로 정할 수 있습니다</span></div>
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header fw-semibold">기준 설정 <span class="text-muted fw-normal" style="font-size:.78rem">지점마다 항목 이름·유형·수량·비고를 따로 정할 수 있습니다</span></div>
       <div class="card-body" style="font-size:.83rem">
-        {% set groups = [
-          ('총괄', '총괄', [('chief_fixed', '총괄 — 지점장 고정', '대'), ('chief_staff', '총괄 — 출근 인원 수', '명')]),
-          ('여객조업사', '여객', [('pax_cntr_mgr', '여객 — 고정 CNTR MGR', '대'), ('pax_cntr_agt', '여객 — 고정 CNTR AGT', '대'),
-                                  ('pax_gate_mgr', '여객 — 고정 GATE MGR', '대'), ('pax_per', '여객 — 동시 1편당 GATE AGT', '대')]),
-          ('램프조업사', '램프', [('ramp_fixed', '램프 — 고정 관리자', '대'), ('ramp_per', '램프 — 동시 1편당', '대')]),
-        ] %}
+        {% set depts = [('총괄', '총괄'), ('여객조업사', '여객'), ('램프조업사', '램프')] %}
         {% set fields = [
           ('win_pax_dom', '여객 처리시간 — 국내선 출발 전', '분'),
           ('win_pax_intl', '여객 처리시간 — 국제선 출발 전', '분'),
@@ -147,50 +161,41 @@
           {% for p in plan %}
           <div class="tab-pane fade {% if loop.first %}show active{% endif %} plan-set" id="pset-{{ p.branch_id }}">
             <p class="text-muted mb-2" style="font-size:.75rem"><b>{{ p.name }}</b> 기준입니다. 저장하면 {{ p.name }}에만 적용됩니다.
-              <span class="pset-add-badge">추가</span> = 이 지점에 직접 추가한 항목</p>
-            {% for dept, short, items in groups %}
-            <div class="pset-grp" data-dept="{{ dept }}" data-short="{{ short }}">
-              {% for k, label, unit in items %}
-              <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                <label>{{ label }}</label>
-                <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end" data-k="{{ k }}" value="{{ p.st[k] }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
-              </div>
-              {% endfor %}
-              <div class="custom-rows">
-                {% for a in p.adjusts if a.dept == dept %}
-                <div class="adj-row d-flex align-items-center justify-content-between gap-2 mb-1" data-per="{{ a.per_flight }}" data-memo="{{ a.memo }}">
-                  <label><span class="pset-add-badge">추가</span> {{ short }} — {{ '동시 1편당' if a.per_flight else '고정' }} {{ a.memo }}
-                    <button class="btn btn-link btn-sm p-0 ms-1 text-danger" type="button" style="font-size:.72rem" onclick="this.closest('.adj-row').remove()">삭제</button></label>
-                  <div class="d-flex align-items-center gap-1"><input type="number" step="1" class="form-control form-control-sm text-end adj-qty" value="{{ a.qty }}"><span class="text-muted" style="width:16px">대</span></div>
-                </div>
-                {% endfor %}
+              <b>고정</b> = 수량 × 1, <b>동시 1편당</b> = 수량 × 그 시간대 동시 처리 편수. 비고는 계산에 영향 없음.</p>
+            <div class="it-head d-flex gap-1 mb-1"><span class="h-per">유형</span><span class="h-memo">이름</span><span class="h-qty">수량</span><span class="h-note">비고</span><span class="h-del"></span></div>
+            {% for dept, short in depts %}
+            <div class="pset-grp" data-dept="{{ dept }}">
+              <div class="pset-grp-title">{{ short }}</div>
+              <div class="it-rows">
+                {% for a in p['items'] if a.dept == dept %}{{ item_row(a) }}{% endfor %}
               </div>
             </div>
             {% endfor %}
-            <div class="mt-2 pt-2" style="border-top:1px dashed var(--border)">
-            {% for k, label, unit in fields %}
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-              <label>{{ label }}</label>
-              <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end" data-k="{{ k }}" value="{{ p.st[k] }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
-            </div>
-            {% endfor %}
-            </div>
             <div class="mt-3 pt-2 pset-new" style="border-top:1px dashed var(--border)">
-              <div class="fw-semibold mb-1">항목 추가 <span class="text-muted fw-normal" style="font-size:.75rem">위에 없는 수요 (예: RAMP BUS, I/B, CLEANING TEAM). 빼야 하면 수량을 음수(-1)로.</span></div>
+              <div class="fw-semibold mb-1">항목 추가 <span class="text-muted fw-normal" style="font-size:.75rem">위에 없는 수요 (예: RAMP BUS, CLEANING TEAM). 빼야 하면 수량을 음수(-1)로.</span></div>
               <div class="d-flex flex-wrap gap-1">
                 <select class="form-select form-select-sm new-dept" style="width:76px" title="구분">
                   <option value="총괄">총괄</option><option value="여객조업사" selected>여객</option><option value="램프조업사">램프</option>
                 </select>
-                <select class="form-select form-select-sm new-per" style="width:110px" title="유형">
-                  <option value="0">고정</option><option value="1">동시 1편당</option>
+                <select class="form-select form-select-sm new-per" style="width:140px" title="유형">
+                  <option value="0">고정 ×1</option><option value="1">동시 1편당 ×편수</option>
                 </select>
                 <input class="form-control form-control-sm new-memo" style="flex:1;min-width:110px" placeholder="내용 (필수)" maxlength="100">
+                <input class="form-control form-control-sm new-note" style="flex:1;min-width:100px" placeholder="비고" maxlength="200">
                 <input type="number" step="1" class="form-control form-control-sm text-end new-qty" style="width:64px" placeholder="수량">
-                <button class="btn btn-outline-primary btn-sm" type="button" onclick="addCustomItem(this)"><i class="fa-solid fa-plus me-1"></i>추가</button>
+                <button class="btn btn-outline-primary btn-sm" type="button" onclick="addItem(this)"><i class="fa-solid fa-plus me-1"></i>추가</button>
               </div>
-              <div class="pset-dirty text-danger mt-1" style="font-size:.75rem;display:none">추가·삭제한 항목은 아래 '{{ p.name }} 기준 저장'을 눌러야 반영됩니다.</div>
             </div>
-            <div class="d-flex justify-content-between mt-3">
+            <div class="mt-3 pt-2" style="border-top:1px dashed var(--border)">
+            {% for k, label, unit in fields %}
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+              <label>{{ label }}</label>
+              <div class="d-flex align-items-center gap-1"><input type="number" step="any" min="0" class="form-control form-control-sm text-end" style="max-width:90px" data-k="{{ k }}" value="{{ p.st[k] }}"><span class="text-muted" style="width:16px">{{ unit }}</span></div>
+            </div>
+            {% endfor %}
+            </div>
+            <div class="pset-dirty text-danger mt-2" style="font-size:.75rem;display:none">바꾼 내용은 아래 '{{ p.name }} 기준 저장'을 눌러야 반영됩니다.</div>
+            <div class="d-flex justify-content-between mt-2">
               <button class="btn btn-link btn-sm p-0 text-muted" {% if not p.custom %}disabled{% endif %} onclick="resetPlanSettings({{ p.branch_id }}, '{{ p.name }}')" title="대구 TRS 배포(안) 기준 초기값">초기값으로 되돌리기</button>
               <button class="btn btn-primary btn-sm" onclick="savePlanSettings({{ p.branch_id }}, this)">{{ p.name }} 기준 저장</button>
             </div>
@@ -199,7 +204,7 @@
         </div>
       </div></div>
   </div>
-  <div class="col-lg-6">
+  <div class="col-lg-5">
     <div class="card h-100"><div class="card-header fw-semibold">운항 스케줄 반영</div>
       <div class="card-body" style="font-size:.83rem">
         <p class="text-muted mb-2">사용 중인 <b>운항 시간표 엑셀</b>(.xlsx, .csv)을 양식 그대로 올리고 <b>분석할 기간</b>을 정하세요.
@@ -227,50 +232,59 @@
 function reloadToPlan() { try { sessionStorage.setItem('trsTab', 'plan'); } catch (e) {} location.reload(); }
 function rememberPset(key) { try { sessionStorage.setItem('trsPset', key); } catch (e) {} }
 const _escAttr = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function markDirty(pane) { const d = pane.querySelector('.pset-dirty'); if (d) d.style.display = 'block'; }
-// '항목 추가' 줄의 4가지(구분·유형·내용·수량)를 읽어 위 해당 구분 목록에 한 줄로 넣음. 반환: 성공 여부
-function addCustomItem(btn, quiet) {
+function markDirty(pane) { const d = pane && pane.querySelector('.pset-dirty'); if (d) d.style.display = 'block'; }
+document.addEventListener('input', e => {
+  const pane = e.target.closest && e.target.closest('.plan-set');
+  if (pane && !e.target.closest('.pset-new')) markDirty(pane);
+});
+function delItem(btn) { const pane = btn.closest('.plan-set'); btn.closest('.it-row').remove(); markDirty(pane); }
+function itemRowHtml(per, memo, qty, note) {
+  return `<div class="it-row it-new d-flex align-items-center gap-1 mb-1">
+    <select class="form-select form-select-sm it-per" title="유형">
+      <option value="0" ${per === '1' ? '' : 'selected'}>고정 ×1</option><option value="1" ${per === '1' ? 'selected' : ''}>동시 1편당 ×편수</option>
+    </select>
+    <input class="form-control form-control-sm it-memo" value="${_escAttr(memo)}" placeholder="이름 (필수)" maxlength="100">
+    <input type="number" step="1" class="form-control form-control-sm text-end it-qty" value="${_escAttr(qty)}" title="수량">
+    <input class="form-control form-control-sm it-note" value="${_escAttr(note)}" placeholder="비고" maxlength="200">
+    <button class="btn btn-link btn-sm px-1 text-danger it-del" type="button" title="삭제" onclick="delItem(this)"><i class="fa-solid fa-xmark"></i></button>
+  </div>`;
+}
+// '항목 추가' 줄(구분·유형·내용·비고·수량)을 위 해당 구분 목록에 한 줄로 넣음. 반환: 성공 여부
+function addItem(btn) {
   const pane = btn.closest('.plan-set'), box = pane.querySelector('.pset-new');
-  const dept = box.querySelector('.new-dept').value, per = box.querySelector('.new-per').value;
-  const memoEl = box.querySelector('.new-memo'), qtyEl = box.querySelector('.new-qty');
-  const memo = memoEl.value.trim(), qty = qtyEl.value.trim();
-  if (!memo) { if (!quiet) { alert('내용을 입력해 주세요 (필수).'); memoEl.focus(); } return false; }
-  if (!qty || +qty === 0 || !Number.isInteger(+qty)) { alert('수량을 정수로 입력해 주세요 (0 제외, 빼려면 음수).'); qtyEl.focus(); return false; }
-  const grp = pane.querySelector(`.pset-grp[data-dept="${dept}"]`);
-  grp.querySelector('.custom-rows').insertAdjacentHTML('beforeend', `
-    <div class="adj-row adj-new d-flex align-items-center justify-content-between gap-2 mb-1" data-per="${per}" data-memo="${_escAttr(memo)}">
-      <label><span class="pset-add-badge">추가</span> ${_escAttr(grp.dataset.short)} — ${per === '1' ? '동시 1편당' : '고정'} ${_escAttr(memo)}
-        <button class="btn btn-link btn-sm p-0 ms-1 text-danger" type="button" style="font-size:.72rem" onclick="markDirty(this.closest('.plan-set'));this.closest('.adj-row').remove()">삭제</button></label>
-      <div class="d-flex align-items-center gap-1"><input type="number" step="1" class="form-control form-control-sm text-end adj-qty" value="${+qty}"><span class="text-muted" style="width:16px">대</span></div>
-    </div>`);
-  memoEl.value = ''; qtyEl.value = '';
+  const g = c => box.querySelector(c);
+  const memo = g('.new-memo').value.trim(), qty = g('.new-qty').value.trim(), note = g('.new-note').value.trim();
+  if (!memo) { alert('내용을 입력해 주세요 (필수).'); g('.new-memo').focus(); return false; }
+  if (!qty || !Number.isInteger(+qty)) { alert('수량을 정수로 입력해 주세요 (빼려면 음수).'); g('.new-qty').focus(); return false; }
+  pane.querySelector(`.pset-grp[data-dept="${g('.new-dept').value}"] .it-rows`)
+      .insertAdjacentHTML('beforeend', itemRowHtml(g('.new-per').value, memo, +qty, note));
+  g('.new-memo').value = ''; g('.new-qty').value = ''; g('.new-note').value = '';
   markDirty(pane);
   return true;
 }
-document.addEventListener('click', e => {      // 기존 항목 삭제 시에도 '저장해야 반영' 안내
-  if (e.target.matches('.custom-rows .text-danger')) markDirty(e.target.closest('.plan-set'));
-}, true);
 async function savePlanSettings(bid, btn) {
   const pane = btn.closest('.plan-set'), values = {}, body = {branch_id: bid, values};
   // '항목 추가' 칸에 적어두고 [추가]를 안 눌렀으면 저장 전에 자동으로 추가
   const box = pane.querySelector('.pset-new');
-  if (box && (box.querySelector('.new-memo').value.trim() || box.querySelector('.new-qty').value.trim())) {
-    if (!addCustomItem(box.querySelector('button'))) return;
+  if (box && ['.new-memo', '.new-qty', '.new-note'].some(c => box.querySelector(c).value.trim())) {
+    if (!addItem(box.querySelector('button'))) return;
   }
   pane.querySelectorAll('input[data-k]').forEach(el => values[el.dataset.k] = el.value);
-  const adjusts = [];
-  for (const row of pane.querySelectorAll('.adj-row')) {
-    const qEl = row.querySelector('.adj-qty'), qty = qEl.value.trim();
-    if (!qty || +qty === 0 || !Number.isInteger(+qty)) { alert('추가 항목의 수량을 정수로 입력해 주세요 (0 제외). 지우려면 삭제를 누르세요.'); qEl.focus(); return; }
-    adjusts.push({dept: row.closest('.pset-grp').dataset.dept, per_flight: row.dataset.per === '1',
-                  memo: row.dataset.memo, qty: +qty});
+  const items = [];
+  for (const row of pane.querySelectorAll('.it-row')) {
+    const memoEl = row.querySelector('.it-memo'), qEl = row.querySelector('.it-qty');
+    const memo = memoEl.value.trim(), qty = qEl.value.trim();
+    if (!memo) { alert('항목 이름을 입력해 주세요 (필수). 필요 없는 항목은 ✕로 삭제하세요.'); memoEl.focus(); return; }
+    if (qty === '' || !Number.isInteger(+qty)) { alert(`'${memo}' 수량을 정수로 입력해 주세요.`); qEl.focus(); return; }
+    items.push({dept: row.closest('.pset-grp').dataset.dept, per_flight: row.querySelector('.it-per').value === '1',
+                memo, qty: +qty, note: row.querySelector('.it-note').value.trim()});
   }
-  body.adjusts = adjusts;
+  body.items = items;
   rememberPset(bid);
   if (await post('{{ url_for("trs_plan_settings_save") }}', body)) reloadToPlan();
 }
 async function resetPlanSettings(bid, name) {
-  if (!confirm(`${name}의 기준값을 초기값(대구 TRS 배포안)으로 되돌릴까요? 추가 항목은 그대로 둡니다.`)) return;
+  if (!confirm(`${name}의 기준(항목·처리시간 등) 전체를 초기값(대구 TRS 배포안)으로 되돌릴까요? 직접 추가한 항목도 지워집니다.`)) return;
   rememberPset(bid);
   if (await post('{{ url_for("trs_plan_settings_save") }}', {branch_id: bid, reset: true})) reloadToPlan();
 }
