@@ -974,6 +974,7 @@ def _ensure_trs_tables(conn, pg):
             changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    _ensure_history_branch(conn, pg)
     has_rows = conn.execute('SELECT 1 FROM trs_radios LIMIT 1').fetchone()
     if has_rows:
         return
@@ -1166,6 +1167,16 @@ _TRS_ADJ_SEED = [
     ('ICN', '램프조업사', 3, 'CLEANING TEAM 3'),
     ('ICN', '램프조업사', 5, 'BSA 총 6대 (여객동/탑승동 분리, 41·44·50~52 벨트) — 기본 1 제외'),
 ]
+
+
+def _ensure_history_branch(conn, pg):
+    """trs_history 에 branch_id 열 추가 — 기준 변경·삭제처럼 무전기 행이 없는 이력도 지점별로 묶기 위함."""
+    if pg:
+        conn.execute('ALTER TABLE trs_history ADD COLUMN IF NOT EXISTS branch_id INTEGER')
+    else:
+        cols = [r[1] for r in conn.execute('PRAGMA table_info(trs_history)').fetchall()]
+        if 'branch_id' not in cols:
+            conn.execute('ALTER TABLE trs_history ADD COLUMN branch_id INTEGER')
 
 
 def _ensure_adjust_per_flight(conn, pg):
@@ -1685,6 +1696,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_adjust_dedupe] {_e}')
+            _mig_trs_hb = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_history_branch',)
+            ).fetchone()
+            if not _mig_trs_hb:
+                try:
+                    _ensure_history_branch(conn, pg=True)
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_history_branch',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_history_branch] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
@@ -8677,10 +8699,11 @@ def trs_page():
                          'ORDER BY id DESC LIMIT 300'), ()
     else:  # 지점: 우리 지점 무전기 이력 + 우리 지점 계정이 처리한 이력(삭제분 포함)
         hsql = ('SELECT radio_no, action, detail, changed_by, changed_at FROM trs_history '
-                'WHERE radio_id IN (SELECT id FROM trs_radios WHERE branch_id=%s) '
+                'WHERE branch_id=%s '
+                'OR radio_id IN (SELECT id FROM trs_radios WHERE branch_id=%s) '
                 'OR changed_by IN (SELECT username FROM users WHERE branch_id=%s) '
                 'ORDER BY id DESC LIMIT 300')
-        hparams = (session.get('branch_id') or -1,) * 2
+        hparams = (session.get('branch_id') or -1,) * 3
     if hsql:
         for r in conn.execute(hsql, hparams).fetchall():
             d = dict(r)
@@ -8818,9 +8841,9 @@ def trs_delete(rid):
         if not old or (scope and old['branch_id'] != scope):
             return jsonify(ok=False, error='대상을 찾을 수 없습니다.'), 404
         conn.execute('DELETE FROM trs_radios WHERE id=%s', (rid,))
-        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
-                     'VALUES (%s,%s,%s,%s,%s)',
-                     (rid, old['radio_no'], '삭제', old['model'] or '-', user))
+        conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by, branch_id) '
+                     'VALUES (%s,%s,%s,%s,%s,%s)',
+                     (rid, old['radio_no'], '삭제', old['model'] or '-', user, old['branch_id']))
         conn.commit()
     finally:
         conn.close()
@@ -8876,6 +8899,68 @@ def trs_export():
 
 def _trs_num(v):
     return float(v) if '.' in str(v) else int(v)
+
+
+_TRS_SHORT = {'총괄': '총괄', '여객조업사': '여객', '램프조업사': '램프'}
+_TRS_SET_LABELS = {'win_pax_dom': ('여객 처리시간(국내선)', '분'), 'win_pax_intl': ('여객 처리시간(국제선)', '분'),
+                   'win_ramp': ('램프 처리시간', '분'), 'spare_pct': ('예비율', '%'), 'ok_margin': ('여유 판정 기준', '대')}
+
+
+def _trs_branch_criteria(conn, bid):
+    """지점의 현재 기준 → (항목 리스트, 처리시간 등 설정값). 화면·분석과 같은 규칙."""
+    st, ovr = _trs_plan_settings(conn)
+    sb = {**st, **ovr.get(bid, {})}
+    rows = [dict(r) for r in conn.execute(
+        'SELECT dept, qty, memo, per_flight, note FROM trs_adjust WHERE branch_id=%s ORDER BY sort_order, id',
+        (bid,)).fetchall()]
+    for a in rows:
+        a['per_flight'] = int(a.get('per_flight') or 0)
+        a['note'] = a.get('note') or ''
+    marked = conn.execute('SELECT 1 FROM trs_plan_settings WHERE k=%s',
+                          (f'b{bid}:{TRS_ITEMS_MARKER}',)).fetchone()
+    if not marked:
+        rows = [{'dept': d, 'memo': n, 'qty': int(round(sb[k])), 'per_flight': per, 'note': ''}
+                for d, n, per, k in TRS_DEFAULT_ITEMS] + rows
+    return rows, {k: sb[k] for k in _TRS_SET_LABELS}
+
+
+def _trs_criteria_diff(before, after):
+    """기준 변경 전후 비교 → '추가: … / 삭제: … / 수정: … → …' 문자열."""
+    def lbl(a, with_qty=True):
+        t = f"{_TRS_SHORT.get(a['dept'], a['dept'])} {'동시 1편당' if a['per_flight'] else '고정'} {a['memo']}"
+        if with_qty:
+            t += f" {a['qty']}대"
+        return t + (f" ({a['note']})" if a['note'] else '')
+    key = lambda a: (a['dept'], a['memo'])
+    sig = lambda a: (a['qty'], a['per_flight'], a['note'])
+    (bi, bs), (ai, as_) = before, after
+    parts, rest = [], list(bi)
+    for a in ai:
+        m = next((b for b in rest if key(b) == key(a)), None)
+        if m is None:
+            parts.append('추가: ' + lbl(a))
+            continue
+        rest.remove(m)
+        if sig(m) != sig(a):
+            parts.append(f'수정: {lbl(m)} → {lbl(a)}')
+    parts += ['삭제: ' + lbl(b) for b in rest]
+    for k, (name, unit) in _TRS_SET_LABELS.items():
+        if float(bs[k]) != float(as_[k]):
+            parts.append(f'{name}: {_trs_num_str(bs[k])}{unit} → {_trs_num_str(as_[k])}{unit}')
+    return ' / '.join(parts)
+
+
+def _trs_num_str(v):
+    v = float(v)
+    return str(int(v)) if v == int(v) else str(v)
+
+
+def _trs_log_criteria(conn, bid, action, detail):
+    bname = conn.execute('SELECT name FROM branches WHERE id=%s', (bid,)).fetchone()
+    conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by, branch_id) '
+                 'VALUES (%s,%s,%s,%s,%s,%s)',
+                 (None, f"{bname['name'] if bname else bid} 기준", action, detail,
+                  session.get('username', ''), bid))
 
 
 def _trs_plan_settings(conn):
@@ -9114,10 +9199,13 @@ def trs_plan_settings_save():
         # → 지점별 잠금으로 한 번에 하나씩 처리 (트랜잭션 끝(commit/rollback)에 자동 해제)
         if not USE_SQLITE:
             conn.execute('SELECT pg_advisory_xact_lock(%s, %s)', (7307, bid))
+        before = _trs_branch_criteria(conn, bid)
         if data.get('reset'):
             # 기준 항목·처리시간 등 이 지점의 기준 전체를 초기값(대구 TRS 배포안)으로
             conn.execute("DELETE FROM trs_plan_settings WHERE k LIKE %s", (f'b{bid}:%',))
             conn.execute('DELETE FROM trs_adjust WHERE branch_id=%s', (bid,))
+            detail = _trs_criteria_diff(before, _trs_branch_criteria(conn, bid))
+            _trs_log_criteria(conn, bid, '기준 초기화', detail or '변경 없음')
             conn.commit()
             log_action('TRS_적정수량_기준변경', f'지점 {bid} 초기값으로 되돌림')
             return jsonify(ok=True)
@@ -9167,6 +9255,9 @@ def trs_plan_settings_save():
             if float(v) == float(common[k]):
                 continue
             conn.execute('INSERT INTO trs_plan_settings (k, v) VALUES (%s,%s)', (key, str(v)))
+        detail = _trs_criteria_diff(before, _trs_branch_criteria(conn, bid))
+        if detail:
+            _trs_log_criteria(conn, bid, '기준 변경', detail)
         conn.commit()
     finally:
         conn.close()
