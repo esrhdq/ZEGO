@@ -25,11 +25,11 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <p class="text-muted mb-0" style="font-size:.85rem">
     {% if is_admin %}지점별 TRS 무전기 보유현황 · 사용처 · 통화가능 여부를 관리합니다. 목록에서 여러 대를 선택해 한 번에 수정할 수 있습니다.
-    {% else %}우리 지점에 배정된 TRS 무전기 현황입니다. 변경이 필요하면 본사에 요청해 주세요.{% endif %}
+    {% else %}우리 지점 TRS 무전기 현황입니다. 등록 · 수정 · 삭제를 직접 할 수 있습니다. (다른 지점으로 이관은 본사에 요청해 주세요.){% endif %}
   </p>
   <div class="d-flex gap-2">
     <a href="{{ url_for('trs_export') }}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드</a>
-    {% if is_admin %}<button class="btn btn-primary btn-sm" onclick="openEdit(null)"><i class="fa-solid fa-plus me-1"></i>무전기 등록</button>{% endif %}
+    {% if can_edit %}<button class="btn btn-primary btn-sm" onclick="openEdit(null)"><i class="fa-solid fa-plus me-1"></i>무전기 등록</button>{% endif %}
   </div>
 </div>
 
@@ -39,7 +39,7 @@
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabSummary">지점별 현황</button></li>
   <li class="nav-item"><button class="nav-link" id="listTabBtn" data-bs-toggle="tab" data-bs-target="#tabList">무전기 목록</button></li>
   {% if is_admin %}<li class="nav-item"><button class="nav-link" id="planTabBtn" data-bs-toggle="tab" data-bs-target="#tabPlan">적정 수량 분석</button></li>{% endif %}
-  {% if is_admin %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistory">변경이력</button></li>{% endif %}
+  {% if can_edit %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistory">변경이력</button></li>{% endif %}
 </ul>
 
 <div class="tab-content card" style="border-top-left-radius:0">
@@ -59,11 +59,11 @@
       <div class="col-12 col-md-4"><input class="form-control form-control-sm" id="fText" placeholder="무전번호 · 업체 · 비고 검색"></div>
     </div>
 
-    {% if is_admin %}
+    {% if can_edit %}
     <div id="trsBulk" class="alert alert-info py-2 px-3 mb-2">
       <div class="d-flex flex-wrap align-items-center gap-2">
         <strong><span id="bulkCnt">0</span>대 선택</strong>
-        <select class="form-select form-select-sm w-auto" id="bBranch"><option value="">지점 (변경 안 함)</option></select>
+        {% if is_admin %}<select class="form-select form-select-sm w-auto" id="bBranch"><option value="">지점 (변경 안 함)</option></select>{% endif %}
         <select class="form-select form-select-sm w-auto" id="bDept"><option value="__keep">사용처 (변경 안 함)</option>{% for d in depts %}<option>{{ d }}</option>{% endfor %}<option value="">미지정으로</option></select>
         <select class="form-select form-select-sm w-auto" id="bStatus"><option value="">상태 (변경 안 함)</option>{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</select>
         <select class="form-select form-select-sm w-auto" id="bCall"><option value="">통화가능 (변경 안 함)</option><option value="1">통화가능</option><option value="0">통화불가</option></select>
@@ -81,10 +81,10 @@
       <table class="table table-hover table-sm mb-0" id="trsTable">
         <thead class="table-light" style="position:sticky;top:0;z-index:2">
           <tr>
-            {% if is_admin %}<th style="width:28px"><input type="checkbox" class="form-check-input" id="chkAll"></th>{% endif %}
+            {% if can_edit %}<th style="width:28px"><input type="checkbox" class="form-check-input" id="chkAll"></th>{% endif %}
             <th>무전번호</th><th>지점</th><th>사용처</th><th>사용업체/담당</th><th>통화가능</th>
             <th>상태</th><th>단말기종</th><th>개통일자</th><th>비고</th>
-            {% if is_admin %}<th></th>{% endif %}
+            {% if can_edit %}<th></th>{% endif %}
           </tr>
         </thead>
         <tbody></tbody>
@@ -97,7 +97,9 @@
   <div class="tab-pane fade card-body" id="tabPlan">
     {% include '_trs_plan.html' %}
   </div>
+  {% endif %}
 
+  {% if can_edit %}
   <!-- 변경이력 -->
   <div class="tab-pane fade card-body" id="tabHistory">
     {% if history %}
@@ -117,7 +119,7 @@
   {% endif %}
 </div>
 
-{% if is_admin %}
+{% if can_edit %}
 <!-- 등록/수정 모달 -->
 <div class="modal fade" id="editModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -130,7 +132,7 @@
           <div class="col-md-4"><label class="form-label small fw-semibold">무전번호 *</label><input class="form-control form-control-sm" id="eRadioNo"></div>
           <div class="col-md-4"><label class="form-label small fw-semibold">단말기종</label><input class="form-control form-control-sm" id="eModel" list="modelList"></div>
           <div class="col-md-4"><label class="form-label small fw-semibold">개통일자</label><input type="date" class="form-control form-control-sm" id="eDate"></div>
-          <div class="col-md-3"><label class="form-label small fw-semibold">지점</label><select class="form-select form-select-sm" id="eBranch"><option value="">선택</option></select></div>
+          <div class="col-md-3"><label class="form-label small fw-semibold">지점</label><select class="form-select form-select-sm" id="eBranch" {% if not is_admin %}disabled{% endif %}><option value="">선택</option></select></div>
           <div class="col-md-3"><label class="form-label small fw-semibold">사용처</label><select class="form-select form-select-sm" id="eDept"><option value="">미지정</option>{% for d in depts %}<option>{{ d }}</option>{% endfor %}</select></div>
           <div class="col-md-3"><label class="form-label small fw-semibold">사용업체/담당</label><input class="form-control form-control-sm" id="eHolder" placeholder="예: 조업사명, 담당자"></div>
           <div class="col-md-3"><label class="form-label small fw-semibold">상태</label><select class="form-select form-select-sm" id="eStatus">{% for s in statuses %}<option>{{ s }}</option>{% endfor %}</select></div>
@@ -158,6 +160,8 @@
 {% block scripts %}
 <script>
 const IS_ADMIN = {{ is_admin|tojson }};
+const CAN_EDIT = {{ can_edit|tojson }};
+const MY_BRANCH = {{ my_branch|tojson }};
 const RADIOS   = {{ radios|tojson }};
 const BRANCHES = {{ branches|tojson }};
 const DEPTS    = {{ depts|tojson }};
@@ -251,7 +255,7 @@ function renderList() {
   document.getElementById('listCnt').textContent = rows.length;
   document.querySelector('#trsTable tbody').innerHTML = rows.map(r => `
     <tr>
-      ${IS_ADMIN ? `<td><input type="checkbox" class="form-check-input rowchk" data-id="${r.id}" ${selected.has(r.id) ? 'checked' : ''}></td>` : ''}
+      ${CAN_EDIT ? `<td><input type="checkbox" class="form-check-input rowchk" data-id="${r.id}" ${selected.has(r.id) ? 'checked' : ''}></td>` : ''}
       <td class="fw-bold">${esc(r.radio_no)}</td>
       <td>${esc(locOf(r))}</td>
       <td>${r.dept ? esc(r.dept) : '<span class="trs-dept-empty">미지정</span>'}</td>
@@ -261,9 +265,9 @@ function renderList() {
       <td>${esc(r.model)}</td>
       <td class="text-muted">${esc(r.activated_on)}</td>
       <td style="white-space:normal;min-width:120px">${esc(r.memo)}</td>
-      ${IS_ADMIN ? `<td><button class="btn btn-sm btn-light py-0" onclick="openEdit(${r.id})"><i class="fa-solid fa-pen"></i></button></td>` : ''}
+      ${CAN_EDIT ? `<td><button class="btn btn-sm btn-light py-0" onclick="openEdit(${r.id})"><i class="fa-solid fa-pen"></i></button></td>` : ''}
     </tr>`).join('') || `<tr><td colspan="11" class="empty-state">조건에 맞는 무전기가 없습니다.</td></tr>`;
-  if (IS_ADMIN) {
+  if (CAN_EDIT) {
     document.querySelectorAll('.rowchk').forEach(c => c.onchange = () => {
       const id = +c.dataset.id; c.checked ? selected.add(id) : selected.delete(id); updateBulk();
     });
@@ -297,13 +301,13 @@ async function post(url, body) {
 function reloadToList() { sessionStorage.setItem('trsTab', 'list'); location.reload(); }
 
 function updateBulk() {
-  if (!IS_ADMIN) return;
+  if (!CAN_EDIT) return;
   document.getElementById('bulkCnt').textContent = selected.size;
   document.getElementById('trsBulk').style.display = selected.size ? 'block' : 'none';
 }
 function clearSel() { selected.clear(); updateBulk(); renderList(); }
 
-if (IS_ADMIN) {
+if (CAN_EDIT) {
   document.getElementById('chkAll').onchange = e => {
     filtered().forEach(r => e.target.checked ? selected.add(r.id) : selected.delete(r.id));
     updateBulk(); renderList();
@@ -312,7 +316,7 @@ if (IS_ADMIN) {
 
 async function applyBulk() {
   const set = {}, v = id => document.getElementById(id).value;
-  if (v('bBranch')) set.branch_id = v('bBranch');
+  if (IS_ADMIN && v('bBranch')) set.branch_id = v('bBranch');
   if (v('bDept') !== '__keep') set.dept = v('bDept');
   if (v('bStatus')) set.status = v('bStatus');
   if (v('bCall')) set.can_call = v('bCall');
@@ -324,7 +328,7 @@ async function applyBulk() {
 }
 
 function openEdit(id) {
-  const r = RADIOS.find(x => x.id === id) || {status: '정상'};
+  const r = RADIOS.find(x => x.id === id) || {status: '정상', branch_id: IS_ADMIN ? '' : MY_BRANCH};
   const set = (k, v) => document.getElementById(k).value = v ?? '';
   set('eId', r.id); set('eRadioNo', r.radio_no); set('eModel', r.model);
   set('eDate', r.activated_on); set('eBranch', r.branch_id || ''); set('eDept', r.dept);

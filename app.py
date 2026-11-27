@@ -8636,6 +8636,17 @@ def _trs_admin_only():
     return None
 
 
+def _trs_editor():
+    """무전기 수정 권한 → (scope, denied).
+    관리자: scope=None(전체). 지점 계정: scope=자기 branch_id(자기 지점 무전기만)."""
+    if session.get('role') == 'admin':
+        return None, None
+    bid = session.get('branch_id')
+    if not bid or not _trs_can_view():
+        return None, (jsonify(ok=False, error='수정 권한이 없습니다.'), 403)
+    return int(bid), None
+
+
 @app.route('/trs')
 @login_required
 def trs_page():
@@ -8662,10 +8673,16 @@ def trs_page():
         radios.append(d)
     history = []
     if is_admin:
-        for r in conn.execute(
-            'SELECT radio_no, action, detail, changed_by, changed_at FROM trs_history '
-            'ORDER BY id DESC LIMIT 300'
-        ).fetchall():
+        hsql, hparams = ('SELECT radio_no, action, detail, changed_by, changed_at FROM trs_history '
+                         'ORDER BY id DESC LIMIT 300'), ()
+    else:  # 지점: 우리 지점 무전기 이력 + 우리 지점 계정이 처리한 이력(삭제분 포함)
+        hsql = ('SELECT radio_no, action, detail, changed_by, changed_at FROM trs_history '
+                'WHERE radio_id IN (SELECT id FROM trs_radios WHERE branch_id=%s) '
+                'OR changed_by IN (SELECT username FROM users WHERE branch_id=%s) '
+                'ORDER BY id DESC LIMIT 300')
+        hparams = (session.get('branch_id') or -1,) * 2
+    if hsql:
+        for r in conn.execute(hsql, hparams).fetchall():
             d = dict(r)
             d['changed_at'] = dt_filter(d.get('changed_at')) if d.get('changed_at') else ''
             history.append(d)
@@ -8678,7 +8695,8 @@ def trs_page():
     conn.close()
     radios.sort(key=lambda d: (int(d['radio_no']) if d['radio_no'].isdigit() else 99999, d['radio_no']))
     return render_template('trs.html', radios=radios, branches=branches, history=history,
-                           is_admin=is_admin, depts=TRS_DEPTS, statuses=TRS_STATUSES,
+                           is_admin=is_admin, can_edit=True, my_branch=session.get('branch_id'),
+                           depts=TRS_DEPTS, statuses=TRS_STATUSES,
                            models=TRS_MODELS, plan=plan, plan_st=plan_st,
                            plan_default_to=(datetime.now(_KST) + timedelta(days=6)).strftime('%Y-%m-%d'))
 
@@ -8686,11 +8704,13 @@ def trs_page():
 @app.route('/trs/save', methods=['POST'])
 @login_required
 def trs_save():
-    denied = _trs_admin_only()
+    scope, denied = _trs_editor()
     if denied:
         return denied
     data = request.get_json(silent=True) or {}
     rid  = data.get('id')
+    if scope:
+        data['branch_id'] = scope  # 지점 계정은 자기 지점으로만 등록·수정
     vals = _trs_clean(data)
     if not vals.get('radio_no'):
         return jsonify(ok=False, error='무전번호를 입력해 주세요.'), 400
@@ -8702,10 +8722,11 @@ def trs_save():
         bnames = {r['id']: r['name'] for r in conn.execute('SELECT id, name FROM branches').fetchall()}
         dup = conn.execute('SELECT id FROM trs_radios WHERE radio_no=%s', (vals['radio_no'],)).fetchone()
         if dup and (not rid or int(dup['id']) != int(rid)):
-            return jsonify(ok=False, error=f"무전번호 {vals['radio_no']}은(는) 이미 등록되어 있습니다."), 400
+            return jsonify(ok=False, error=f"무전번호 {vals['radio_no']}은(는) 이미 등록되어 있습니다."
+                                           + (' (다른 지점 소속이면 본사에 이관을 요청해 주세요.)' if scope else '')), 400
         if rid:
             old = conn.execute('SELECT * FROM trs_radios WHERE id=%s', (int(rid),)).fetchone()
-            if not old:
+            if not old or (scope and old['branch_id'] != scope):
                 return jsonify(ok=False, error='대상을 찾을 수 없습니다.'), 404
             detail = _trs_diff(dict(old), vals, bnames)
             if not detail:
@@ -8739,13 +8760,15 @@ def trs_save():
 @app.route('/trs/bulk', methods=['POST'])
 @login_required
 def trs_bulk():
-    denied = _trs_admin_only()
+    scope, denied = _trs_editor()
     if denied:
         return denied
     data = request.get_json(silent=True) or {}
     ids  = [int(i) for i in (data.get('ids') or []) if str(i).isdigit()]
     sets = _trs_clean(data.get('set') or {})
     sets.pop('radio_no', None)
+    if scope:
+        sets.pop('branch_id', None)  # 지점 계정은 다른 지점으로 이관 불가
     if 'branch_id' in sets and not sets['branch_id']:
         sets.pop('branch_id')
     if not ids or not sets:
@@ -8757,7 +8780,7 @@ def trs_bulk():
         bnames = {r['id']: r['name'] for r in conn.execute('SELECT id, name FROM branches').fetchall()}
         for rid in ids:
             old = conn.execute('SELECT * FROM trs_radios WHERE id=%s', (rid,)).fetchone()
-            if not old:
+            if not old or (scope and old['branch_id'] != scope):
                 continue
             old = dict(old)
             new = dict(sets)
@@ -8783,14 +8806,14 @@ def trs_bulk():
 @app.route('/trs/<int:rid>/delete', methods=['POST'])
 @login_required
 def trs_delete(rid):
-    denied = _trs_admin_only()
+    scope, denied = _trs_editor()
     if denied:
         return denied
     user = session.get('username', '')
     conn = get_db()
     try:
-        old = conn.execute('SELECT radio_no, model FROM trs_radios WHERE id=%s', (rid,)).fetchone()
-        if not old:
+        old = conn.execute('SELECT radio_no, model, branch_id FROM trs_radios WHERE id=%s', (rid,)).fetchone()
+        if not old or (scope and old['branch_id'] != scope):
             return jsonify(ok=False, error='대상을 찾을 수 없습니다.'), 404
         conn.execute('DELETE FROM trs_radios WHERE id=%s', (rid,))
         conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
