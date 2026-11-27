@@ -1,4 +1,4 @@
-{# TRS 적정 수량 분석 탭 (관리자 전용) — trs.html 에서 include #}
+{# TRS 적정 수량 분석 탭 — trs.html 에서 include. 지점 계정은 자기 지점 분석만 보고, 기준 설정·스케줄 업로드는 관리자 전용 #}
 <style>
   .pv { display:inline-block; min-width:44px; text-align:center; font-size:.72rem; font-weight:700;
         padding:2px 8px; border-radius:999px; }
@@ -90,7 +90,7 @@
               {% endif %}
             </div>
             <div class="col-lg-7">
-              <div class="fw-semibold mb-1">항목 비고 <span class="text-muted fw-normal">(기준 설정 → {{ p.name }} 탭에서 수정)</span></div>
+              <div class="fw-semibold mb-1">항목 비고 {% if is_admin %}<span class="text-muted fw-normal">(기준 설정 → {{ p.name }} 탭에서 수정)</span>{% endif %}</div>
               {% for a in p['items'] if a.note %}
               <div>· {{ {'총괄': '총괄', '여객조업사': '여객', '램프조업사': '램프'}[a.dept] or a.dept }} {{ a.memo }} — {{ a.note }}</div>
               {% else %}<div class="text-muted">없음</div>{% endfor %}
@@ -127,9 +127,10 @@
   </table>
 </div>
 {% else %}
-<div class="empty-state mb-4">아직 분석할 운항 스케줄이 없습니다. 아래에서 운항 시간표 엑셀을 올려주세요.</div>
+<div class="empty-state mb-4">아직 분석할 운항 스케줄이 없습니다. {% if is_admin %}아래에서 운항 시간표 엑셀을 올려주세요.{% else %}본사에서 운항 스케줄을 반영하면 표시됩니다.{% endif %}</div>
 {% endif %}
 
+{% if is_admin %}
 {% macro item_row(a, short) %}
 <div class="it-row mb-1">
   <div class="it-view d-flex align-items-center justify-content-between gap-2">
@@ -371,3 +372,25 @@ async function saveSchedule() {
   alert(msg); reloadToPlan();
 }
 </script>
+{% else %}
+{% if plan %}
+{% set p = plan[0] %}
+<div class="card"><div class="card-header fw-semibold">{{ p.name }} 기준 항목 <span class="text-muted fw-normal" style="font-size:.78rem">기준 변경이 필요하면 본사에 요청해 주세요</span></div>
+  <div class="card-body" style="font-size:.83rem">
+    {% for dept, short in [('총괄', '총괄'), ('여객조업사', '여객'), ('램프조업사', '램프')] %}
+    <div class="pset-grp">
+      <div class="pset-grp-title">{{ short }}</div>
+      {% for a in p['items'] if a.dept == dept %}
+      <div class="d-flex justify-content-between gap-2 mb-1">
+        <span>{{ '동시 1편당' if a.per_flight else '고정' }} {{ a.memo }}{% if a.note %}<span class="it-note-view">{{ a.note }}</span>{% endif %}</span>
+        <span class="text-nowrap fw-semibold">{{ a.qty }}대{% if a.per_flight %} × 편수{% endif %}</span>
+      </div>
+      {% else %}<div class="text-muted">없음</div>{% endfor %}
+    </div>
+    {% endfor %}
+    <div class="text-muted mt-2" style="font-size:.75rem">
+      처리시간: 여객 국내선 {{ p.st.win_pax_dom }}분 · 국제선 {{ p.st.win_pax_intl }}분 · 램프 {{ p.st.win_ramp }}분 출발 전 · 예비율 {{ p.st.spare_pct }}%
+    </div>
+  </div></div>
+{% endif %}
+{% endif %}

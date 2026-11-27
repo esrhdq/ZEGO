@@ -8687,11 +8687,13 @@ def trs_page():
             d['changed_at'] = dt_filter(d.get('changed_at')) if d.get('changed_at') else ''
             history.append(d)
     plan_st, plan = (None, [])
-    if is_admin:
-        try:
-            plan_st, plan = _trs_plan_analysis(conn)
-        except Exception as e:
-            print(f'[trs_plan_analysis] {e}')
+    try:
+        plan_st, plan = _trs_plan_analysis(conn)
+        if not is_admin:  # 지점 계정: 우리 지점 분석만 (기준 설정·스케줄 업로드는 관리자 전용)
+            my_bid = session.get('branch_id')
+            plan = [p for p in plan if p['branch_id'] == my_bid]
+    except Exception as e:
+        print(f'[trs_plan_analysis] {e}')
     conn.close()
     radios.sort(key=lambda d: (int(d['radio_no']) if d['radio_no'].isdigit() else 99999, d['radio_no']))
     return render_template('trs.html', radios=radios, branches=branches, history=history,
