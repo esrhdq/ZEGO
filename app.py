@@ -1033,7 +1033,8 @@ def _trs_mark_callable(conn, radio_nos, source):
 
 def _trs_apply_plan(conn, plan, source):
     """{무전번호: {컬럼: 값}} 일괄 반영 + 변경이력 기록. 값이 같으면 건너뜀."""
-    labels = {'dept': '사용처', 'holder': '사용업체/담당', 'can_call': '통화가능', 'memo': '비고'}
+    labels = {'dept': '사용처', 'holder': '사용업체/담당', 'can_call': '통화가능', 'memo': '비고',
+              'model': '단말기종', 'activated_on': '개통일자', 'status': '상태'}
     for no, sets in plan.items():
         row = conn.execute('SELECT * FROM trs_radios WHERE radio_no=%s', (str(no),)).fetchone()
         if not row:
@@ -1050,6 +1051,30 @@ def _trs_apply_plan(conn, plan, source):
         detail = ' / '.join(f"{labels[k]}: {fmt(k, row.get(k))} → {fmt(k, v)}" for k, v in sets.items())
         conn.execute('INSERT INTO trs_history (radio_id, radio_no, action, detail, changed_by) '
                      'VALUES (%s,%s,%s,%s,%s)', (row['id'], str(no), '일괄수정', detail, source))
+
+
+def _trs_icn_plan_1127():
+    """인천지점 무전기현황 최신화(26.11.27): 프리죤 28대 = 여객, CPK 24대(BSA 9 + 램프 15) = 램프.
+    단말기종·개통일자는 현황표 기준. 개인 이름·일련번호는 저장하지 않음(지점에서 직접 입력)."""
+    old_m, new_m = 'Radger +10', 'Radger +20'
+    plan = {}
+    for n in (597, 552, 561, 558, 555, 599, 562, 568, 567, 566, 596, 595, 313, 557, 554, 314,
+              556, 563, 560, 565, 569, 570, 551, 553, 593, 600, 564, 309):
+        plan[n] = {'dept': '여객조업사', 'holder': '프리죤에어포트서비스',
+                   'model': old_m, 'activated_on': '2024-08-26'}
+    cpk = {572: 'OUT BSA', 573: 'OUT BSA', 594: 'OUT BSA', 574: 'IN BSA', 575: 'BSA · 11/25 불출 완료',
+           576: 'IN BSA', 577: 'BSA', 598: 'BSA', 571: 'BSA'}
+    cpk.update({n: '램프2팀' for n in (310, 311, 312, 550, 578, 579, 580, 581, 582, 583, 584, 585,
+                                     586, 588, 589)})
+    for n, memo in cpk.items():
+        plan[n] = {'dept': '램프조업사', 'holder': 'CPK', 'memo': memo,
+                   'model': old_m, 'activated_on': '2024-08-26'}
+    plan[597].update(model=new_m, activated_on='2025-11-11', memo='신형')
+    plan[572].update(model=new_m, activated_on='2025-11-11', memo='OUT BSA · 신형')
+    for n in (558, 564, 309):
+        plan[n].update(model=new_m, activated_on='2026-02-27')
+    plan[551]['status'] = '수리중'
+    return plan
 
 
 def _trs_gmp_plan():
@@ -1707,6 +1732,17 @@ def init_db():
                 except Exception as _e:
                     conn.rollback()
                     print(f'[data_migration/trs_history_branch] {_e}')
+            _mig_trs_icn2 = conn.execute(
+                "SELECT name FROM _migrations WHERE name=%s", ('trs_icn_sheet_1127',)
+            ).fetchone()
+            if not _mig_trs_icn2:
+                try:
+                    _trs_apply_plan(conn, _trs_icn_plan_1127(), '인천 현황표(26.11.27)')
+                    conn.execute("INSERT INTO _migrations (name) VALUES (%s)", ('trs_icn_sheet_1127',))
+                    conn.commit()
+                except Exception as _e:
+                    conn.rollback()
+                    print(f'[data_migration/trs_icn_sheet_1127] {_e}')
         except Exception as _e:
             print(f'[data_migration] {_e}')
         # Fast-path: DB가 이미 초기화되어 있으면 DDL 쿼리 전부 건너뜀
